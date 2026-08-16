@@ -15,7 +15,7 @@ except Exception:
     stock = None
     PYKRX_OK = False
 
-st.set_page_config(page_title="HY DYNAMIC12 KOREA V3.6", page_icon="🇰🇷", layout="wide")
+st.set_page_config(page_title="HY DYNAMIC12 KOREA V3.8", page_icon="🇰🇷", layout="wide")
 
 SEOUL = ZoneInfo("Asia/Seoul")
 DATA_DIR = Path("data")
@@ -31,6 +31,25 @@ DEEP_CANDIDATE_COUNT = 120
 YF_CHUNK = 180
 MIN_PRICE = 1000
 MIN_AVG_VALUE = 2_000_000_000  # 최근 20일 평균 거래대금 20억원
+
+FALLBACK_UNIVERSE = [
+    ("005930","삼성전자","KOSPI"), ("000660","SK하이닉스","KOSPI"),
+    ("035420","NAVER","KOSPI"), ("035720","카카오","KOSPI"),
+    ("005380","현대차","KOSPI"), ("000270","기아","KOSPI"),
+    ("207940","삼성바이오로직스","KOSPI"), ("068270","셀트리온","KOSPI"),
+    ("373220","LG에너지솔루션","KOSPI"), ("006400","삼성SDI","KOSPI"),
+    ("005490","POSCO홀딩스","KOSPI"), ("051910","LG화학","KOSPI"),
+    ("012450","한화에어로스페이스","KOSPI"), ("042660","한화오션","KOSPI"),
+    ("009540","HD한국조선해양","KOSPI"), ("034020","두산에너빌리티","KOSPI"),
+    ("105560","KB금융","KOSPI"), ("055550","신한지주","KOSPI"),
+    ("086790","하나금융지주","KOSPI"), ("316140","우리금융지주","KOSPI"),
+    ("028260","삼성물산","KOSPI"), ("066570","LG전자","KOSPI"),
+    ("003670","포스코퓨처엠","KOSPI"), ("323410","카카오뱅크","KOSPI"),
+    ("247540","에코프로비엠","KOSDAQ"), ("086520","에코프로","KOSDAQ"),
+    ("196170","알테오젠","KOSDAQ"), ("028300","HLB","KOSDAQ"),
+    ("058470","리노공업","KOSDAQ"), ("403870","HPSP","KOSDAQ"),
+    ("214150","클래시스","KOSDAQ"), ("039030","이오테크닉스","KOSDAQ"),
+]
 
 
 def save_json(path, obj):
@@ -81,15 +100,15 @@ def load_csv_universe():
 @st.cache_data(ttl=3600)
 def get_full_universe():
     """
-    pykrx의 문제 구간인 OHLCV/시총 API는 사용하지 않습니다.
-    ticker-list API만 사용하여 KOSPI/KOSDAQ 전체 종목목록을 만든 뒤,
-    실제 가격/거래량은 yfinance로 계산합니다.
+    KRX ticker-list를 우선 사용.
+    실패하거나 너무 적게 조회되면 CSV + 기본 대형주/주도주 후보군을 합쳐
+    TOP12가 비는 문제를 방지합니다.
     """
     rows = []
     source = ""
+    date = latest_business_day()
 
     if PYKRX_OK:
-        date = latest_business_day()
         try:
             for market in ["KOSPI", "KOSDAQ"]:
                 tickers = stock.get_market_ticker_list(date, market=market)
@@ -99,18 +118,29 @@ def get_full_universe():
                     except Exception:
                         name = code
                     rows.append((str(code).zfill(6), name, market))
-            if rows:
-                source = f"KRX 전체 종목목록 · {date}"
+            if len(rows) >= 100:
+                return pd.DataFrame(rows, columns=["종목코드","종목명","시장"]), f"KRX 전체 종목목록 · {date}"
         except Exception:
             rows = []
 
-    if not rows:
-        fb = load_csv_universe()
-        if not fb.empty:
-            return fb, "korea_universe.csv fallback"
-        return pd.DataFrame(columns=["종목코드", "종목명", "시장"]), "종목목록 조회 실패"
+    # fallback: 사용자의 CSV + 내장 후보군
+    merged = []
+    seen = set()
 
-    return pd.DataFrame(rows, columns=["종목코드", "종목명", "시장"]), source
+    fb = load_csv_universe()
+    if not fb.empty:
+        for _, r in fb.iterrows():
+            code = str(r["종목코드"]).zfill(6)
+            if code not in seen:
+                merged.append((code, str(r["종목명"]), str(r["시장"]).upper()))
+                seen.add(code)
+
+    for code, name, market in FALLBACK_UNIVERSE:
+        if code not in seen:
+            merged.append((code, name, market))
+            seen.add(code)
+
+    return pd.DataFrame(merged, columns=["종목코드","종목명","시장"]), "CSV + 기본 후보군 fallback"
 
 
 def load_flow_csv():
@@ -436,9 +466,17 @@ def deep_analyze(screen):
         total = trend * 0.30 + price_pos * 0.15 + volume_score * 0.15 + quality * 0.40
         overheated = high_pos >= 99 and r20 >= 15
 
-        # 미국판과 같은 분할매수/손절 구조
-        buy1 = int(round(price / 100.0) * 100)
-        buy2 = int(round((price * 0.97) / 100.0) * 100)
+        # 미국판 방식에 준한 '적극매수 가격대' 계산
+        # 1차: 20일선/단기 눌림목. 현재가 대비 최대 약 -7% 범위.
+        buy1_raw = max(price * 0.93, min(price * 0.995, ma20))
+        buy1 = int(round(buy1_raw / 100.0) * 100)
+
+        # 2차: 60일선 또는 1차 대비 추가 눌림. 현재가 대비 최대 약 -12% 범위.
+        support2 = ma60 if ma60 < buy1 else buy1 * 0.97
+        buy2_raw = max(price * 0.88, min(buy1 * 0.97, support2))
+        buy2 = int(round(buy2_raw / 100.0) * 100)
+
+        # 손절가: 2차 매수가 대비 -3%
         stop = int(round((buy2 * 0.97) / 100.0) * 100)
 
         rows.append({
@@ -522,6 +560,15 @@ def apply_relative(rows, regime):
             judgment = "🟡 관찰"
 
         r["판정"] = judgment
+        r["KOREA점수"] = r["종합점수"]
+        r["판정점수"] = r["종합점수"]
+        r["시장상태"] = regime
+        if not r.get("_실제수급", False):
+            r["수급대응"] = "대기"
+        elif float(r.get("_수급질적점수", 0)) >= 55:
+            r["수급대응"] = "통과"
+        else:
+            r["수급대응"] = "대기"
     return rows, floor, active_pct
 
 
@@ -546,8 +593,8 @@ def color_opinion(v):
     return ""
 
 
-st.title("🇰🇷 HY DYNAMIC12 KOREA V3.6")
-st.caption("KOSPI · KOSDAQ 전체시장 + KRX 종목목록/수급 + yfinance 가격·거래량 + KOSPI vs 수출 · TOP12 분할매수/3% 손절")
+st.title("🇰🇷 HY DYNAMIC12 KOREA V3.8")
+st.caption("KOSPI · KOSDAQ 전체시장 + KRX 종목목록/수급 + yfinance 가격·거래량 + KOSPI vs 수출 · USA판 형식 TOP12 · 적극매수 가격대 · 최종 3종목 후보")
 
 tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🔔 카카오 준비", "⚙️ 설정"])
 
@@ -631,30 +678,85 @@ with tabs[1]:
                     st.warning("KRX 자동수급이 확보되지 않아 적극매수 판정은 잠금 상태입니다. 실제 수급 확보 전에는 관찰/대기만 표시합니다.")
 
 with tabs[2]:
-    st.subheader("🏆 TOP12 최종 투자후보")
+    st.subheader("🏆 TOP12")
+
     rows = st.session_state.get("kr_rows", [])
     if not rows:
         st.info("먼저 '전체시장 분석'에서 자동분석을 실행하세요.")
     else:
         top = rows[:FINAL_TOP_N]
-        cols = ["종목명", "현재가", "등락률", "종합점수", "수급·질적 종합의견", "상대순위", "과열", "판정", "1차 매수가", "2차 매수가", "손절가(3%)"]
-        df = pd.DataFrame(top)[cols]
+
+        display_rows = []
+        for idx, r in enumerate(top, 1):
+            display_rows.append({
+                "순위": idx,
+                "종목": r["종목명"],
+                "현재가(원)": r["현재가"],
+                "KOREA점수": r.get("KOREA점수", r["종합점수"]),
+                "판정점수": r.get("판정점수", r["종합점수"]),
+                "시장상태": r.get("시장상태", st.session_state.get("kr_regime","중립장")),
+                "상대순위": r["상대순위"],
+                "수급대응": r.get("수급대응","대기"),
+                "과열": r["과열"],
+                "판정": r["판정"],
+                "1차매수가(원)": r["1차 매수가"],
+                "2차매수가(원)": r["2차 매수가"],
+                "손절가(3%)(원)": r["손절가(3%)"],
+            })
+
+        df = pd.DataFrame(display_rows)
+
         st.dataframe(
-            df.style
-            .format({"현재가": "{:,.0f}", "등락률": "{:+.2f}%", "종합점수": "{:.1f}", "1차 매수가": "{:,.0f}", "2차 매수가": "{:,.0f}", "손절가(3%)": "{:,.0f}"})
-            .map(color_opinion, subset=["수급·질적 종합의견"])
-            .map(color_judgment, subset=["판정"]),
-            use_container_width=True, hide_index=True, height=520
+            df.style.format({
+                "현재가(원)": "{:,.0f}",
+                "KOREA점수": "{:.1f}",
+                "판정점수": "{:.1f}",
+                "1차매수가(원)": "{:,.0f}",
+                "2차매수가(원)": "{:,.0f}",
+                "손절가(3%)(원)": "{:,.0f}",
+            }),
+            use_container_width=True,
+            hide_index=True,
+            height=520,
         )
 
-        active = [x for x in top if x["판정"].startswith("🟢 적극매수")]
-        c1, c2, c3, c4 = st.columns(4)
-        c1.metric("TOP12", len(top))
-        c2.metric("적극매수", len(active))
-        c3.metric("시장상태", st.session_state.get("kr_regime", "중립장"))
-        c4.metric("전체 적격종목", st.session_state.get("eligible_count", 0))
+        st.caption(
+            "판정 색상: 🟢 적극매수 · 🟡 매수후보 · 🔵 관찰 · ⚪ 현금대기/대기 · 🔴 제외 "
+            "│ 표 전체 배경색은 적용하지 않고 동그라미 색상으로만 구분합니다."
+        )
+        st.caption(
+            "1차/2차 매수가는 현재가 고정 비율이 아니라 20일선·60일선과 눌림목을 반영한 "
+            "적극매수 가격대입니다. 손절가는 2차 매수가 대비 -3%입니다."
+        )
 
-        st.caption("수급·질적 종합의견 = 외국인 30% + 기관 30% + 상대강도 25% + 펀더멘털 15% · 판정은 동그라미 색상만 등급별로 표시 · 1차 매수=현재가, 2차 매수=-3%, 손절=-3%(2차 매수가 기준).")
+        st.markdown("## 최종 3종목 후보")
+        active = [r for r in top if str(r["판정"]).startswith("🟢 적극매수")]
+
+        if not active:
+            st.warning(
+                "현재 적극매수 종목이 없어 3종목을 억지로 선정하지 않습니다. "
+                "매수후보는 추적만 합니다."
+            )
+        else:
+            final3 = active[:3]
+            final_df = pd.DataFrame([{
+                "종목": r["종목명"],
+                "판정": r["판정"],
+                "종합점수": r["종합점수"],
+                "1차매수가": r["1차 매수가"],
+                "2차매수가": r["2차 매수가"],
+                "손절가(3%)": r["손절가(3%)"],
+            } for r in final3])
+            st.dataframe(
+                final_df.style.format({
+                    "종합점수":"{:.1f}",
+                    "1차매수가":"{:,.0f}",
+                    "2차매수가":"{:,.0f}",
+                    "손절가(3%)":"{:,.0f}",
+                }),
+                use_container_width=True,
+                hide_index=True,
+            )
 
 with tabs[3]:
     st.subheader("🔔 카카오 자동감시 준비")
