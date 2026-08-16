@@ -18,7 +18,7 @@ except Exception:
 
 
 # ============================================================
-# HY DYNAMIC12 KOREA V3.3
+# HY DYNAMIC12 KOREA V3.4
 # - KOSPI + KOSDAQ 전체시장 1차 스크리닝
 # - pykrx 명시적 *_by_ticker API 사용
 # - 외국인/기관 수급 자동수집
@@ -27,7 +27,7 @@ except Exception:
 # ============================================================
 
 st.set_page_config(
-    page_title="HY DYNAMIC12 KOREA V3.3",
+    page_title="HY DYNAMIC12 KOREA V3.4",
     page_icon="🇰🇷",
     layout="wide",
 )
@@ -150,6 +150,13 @@ def safe_numeric(df, columns):
 
 @st.cache_data(ttl=1800)
 def fetch_krx_market_snapshot():
+    """
+    V3.4 FIX:
+    pykrx의 get_market_ohlcv_by_ticker()는 최근 KRX 응답 형식 변화에 따라
+    내부에서 ['시가','고가','저가','종가'] 컬럼을 찾다가 실패할 수 있습니다.
+    따라서 전체시장 1차 스크리닝에는 OHLCV API를 사용하지 않고,
+    get_market_cap_by_ticker()의 종가/거래량/거래대금/시가총액을 사용합니다.
+    """
     if not PYKRX_OK:
         return pd.DataFrame(), "pykrx 미설치"
 
@@ -158,41 +165,26 @@ def fetch_krx_market_snapshot():
 
     try:
         for market in ["KOSPI", "KOSDAQ"]:
-            # 중요: 모호한 get_market_ohlcv() 대신 명시적 API 사용
-            ohlcv = stock.get_market_ohlcv_by_ticker(
-                date,
-                market=market,
-                alternative=True,
-            )
-            cap = stock.get_market_cap_by_ticker(
-                date,
-                market=market,
-            )
-            fund = stock.get_market_fundamental_by_ticker(
-                date,
-                market=market,
-            )
+            cap = stock.get_market_cap_by_ticker(date, market=market)
+            fund = stock.get_market_fundamental_by_ticker(date, market=market)
 
-            ohlcv = normalize_ticker_index(ohlcv)
             cap = normalize_ticker_index(cap)
             fund = normalize_ticker_index(fund)
 
-            if ohlcv.empty:
+            if cap.empty:
                 continue
 
-            # pykrx 버전에 따라 OHLCV 컬럼 차이가 있어도 필요한 열만 존재하면 사용
-            ohlcv = safe_numeric(
-                ohlcv,
-                ["종가", "거래량", "거래대금", "등락률"],
+            # market_cap API 자체에 종가/거래량/거래대금/시가총액이 포함됨
+            cap = safe_numeric(
+                cap,
+                ["종가", "거래량", "거래대금", "시가총액"],
             )
 
-            df = ohlcv[["종가", "거래량", "거래대금", "등락률"]].copy()
+            df = cap[["종가", "거래량", "거래대금", "시가총액"]].copy()
 
-            if not cap.empty:
-                cap = safe_numeric(cap, ["시가총액"])
-                df = df.join(cap[["시가총액"]], how="left")
-            else:
-                df["시가총액"] = 0
+            # 등락률은 1차 필터의 보조값이므로, KRX OHLCV 호출 없이
+            # yfinance 정밀분석 단계에서 실제 추세/수익률을 다시 계산함.
+            df["등락률"] = 0.0
 
             if not fund.empty:
                 keep = [
@@ -212,51 +204,52 @@ def fetch_krx_market_snapshot():
                 except Exception:
                     names.append(code)
             df["종목명"] = names
-
             frames.append(df)
 
         if not frames:
-            return pd.DataFrame(), f"KRX 전종목 시세 조회 실패 ({date})"
+            return pd.DataFrame(), f"KRX 전종목 시총/거래대금 조회 실패 ({date})"
 
         all_df = pd.concat(frames, ignore_index=True)
 
-        # 투자자별 순매수
-        foreign = stock.get_market_net_purchases_of_equities_by_ticker(
-            date, date, "ALL", "외국인"
-        )
-        inst = stock.get_market_net_purchases_of_equities_by_ticker(
-            date, date, "ALL", "기관합계"
-        )
+        # 투자자별 순매수: 실패하더라도 전체 분석은 계속 진행하고
+        # investor_flow.csv가 있으면 fallback으로 보완
+        all_df["외국인순매수"] = 0.0
+        all_df["기관순매수"] = 0.0
 
-        foreign = normalize_ticker_index(foreign)
-        inst = normalize_ticker_index(inst)
+        try:
+            foreign = stock.get_market_net_purchases_of_equities_by_ticker(
+                date, date, "ALL", "외국인"
+            )
+            foreign = normalize_ticker_index(foreign)
+            if not foreign.empty and "순매수거래대금" in foreign.columns:
+                foreign_map = pd.to_numeric(
+                    foreign["순매수거래대금"], errors="coerce"
+                ).fillna(0).to_dict()
+                all_df["외국인순매수"] = (
+                    all_df["종목코드"].map(foreign_map).fillna(0)
+                )
+        except Exception:
+            pass
 
-        foreign_map = {}
-        inst_map = {}
+        try:
+            inst = stock.get_market_net_purchases_of_equities_by_ticker(
+                date, date, "ALL", "기관합계"
+            )
+            inst = normalize_ticker_index(inst)
+            if not inst.empty and "순매수거래대금" in inst.columns:
+                inst_map = pd.to_numeric(
+                    inst["순매수거래대금"], errors="coerce"
+                ).fillna(0).to_dict()
+                all_df["기관순매수"] = (
+                    all_df["종목코드"].map(inst_map).fillna(0)
+                )
+        except Exception:
+            pass
 
-        if not foreign.empty and "순매수거래대금" in foreign.columns:
-            foreign_map = pd.to_numeric(
-                foreign["순매수거래대금"],
-                errors="coerce",
-            ).fillna(0).to_dict()
-
-        if not inst.empty and "순매수거래대금" in inst.columns:
-            inst_map = pd.to_numeric(
-                inst["순매수거래대금"],
-                errors="coerce",
-            ).fillna(0).to_dict()
-
-        all_df["외국인순매수"] = (
-            all_df["종목코드"].map(foreign_map).fillna(0)
-        )
-        all_df["기관순매수"] = (
-            all_df["종목코드"].map(inst_map).fillna(0)
-        )
-
-        return all_df, f"KRX 자동수집 성공 · 기준일 {date}"
+        return all_df, f"KRX 자동수집 성공 · 기준일 {date} · OHLCV 우회모드"
 
     except Exception as e:
-        return pd.DataFrame(), f"KRX 자동수집 실패: {e}"
+        return pd.DataFrame(), f"KRX 자동수집 실패: {type(e).__name__}: {e}"
 
 
 def apply_flow_fallback(df):
@@ -616,7 +609,7 @@ def color_opinion(v):
     return ""
 
 
-st.title("🇰🇷 HY DYNAMIC12 KOREA V3.3")
+st.title("🇰🇷 HY DYNAMIC12 KOREA V3.4")
 st.caption(
     "KOSPI · KOSDAQ 전체시장 + KRX 외국인/기관 수급 + "
     "상대강도 + 펀더멘털 + KOSPI vs 수출"
@@ -699,7 +692,7 @@ with tabs[1]:
             st.error(source_msg)
             st.warning(
                 "requirements.txt에 pykrx가 설치되어 있는지 확인하세요. "
-                "이번 V3.3은 KRX_ID/KRX_PW 없이 공개 pykrx 조회를 우선 사용합니다."
+                "이번 V3.4은 KRX_ID/KRX_PW 없이 공개 pykrx 조회를 우선 사용합니다."
             )
         else:
             snapshot, fallback_used = apply_flow_fallback(snapshot)
@@ -860,7 +853,7 @@ with tabs[3]:
 with tabs[4]:
     st.markdown(
         f"""
-### V3.3
+### V3.4
 
 **전체시장**
 - KOSPI + KOSDAQ 전체 종목 자동조회
@@ -893,5 +886,5 @@ with tabs[4]:
     if not PYKRX_OK:
         st.error(
             "pykrx가 설치되지 않았습니다. "
-            "requirements.txt를 V3.3용 파일로 교체하세요."
+            "requirements.txt를 V3.4용 파일로 교체하세요."
         )
