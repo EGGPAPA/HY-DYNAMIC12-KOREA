@@ -191,6 +191,20 @@ def yf_history(ticker, period="1y"):
 
 
 @st.cache_data(ttl=1200)
+def get_single_history(symbol, period="6mo"):
+    """배치조회에서 누락된 종목을 개별 재조회하여 TOP12 부족을 방지."""
+    try:
+        d = yf.Ticker(symbol).history(
+            period=period,
+            interval="1d",
+            auto_adjust=True,
+        )
+        return d.dropna()
+    except Exception:
+        return pd.DataFrame()
+
+
+@st.cache_data(ttl=1200)
 def download_chunk(symbols, period="3mo"):
     if not symbols:
         return pd.DataFrame()
@@ -347,7 +361,12 @@ def fundamental_score(code, market):
 
 
 def deep_analyze(screen):
-    candidates = screen.head(DEEP_CANDIDATE_COUNT).copy()
+    """
+    상위 후보를 정밀분석.
+    배치조회에서 누락된 종목은 개별 재조회하고,
+    최종적으로 최소 TOP12가 채워질 때까지 후보를 계속 확인합니다.
+    """
+    candidates = screen.head(max(DEEP_CANDIDATE_COUNT, FINAL_TOP_N * 4)).copy()
     symbols = [yf_symbol(r["종목코드"], r["시장"]) for _, r in candidates.iterrows()]
     batch = download_chunk(tuple(symbols), "6mo")
     rows = []
@@ -358,7 +377,13 @@ def deep_analyze(screen):
 
     for _, r in candidates.iterrows():
         code = r["종목코드"]
-        h = extract_one(batch, yf_symbol(code, r["시장"]))
+        symbol = yf_symbol(code, r["시장"])
+        h = extract_one(batch, symbol)
+
+        # 배치 데이터가 없거나 부족하면 개별 재조회
+        if len(h) < 61:
+            h = get_single_history(symbol, "6mo")
+
         if len(h) < 61:
             continue
 
@@ -392,9 +417,8 @@ def deep_analyze(screen):
             inst_pct = float(r["기관백분위"])
             quality = foreign_pct * 0.30 + inst_pct * 0.30 + rs * 0.25 + fund * 0.15
         else:
-            # 실제 수급이 없을 때는 '수급 없는 강한매수'를 만들지 않도록 상한 제한
-            quality = rs * 0.625 + fund * 0.375
-            quality = min(quality, 67.9)
+            # 실제 수급이 없으면 매수판정을 과도하게 만들지 않음
+            quality = min(rs * 0.625 + fund * 0.375, 67.9)
 
         if not flow_present:
             opinion = "⚪ 실제 수급 데이터 대기"
@@ -412,21 +436,30 @@ def deep_analyze(screen):
         total = trend * 0.30 + price_pos * 0.15 + volume_score * 0.15 + quality * 0.40
         overheated = high_pos >= 99 and r20 >= 15
 
+        # 미국판과 같은 분할매수/손절 구조
+        buy1 = int(round(price / 100.0) * 100)
+        buy2 = int(round((price * 0.97) / 100.0) * 100)
+        stop = int(round((buy2 * 0.97) / 100.0) * 100)
+
         rows.append({
             "종목명": r["종목명"],
             "현재가": int(round(price)),
             "등락률": round(float(r["등락률"]), 2),
             "종합점수": round(total, 1),
-            "추세": round(trend, 1),
-            "가격위치": round(price_pos, 1),
-            "거래량": round(volume_score, 1),
             "수급·질적 종합의견": opinion,
             "_수급질적점수": round(quality, 1),
             "_실제수급": flow_present,
             "_종목코드": code,
             "_시장": r["시장"],
             "과열": "⚠️ 과열" if overheated else "정상",
+            "1차 매수가": buy1,
+            "2차 매수가": buy2,
+            "손절가(3%)": stop,
         })
+
+        # 충분히 많은 종목은 분석하되 TOP12 확보가 우선
+        if len(rows) >= DEEP_CANDIDATE_COUNT:
+            break
 
     return rows
 
@@ -493,18 +526,9 @@ def apply_relative(rows, regime):
 
 
 def color_judgment(v):
-    s = str(v)
-    if "적극매수" in s:
-        return "background-color:#153d2a;color:#59e391;font-weight:700"
-    if "매수후보" in s:
-        return "background-color:#173a63;color:#74b9ff;font-weight:700"
-    if "관찰" in s:
-        return "background-color:#594a12;color:#ffd65a;font-weight:700"
-    if "대기" in s:
-        return "background-color:#5b3511;color:#ffad4d;font-weight:700"
-    if "제외" in s:
-        return "background-color:#5b2020;color:#ff7777;font-weight:700"
-    return ""
+    # 판정 셀 전체 배경색은 사용하지 않습니다.
+    # 등급별 색상은 판정 문자열 앞의 동그라미(🟢🔵🟡🟠🔴)에만 적용됩니다.
+    return "color:#f2f2f2;font-weight:600"
 
 
 def color_opinion(v):
@@ -523,7 +547,7 @@ def color_opinion(v):
 
 
 st.title("🇰🇷 HY DYNAMIC12 KOREA V3.6")
-st.caption("KOSPI · KOSDAQ 전체시장 + KRX 종목목록/수급 + yfinance 가격·거래량 + KOSPI vs 수출")
+st.caption("KOSPI · KOSDAQ 전체시장 + KRX 종목목록/수급 + yfinance 가격·거래량 + KOSPI vs 수출 · TOP12 분할매수/3% 손절")
 
 tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🔔 카카오 준비", "⚙️ 설정"])
 
@@ -613,11 +637,11 @@ with tabs[2]:
         st.info("먼저 '전체시장 분석'에서 자동분석을 실행하세요.")
     else:
         top = rows[:FINAL_TOP_N]
-        cols = ["종목명", "현재가", "등락률", "종합점수", "수급·질적 종합의견", "상대순위", "과열", "판정"]
+        cols = ["종목명", "현재가", "등락률", "종합점수", "수급·질적 종합의견", "상대순위", "과열", "판정", "1차 매수가", "2차 매수가", "손절가(3%)"]
         df = pd.DataFrame(top)[cols]
         st.dataframe(
             df.style
-            .format({"현재가": "{:,.0f}", "등락률": "{:+.2f}%", "종합점수": "{:.1f}"})
+            .format({"현재가": "{:,.0f}", "등락률": "{:+.2f}%", "종합점수": "{:.1f}", "1차 매수가": "{:,.0f}", "2차 매수가": "{:,.0f}", "손절가(3%)": "{:,.0f}"})
             .map(color_opinion, subset=["수급·질적 종합의견"])
             .map(color_judgment, subset=["판정"]),
             use_container_width=True, hide_index=True, height=520
@@ -630,7 +654,7 @@ with tabs[2]:
         c3.metric("시장상태", st.session_state.get("kr_regime", "중립장"))
         c4.metric("전체 적격종목", st.session_state.get("eligible_count", 0))
 
-        st.caption("수급·질적 종합의견 = 외국인 30% + 기관 30% + 상대강도 25% + 펀더멘털 15%.")
+        st.caption("수급·질적 종합의견 = 외국인 30% + 기관 30% + 상대강도 25% + 펀더멘털 15% · 판정은 동그라미 색상만 등급별로 표시 · 1차 매수=현재가, 2차 매수=-3%, 손절=-3%(2차 매수가 기준).")
 
 with tabs[3]:
     st.subheader("🔔 카카오 자동감시 준비")
