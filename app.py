@@ -15,7 +15,7 @@ except Exception:
     stock = None
     PYKRX_OK = False
 
-st.set_page_config(page_title="HY DYNAMIC12 KOREA V3.5", page_icon="🇰🇷", layout="wide")
+st.set_page_config(page_title="HY DYNAMIC12 KOREA V3.6", page_icon="🇰🇷", layout="wide")
 
 SEOUL = ZoneInfo("Asia/Seoul")
 DATA_DIR = Path("data")
@@ -174,6 +174,20 @@ def get_auto_flow():
 
 def yf_symbol(code, market):
     return f"{code}.KS" if market == "KOSPI" else f"{code}.KQ"
+
+
+@st.cache_data(ttl=900)
+def yf_history(ticker, period="1y"):
+    """단일 지수/종목 히스토리 조회용."""
+    try:
+        d = yf.Ticker(ticker).history(
+            period=period,
+            interval="1d",
+            auto_adjust=True,
+        )
+        return d.dropna()
+    except Exception:
+        return pd.DataFrame()
 
 
 @st.cache_data(ttl=1200)
@@ -508,7 +522,7 @@ def color_opinion(v):
     return ""
 
 
-st.title("🇰🇷 HY DYNAMIC12 KOREA V3.5")
+st.title("🇰🇷 HY DYNAMIC12 KOREA V3.6")
 st.caption("KOSPI · KOSDAQ 전체시장 + KRX 종목목록/수급 + yfinance 가격·거래량 + KOSPI vs 수출")
 
 tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🔔 카카오 준비", "⚙️ 설정"])
@@ -541,7 +555,7 @@ with tabs[0]:
 
 with tabs[1]:
     st.subheader("🔎 KOSPI + KOSDAQ 전체시장 분석")
-    st.info("V3.5는 오류가 난 pykrx 전종목 OHLCV/시총 API를 사용하지 않습니다. KRX에서는 종목목록·투자자수급만 받고, 전 종목 가격/거래량은 yfinance 배치조회로 계산합니다.")
+    st.info("V3.6는 오류가 난 pykrx 전종목 OHLCV/시총 API를 사용하지 않습니다. KRX에서는 종목목록·투자자수급만 받고, 전 종목 가격/거래량은 yfinance 배치조회로 계산합니다.")
 
     if st.button("① 전체시장 자동분석 실행", type="primary", use_container_width=True):
         universe, uni_source = get_full_universe()
@@ -626,7 +640,7 @@ with tabs[3]:
 
 with tabs[4]:
     st.markdown("""
-### V3.5 핵심
+### V3.6 핵심
 - TOP12
 - KOSPI + KOSDAQ 전체 종목목록
 - pykrx의 오류 구간인 전종목 OHLCV/시가총액 호출 완전 제거
