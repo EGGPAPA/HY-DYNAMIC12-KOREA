@@ -15,7 +15,7 @@ except Exception:
     stock = None
     PYKRX_OK = False
 
-st.set_page_config(page_title="HY DYNAMIC12 KOREA V3.8", page_icon="🇰🇷", layout="wide")
+st.set_page_config(page_title="HY DYNAMIC12 KOREA V3.9", page_icon="🇰🇷", layout="wide")
 
 SEOUL = ZoneInfo("Asia/Seoul")
 DATA_DIR = Path("data")
@@ -593,8 +593,8 @@ def color_opinion(v):
     return ""
 
 
-st.title("🇰🇷 HY DYNAMIC12 KOREA V3.8")
-st.caption("KOSPI · KOSDAQ 전체시장 + KRX 종목목록/수급 + yfinance 가격·거래량 + KOSPI vs 수출 · USA판 형식 TOP12 · 적극매수 가격대 · 최종 3종목 후보")
+st.title("🇰🇷 HY DYNAMIC12 KOREA V3.9")
+st.caption("KOSPI · KOSDAQ 전체시장 + KRX 종목목록/수급 + yfinance 가격·거래량 + KOSPI vs 수출 · USA판 형식 TOP12 · 적극매수 가격대 · 적극매수 종목 점멸 · 최종 3종목 후보")
 
 tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🔔 카카오 준비", "⚙️ 설정"])
 
@@ -686,47 +686,150 @@ with tabs[2]:
     else:
         top = rows[:FINAL_TOP_N]
 
-        display_rows = []
+        st.markdown(
+            """
+<style>
+.hy-table-wrap {
+    width: 100%;
+    overflow-x: auto;
+    border: 1px solid #2a2f38;
+    border-radius: 10px;
+}
+.hy-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 14px;
+    color: #f3f4f6;
+    background: #0f1319;
+}
+.hy-table th {
+    position: sticky;
+    top: 0;
+    background: #1a1f27;
+    color: #d7dce3;
+    padding: 10px 8px;
+    border-bottom: 1px solid #333a45;
+    text-align: right;
+    white-space: nowrap;
+}
+.hy-table th:first-child,
+.hy-table th:nth-child(2),
+.hy-table td:first-child,
+.hy-table td:nth-child(2) {
+    text-align: left;
+}
+.hy-table td {
+    padding: 10px 8px;
+    border-bottom: 1px solid #242a33;
+    text-align: right;
+    white-space: nowrap;
+}
+.hy-table tr:hover td {
+    background: #151b23;
+}
+.hy-stock {
+    font-weight: 700;
+    color: #f8fafc;
+}
+.hy-active-name {
+    display: inline-block;
+    font-weight: 800;
+    color: #9df5b8;
+    text-shadow: 0 0 6px rgba(91, 255, 146, 0.45);
+    animation: hyBlink 1.35s ease-in-out infinite;
+}
+.hy-active-dot {
+    color: #39e57c;
+    margin-right: 6px;
+    animation: hyPulse 1.35s ease-in-out infinite;
+}
+@keyframes hyBlink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.28; }
+}
+@keyframes hyPulse {
+    0%, 100% {
+        opacity: 1;
+        text-shadow: 0 0 8px rgba(57,229,124,0.9);
+    }
+    50% {
+        opacity: 0.35;
+        text-shadow: 0 0 2px rgba(57,229,124,0.2);
+    }
+}
+.hy-judge {
+    color: #f3f4f6;
+    font-weight: 700;
+}
+.hy-note {
+    margin-top: 10px;
+    color: #9ca3af;
+    font-size: 13px;
+}
+</style>
+""",
+            unsafe_allow_html=True,
+        )
+
+        header = [
+            "순위", "종목", "현재가(원)", "KOREA점수", "판정점수",
+            "시장상태", "상대순위", "수급대응", "과열", "판정",
+            "1차매수가(원)", "2차매수가(원)", "손절가(3%)(원)"
+        ]
+
+        html = ['<div class="hy-table-wrap"><table class="hy-table"><thead><tr>']
+        for h in header:
+            html.append(f"<th>{h}</th>")
+        html.append("</tr></thead><tbody>")
+
         for idx, r in enumerate(top, 1):
-            display_rows.append({
-                "순위": idx,
-                "종목": r["종목명"],
-                "현재가(원)": r["현재가"],
-                "KOREA점수": r.get("KOREA점수", r["종합점수"]),
-                "판정점수": r.get("판정점수", r["종합점수"]),
-                "시장상태": r.get("시장상태", st.session_state.get("kr_regime","중립장")),
-                "상대순위": r["상대순위"],
-                "수급대응": r.get("수급대응","대기"),
-                "과열": r["과열"],
-                "판정": r["판정"],
-                "1차매수가(원)": r["1차 매수가"],
-                "2차매수가(원)": r["2차 매수가"],
-                "손절가(3%)(원)": r["손절가(3%)"],
-            })
+            is_active = str(r.get("판정", "")).startswith("🟢 적극매수")
 
-        df = pd.DataFrame(display_rows)
+            if is_active:
+                stock_html = (
+                    f'<span class="hy-active-dot">●</span>'
+                    f'<span class="hy-active-name">{r["종목명"]}</span>'
+                )
+            else:
+                stock_html = f'<span class="hy-stock">{r["종목명"]}</span>'
 
-        st.dataframe(
-            df.style.format({
-                "현재가(원)": "{:,.0f}",
-                "KOREA점수": "{:.1f}",
-                "판정점수": "{:.1f}",
-                "1차매수가(원)": "{:,.0f}",
-                "2차매수가(원)": "{:,.0f}",
-                "손절가(3%)(원)": "{:,.0f}",
-            }),
-            use_container_width=True,
-            hide_index=True,
-            height=520,
+            cells = [
+                str(idx),
+                stock_html,
+                f'{r["현재가"]:,.0f}',
+                f'{r.get("KOREA점수", r["종합점수"]):.1f}',
+                f'{r.get("판정점수", r["종합점수"]):.1f}',
+                str(r.get("시장상태", st.session_state.get("kr_regime","중립장"))),
+                str(r["상대순위"]),
+                str(r.get("수급대응","대기")),
+                str(r["과열"]),
+                f'<span class="hy-judge">{r["판정"]}</span>',
+                f'{r["1차 매수가"]:,.0f}',
+                f'{r["2차 매수가"]:,.0f}',
+                f'{r["손절가(3%)"]:,.0f}',
+            ]
+
+            html.append("<tr>")
+            for c in cells:
+                html.append(f"<td>{c}</td>")
+            html.append("</tr>")
+
+        html.append("</tbody></table></div>")
+        st.markdown("".join(html), unsafe_allow_html=True)
+
+        st.markdown(
+            '<div class="hy-note">🟢 적극매수 종목만 종목명이 부드럽게 점멸합니다. '
+            '매수후보·관찰·대기·제외는 정적으로 표시됩니다.</div>',
+            unsafe_allow_html=True,
         )
 
         st.caption(
             "판정 색상: 🟢 적극매수 · 🟡 매수후보 · 🔵 관찰 · ⚪ 현금대기/대기 · 🔴 제외 "
-            "│ 표 전체 배경색은 적용하지 않고 동그라미 색상으로만 구분합니다."
+            "│ 셀 전체 배경색은 사용하지 않고 동그라미 색상만 유지합니다."
         )
         st.caption(
-            "1차/2차 매수가는 현재가 고정 비율이 아니라 20일선·60일선과 눌림목을 반영한 "
-            "적극매수 가격대입니다. 손절가는 2차 매수가 대비 -3%입니다."
+            "1차/2차 매수가는 20일선·60일선과 눌림목을 반영한 적극매수 가격대입니다. "
+            "손절가는 2차 매수가 대비 -3%입니다."
         )
 
         st.markdown("## 최종 3종목 후보")
