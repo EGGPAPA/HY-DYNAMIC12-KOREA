@@ -1,1 +1,14 @@
-[]
+[
+  {
+    "ticker": "005930",
+    "name": "삼성전자",
+    "market": "KOSPI",
+    "mode": "holding",
+    "status": "holding",
+    "average_price": 256000.0,
+    "quantity": 1.0,
+    "stop_loss_pct": 3,
+    "enabled": true,
+    "updated_at": "2026-08-17T03:37:47.492475+00:00"
+  }
+]
