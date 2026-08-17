@@ -200,7 +200,9 @@ def render_holdings_tab():
 def install_holdings_tab():
     if getattr(st, "_hy_korea_holdings_tab_installed", False):
         return
+
     original_tabs = st.tabs
+    original_dataframe = st.dataframe
 
     def wrapped_tabs(labels, *args, **kwargs):
         labels = list(labels)
@@ -211,5 +213,14 @@ def install_holdings_tab():
             render_holdings_tab()
         return containers[:-1]
 
+    def wrapped_dataframe(data=None, *args, **kwargs):
+        try:
+            if isinstance(data, pd.DataFrame) and "KOREA점수" in data.columns:
+                data = data.drop(columns=["KOREA점수"])
+        except Exception:
+            pass
+        return original_dataframe(data, *args, **kwargs)
+
     st.tabs = wrapped_tabs
+    st.dataframe = wrapped_dataframe
     st._hy_korea_holdings_tab_installed = True
