@@ -104,12 +104,10 @@ def _rank_on_date(histories, dt):
         past = h.loc[h.index <= dt]
         if len(past) < 61:
             continue
-
         close = pd.to_numeric(past["Close"], errors="coerce").dropna()
         vol = pd.to_numeric(past["Volume"], errors="coerce").dropna()
         if len(close) < 61 or len(vol) < 20:
             continue
-
         p = float(close.iloc[-1])
         ma20 = float(close.tail(20).mean())
         ma60 = float(close.tail(60).mean())
@@ -118,31 +116,19 @@ def _rank_on_date(histories, dt):
         vol_ratio = float(vol.tail(5).mean() / max(float(vol.tail(20).mean()), 1.0))
         value20 = float((close.tail(20) * vol.tail(20)).mean())
         trend = 1.0 if p > ma20 > ma60 else 0.0
-
         rows.append({
-            "code": code,
-            "name": name,
-            "market": market,
-            "price": p,
-            "r20": r20,
-            "r60": r60,
-            "vol_ratio": vol_ratio,
-            "value20": value20,
-            "trend": trend,
+            "code": code, "name": name, "market": market, "price": p,
+            "r20": r20, "r60": r60, "vol_ratio": vol_ratio,
+            "value20": value20, "trend": trend,
         })
-
     if not rows:
         return pd.DataFrame()
-
     df = pd.DataFrame(rows)
     for col in ["r20", "r60", "vol_ratio", "value20"]:
         df[col + "_pct"] = df[col].rank(pct=True)
-
     df["score"] = (
-        df["value20_pct"] * 20
-        + df["r20_pct"] * 30
-        + df["r60_pct"] * 25
-        + df["vol_ratio_pct"] * 10
+        df["value20_pct"] * 20 + df["r20_pct"] * 30
+        + df["r60_pct"] * 25 + df["vol_ratio_pct"] * 10
         + df["trend"] * 15
     )
     return df.sort_values("score", ascending=False).reset_index(drop=True)
@@ -160,8 +146,11 @@ def _bar(h, dt):
     }
 
 
-def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_days,
-              stop_pct, trail_pct, cost_pct, initial_cash, min_score):
+def _simulate(
+    data, start_date, end_date, monthly_limit, max_positions, hold_days,
+    stop_pct, trail_pct, cost_pct, initial_cash, min_score,
+    tp1_pct, tp1_sell_pct, tp2_pct, tp2_sell_pct,
+):
     histories = _prepare_histories(data)
     if not histories:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame(), {}
@@ -174,11 +163,8 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
     fee_side = cost_pct / 100 / 2
     cash = float(initial_cash)
     positions = {}
-    completed = []
-    exits = []
-    equity_rows = []
-    monthly_count = {}
-    market_cache = {}
+    completed, exits, equity_rows = [], [], []
+    monthly_count, market_cache = {}, {}
 
     def equity(dt):
         value = cash
@@ -189,7 +175,6 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
         return value
 
     for i, dt in enumerate(dates):
-        # 보유종목 관리
         to_close = []
         for code, p in list(positions.items()):
             b = _bar(histories[code], dt)
@@ -203,6 +188,7 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
             trail_stop = p["peak"] * (1 - trail_pct / 100)
             stop_level = max(hard_stop, trail_stop if p["peak"] > p["entry"] else hard_stop)
 
+            # 같은 날 손절/익절 모두 닿으면 보수적으로 손절/트레일링 우선
             if b["low"] <= stop_level:
                 reason = (
                     f"고점대비 -{trail_pct:g}% 전량매도"
@@ -215,21 +201,21 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
                 cash += proceeds - fee
                 p["realized"] += proceeds - fee
                 p["notes"].append(reason)
-                exits.append({"날짜": dt.date(), "종목명": p["name"], "구분": reason, "가격": round(stop_level)})
+                exits.append({"날짜": dt.date(), "종목명": p["name"], "구분": reason, "가격": round(stop_level), "수량": qty})
                 p["qty"] = 0
                 to_close.append(code)
                 continue
 
-            for gain, frac, label, flag in [
-                (0.15, 0.30, "1차 익절 +15%", "tp15"),
-                (0.20, 0.30, "2차 익절 +20%", "tp20"),
-                (0.25, 1.00, "3차 익절 +25%", "tp25"),
-            ]:
+            take_rules = [
+                (tp1_pct / 100, tp1_sell_pct / 100, f"1차 익절 +{tp1_pct:g}% / {tp1_sell_pct:g}%매도", "tp1"),
+                (tp2_pct / 100, tp2_sell_pct / 100, f"2차 익절 +{tp2_pct:g}% / {tp2_sell_pct:g}%매도", "tp2"),
+            ]
+            for gain, frac, label, flag in take_rules:
                 if p[flag] or p["qty"] <= 0:
                     continue
                 target = p["entry"] * (1 + gain)
                 if b["high"] >= target:
-                    sell_qty = p["qty"] if gain == 0.25 else min(math.floor(p["initial_qty"] * frac), p["qty"])
+                    sell_qty = min(math.floor(p["initial_qty"] * frac), p["qty"])
                     if sell_qty <= 0:
                         p[flag] = True
                         continue
@@ -240,11 +226,9 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
                     p["qty"] -= sell_qty
                     p[flag] = True
                     p["notes"].append(label)
-                    exits.append({"날짜": dt.date(), "종목명": p["name"], "구분": label, "가격": round(target)})
-                    if p["qty"] <= 0:
-                        to_close.append(code)
-                        break
+                    exits.append({"날짜": dt.date(), "종목명": p["name"], "구분": label, "가격": round(target), "수량": sell_qty})
 
+            # 2차 익절 후 남은 수량은 고정 익절 없이 트레일링으로 추적
             if p["qty"] > 0 and p["days"] >= hold_days:
                 qty = p["qty"]
                 proceeds = qty * b["close"]
@@ -252,7 +236,7 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
                 cash += proceeds - fee
                 p["realized"] += proceeds - fee
                 p["notes"].append(f"{hold_days}일 기간청산")
-                exits.append({"날짜": dt.date(), "종목명": p["name"], "구분": f"{hold_days}일 기간청산", "가격": round(b["close"])})
+                exits.append({"날짜": dt.date(), "종목명": p["name"], "구분": f"{hold_days}일 기간청산", "가격": round(b["close"]), "수량": qty})
                 p["qty"] = 0
                 to_close.append(code)
 
@@ -263,26 +247,18 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
             invested = p["initial_qty"] * p["entry"] * (1 + fee_side)
             pnl = p["realized"] - invested
             completed.append({
-                "매수일": p["entry_date"].date(),
-                "최종매도일": dt.date(),
-                "종목코드": code,
-                "종목명": p["name"],
-                "점수": round(p["score"], 1),
-                "매수가": round(p["entry"]),
-                "수익률(%)": round(pnl / invested * 100, 2),
-                "실현손익(원)": round(pnl),
-                "매도내역": " → ".join(p["notes"]),
+                "매수일": p["entry_date"].date(), "최종매도일": dt.date(),
+                "종목코드": code, "종목명": p["name"], "점수": round(p["score"], 1),
+                "매수가": round(p["entry"]), "수익률(%)": round(pnl / invested * 100, 2),
+                "실현손익(원)": round(pnl), "매도내역": " → ".join(p["notes"]),
             })
 
-        # 월 0~2종목: 한 달 내 매수 신호가 생기는 날만 진입
         month_key = (dt.year, dt.month)
         used = monthly_count.get(month_key, 0)
         slots = min(monthly_limit - used, max_positions - len(positions))
-
         if slots > 0 and i + 1 < len(dates):
             if month_key not in market_cache:
                 market_cache[month_key] = _market_ok(dt)
-
             if market_cache[month_key]:
                 rank = _rank_on_date(histories, dt)
                 if not rank.empty:
@@ -296,7 +272,6 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
                     held = set(positions)
                     picks = eligible[~eligible["code"].isin(held)].head(slots)
                     next_dt = dates[i + 1]
-
                     for _, r in picks.iterrows():
                         code = r["code"]
                         b = _bar(histories[code], next_dt)
@@ -311,28 +286,17 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
                         buy_fee = buy_value * fee_side
                         cash -= buy_value + buy_fee
                         positions[code] = {
-                            "name": r["name"],
-                            "score": float(r["score"]),
-                            "entry_date": next_dt,
-                            "entry": b["open"],
-                            "initial_qty": qty,
-                            "qty": qty,
-                            "peak": b["open"],
-                            "days": 0,
-                            "last": b["open"],
-                            "realized": 0.0,
-                            "notes": [],
-                            "tp15": False,
-                            "tp20": False,
-                            "tp25": False,
+                            "name": r["name"], "score": float(r["score"]),
+                            "entry_date": next_dt, "entry": b["open"],
+                            "initial_qty": qty, "qty": qty, "peak": b["open"],
+                            "days": 0, "last": b["open"], "realized": 0.0,
+                            "notes": [], "tp1": False, "tp2": False,
                         }
                         monthly_count[month_key] = monthly_count.get(month_key, 0) + 1
                         if monthly_count[month_key] >= monthly_limit:
                             break
-
         equity_rows.append((dt, equity(dt)))
 
-    # 종료일 강제 청산
     last_dt = dates[-1]
     for code, p in list(positions.items()):
         b = _bar(histories[code], last_dt)
@@ -346,22 +310,16 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
         invested = p["initial_qty"] * p["entry"] * (1 + fee_side)
         pnl = p["realized"] - invested
         completed.append({
-            "매수일": p["entry_date"].date(),
-            "최종매도일": last_dt.date(),
-            "종목코드": code,
-            "종목명": p["name"],
-            "점수": round(p["score"], 1),
-            "매수가": round(p["entry"]),
-            "수익률(%)": round(pnl / invested * 100, 2),
-            "실현손익(원)": round(pnl),
-            "매도내역": " → ".join(p["notes"]),
+            "매수일": p["entry_date"].date(), "최종매도일": last_dt.date(),
+            "종목코드": code, "종목명": p["name"], "점수": round(p["score"], 1),
+            "매수가": round(p["entry"]), "수익률(%)": round(pnl / invested * 100, 2),
+            "실현손익(원)": round(pnl), "매도내역": " → ".join(p["notes"]),
         })
-        exits.append({"날짜": last_dt.date(), "종목명": p["name"], "구분": "종료일 청산", "가격": round(px)})
+        exits.append({"날짜": last_dt.date(), "종목명": p["name"], "구분": "종료일 청산", "가격": round(px), "수량": qty})
     positions.clear()
     equity_rows.append((last_dt, cash))
 
     eq = pd.DataFrame(equity_rows, columns=["date", "HY DYNAMIC12"]).drop_duplicates("date", keep="last").set_index("date")
-
     try:
         kospi = yf.download("^KS11", start=str(start_date), end=str(end_date + timedelta(days=1)), auto_adjust=True, progress=False)
         if not kospi.empty:
@@ -373,8 +331,7 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
                 k.index = k.index.tz_localize(None)
             k = k.reindex(eq.index).ffill().dropna()
             if not k.empty:
-                benchmark = (k / float(k.iloc[0])) * initial_cash
-                eq = eq.join(benchmark.rename("KOSPI"), how="left").ffill()
+                eq = eq.join(((k / float(k.iloc[0])) * initial_cash).rename("KOSPI"), how="left").ffill()
     except Exception:
         pass
 
@@ -383,7 +340,6 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
     curve = eq["HY DYNAMIC12"].dropna()
     if curve.empty:
         return trades, exit_df, eq, {}
-
     final_asset = float(curve.iloc[-1])
     total = final_asset / initial_cash - 1
     years = max((pd.Timestamp(end_date) - pd.Timestamp(start_date)).days / 365.25, 1 / 365.25)
@@ -391,55 +347,65 @@ def _simulate(data, start_date, end_date, monthly_limit, max_positions, hold_day
     dd = curve / curve.cummax() - 1
     mdd = float(dd.min()) if not dd.empty else 0.0
     win = float((trades["수익률(%)"] > 0).mean()) if not trades.empty else 0.0
-
-    stats = {
-        "initial": initial_cash,
-        "final": final_asset,
-        "total": total,
-        "cagr": cagr,
-        "mdd": mdd,
-        "win": win,
-        "n": len(trades),
+    return trades, exit_df, eq, {
+        "initial": initial_cash, "final": final_asset, "total": total,
+        "cagr": cagr, "mdd": mdd, "win": win, "n": len(trades),
     }
-    return trades, exit_df, eq, stats
 
 
 def render_backtest_tab():
-    st.subheader("📊 한국장 V4 선택매수 백테스트")
-    st.caption("월 0~2종목만 선별합니다. 시장과 종목 조건이 모두 맞지 않으면 그 달은 매수하지 않고 현금 대기합니다.")
+    st.subheader("📊 한국장 V4 선택매수 + 익절조정 백테스트")
+    st.caption("월 0~2종목만 선별하고, 익절률·매도비율을 직접 조정합니다. 남은 수량은 고정 3차 익절 없이 트레일링으로 추적합니다.")
 
     today = date.today()
     c1, c2, c3 = st.columns(3)
-    start = c1.date_input("시작일", value=today - timedelta(days=365 * 3), max_value=today, key="v4_start")
-    end = c2.date_input("종료일", value=today, max_value=today, key="v4_end")
-    initial_cash = c3.number_input("초기자금(원)", min_value=1_000_000, value=10_000_000, step=1_000_000, key="v4_cash")
+    start = c1.date_input("시작일", value=today - timedelta(days=365 * 3), max_value=today, key="v5_start")
+    end = c2.date_input("종료일", value=today, max_value=today, key="v5_end")
+    initial_cash = c3.number_input("초기자금(원)", min_value=1_000_000, value=10_000_000, step=1_000_000, key="v5_cash")
 
     d1, d2, d3 = st.columns(3)
-    monthly_limit = d1.selectbox("월 최대 신규매수", [1, 2], index=1, key="v4_monthly")
-    max_positions = d2.selectbox("동시 최대 보유종목", [1, 2, 3], index=1, key="v4_positions")
-    hold_days = d3.selectbox("최대 보유기간(거래일)", [20, 40, 60, 90], index=2, key="v4_hold")
+    monthly_limit = d1.selectbox("월 최대 신규매수", [1, 2], index=1, key="v5_monthly")
+    max_positions = d2.selectbox("동시 최대 보유종목", [1, 2, 3], index=1, key="v5_positions")
+    hold_days = d3.selectbox("최대 보유기간(거래일)", [20, 40, 60, 90, 120], index=3, key="v5_hold")
 
     e1, e2, e3 = st.columns(3)
-    min_score = e1.number_input("최소 진입점수", min_value=50.0, max_value=100.0, value=78.0, step=1.0, key="v4_score")
-    stop_pct = e2.number_input("기본 손절률(%)", min_value=2.0, max_value=15.0, value=6.0, step=0.5, key="v4_stop")
-    trail_pct = e3.number_input("고점대비 전량매도(%)", min_value=5.0, max_value=25.0, value=10.0, step=1.0, key="v4_trail")
+    min_score = e1.number_input("최소 진입점수", min_value=50.0, max_value=100.0, value=78.0, step=1.0, key="v5_score")
+    stop_pct = e2.number_input("기본 손절률(%)", min_value=2.0, max_value=15.0, value=6.0, step=0.5, key="v5_stop")
+    trail_pct = e3.number_input("고점대비 전량매도(%)", min_value=5.0, max_value=25.0, value=10.0, step=1.0, key="v5_trail")
 
-    cost_pct = st.number_input("왕복 비용+슬리피지(%)", min_value=0.0, max_value=2.0, value=0.30, step=0.05, key="v4_cost")
+    st.markdown("#### 💰 익절 조정")
+    p1, p2, p3, p4 = st.columns(4)
+    tp1_pct = p1.number_input("1차 익절률(%)", min_value=5.0, max_value=50.0, value=15.0, step=1.0, key="v5_tp1")
+    tp1_sell_pct = p2.number_input("1차 매도비율(%)", min_value=0.0, max_value=90.0, value=20.0, step=5.0, key="v5_tp1_sell")
+    tp2_pct = p3.number_input("2차 익절률(%)", min_value=10.0, max_value=100.0, value=25.0, step=1.0, key="v5_tp2")
+    tp2_sell_pct = p4.number_input("2차 매도비율(%)", min_value=0.0, max_value=90.0, value=30.0, step=5.0, key="v5_tp2_sell")
 
-    st.info("진입 필터: KOSPI 60일선 > 120일선 + 지수는 60일선 위 / 종목 20일선 > 60일선 / 20일 수익률 > 3% / 60일 수익률 > 5% / 거래량 조건 / 최소 진입점수. 조건이 없으면 매수하지 않습니다.")
+    cost_pct = st.number_input("왕복 비용+슬리피지(%)", min_value=0.0, max_value=2.0, value=0.30, step=0.05, key="v5_cost")
+    runner_pct = max(0.0, 100.0 - tp1_sell_pct - tp2_sell_pct)
+    st.info(
+        f"기본 구조: +{tp1_pct:g}%에서 {tp1_sell_pct:g}% 매도 → +{tp2_pct:g}%에서 {tp2_sell_pct:g}% 매도 → "
+        f"남은 약 {runner_pct:g}%는 최고가 대비 -{trail_pct:g}%까지 추적. 조건 미달 시 매수하지 않습니다."
+    )
 
-    if st.button("▶ V4 선택매수 백테스트 실행", type="primary", use_container_width=True, key="v4_run"):
+    if tp2_pct <= tp1_pct:
+        st.warning("2차 익절률은 1차 익절률보다 높게 설정하세요.")
+    if tp1_sell_pct + tp2_sell_pct >= 100:
+        st.warning("1·2차 매도비율 합계는 100% 미만으로 설정하세요. 남은 물량이 트레일링 대상입니다.")
+
+    if st.button("▶ 익절조정 백테스트 실행", type="primary", use_container_width=True, key="v5_run"):
         if start >= end:
             st.error("시작일은 종료일보다 앞서야 합니다.")
             return
-
-        with st.spinner("시장필터와 종목 진입조건을 적용해 백테스트 중..."):
+        if tp2_pct <= tp1_pct or tp1_sell_pct + tp2_sell_pct >= 100:
+            st.error("익절 설정을 먼저 확인하세요.")
+            return
+        with st.spinner("선택매수 + 조정형 익절 전략을 백테스트 중..."):
             data = _download(start - timedelta(days=220), end)
             trades, exits, eq, stats = _simulate(
                 data, start, end, monthly_limit, max_positions, hold_days,
                 stop_pct, trail_pct, cost_pct, float(initial_cash), min_score,
+                tp1_pct, tp1_sell_pct, tp2_pct, tp2_sell_pct,
             )
-
         if not stats:
             st.warning("백테스트 결과를 만들지 못했습니다.")
             return
@@ -454,17 +420,15 @@ def render_backtest_tab():
 
         st.markdown("### 누적 자산 vs KOSPI")
         st.line_chart(eq)
-
         st.markdown("### 종목별 완료 거래")
         if trades.empty:
             st.info("선택 조건을 만족한 거래가 없습니다.")
         else:
             st.dataframe(trades.sort_values("최종매도일", ascending=False), use_container_width=True, hide_index=True)
-
         st.markdown("### 매도 상세")
         if exits.empty:
             st.info("매도내역이 없습니다.")
         else:
             st.dataframe(exits.sort_values("날짜", ascending=False), use_container_width=True, hide_index=True)
 
-        st.caption("현재 V4는 가격·거래량·추세 기반의 선택매수 검증판입니다. 과거 외국인/기관 수급 및 당시 재무정보는 아직 포함하지 않습니다.")
+        st.caption("백테스트 숫자 하나에 맞춰 과최적화하지 말고 여러 기간에서 같은 익절 조합이 견고한지 비교하세요.")
