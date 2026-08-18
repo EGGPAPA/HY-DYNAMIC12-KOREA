@@ -3,8 +3,8 @@ import pandas as pd
 import yfinance as yf
 from itertools import product
 
-st.title('🛡️ ETF MDD 방어 최적화 · 다단계 비중조절')
-st.caption('TIGER 코리아TOP10 / KODEX200의 높은 CAGR을 최대한 유지하면서 MDD를 줄이기 위해 100%→70%→40%→0% 식의 단계적 비중 조절을 자동 탐색합니다.')
+st.title('🛡️ ETF MDD 방어 최적화 · 다단계 비중조절 + 기간분할 검증')
+st.caption('TIGER 코리아TOP10 / KODEX200의 높은 CAGR을 최대한 유지하면서 MDD를 줄이고, 초기·중간·최근 구간에서도 반복적으로 강한 규칙을 찾습니다.')
 
 c1,c2,c3=st.columns(3)
 with c1:
@@ -17,15 +17,24 @@ with c3:
 ETF={'TIGER 코리아TOP10':'292150.KS','KODEX200':'069500.KS'}
 etf_name=st.selectbox('ETF', list(ETF))
 target_mdd=st.slider('목표 최대낙폭 MDD(%)', min_value=15, max_value=35, value=25, step=1)
-st.info('다단계 방어: 강세장에서는 ETF 100%를 유지하고, 단기 이평선 이탈→1차 축소, 장기 이평선 이탈→2차 축소, 고점대비 큰 하락→최종 방어를 적용합니다. 전일 신호를 다음 거래일 수익률에 적용합니다.')
+st.info('다단계 방어: 강세장에서는 ETF 100% 유지 → 단기 이평 이탈 시 1차 축소 → 장기 이평 이탈 시 2차 축소 → 고점대비 큰 하락 시 최종 방어. 전일 신호를 다음 거래일 수익률에 적용합니다.')
 
 def metrics(eq):
     eq=eq.dropna()
+    if len(eq)<2:
+        return 0.0,0.0,0.0
     r=eq.iloc[-1]/eq.iloc[0]-1
     years=max((eq.index[-1]-eq.index[0]).days/365.25,1/365.25)
     cagr=(eq.iloc[-1]/eq.iloc[0])**(1/years)-1
     dd=eq/eq.cummax()-1
     return r*100,cagr*100,dd.min()*100
+
+def segment_metrics(eq, s, e):
+    seg=eq[(eq.index>=s)&(eq.index<=e)].dropna()
+    if len(seg)<2:
+        return 0.0,0.0,0.0
+    rebased=initial*(seg/seg.iloc[0])
+    return metrics(rebased)
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def load_price(ticker,start,end):
@@ -61,10 +70,7 @@ def run_staged(px, fast_ma, slow_ma, w1, w2, dd_trigger, severe_weight, recover_
     vals=[]
     severe=False
     for i in range(len(px)):
-        p=px.iloc[i]
-        mf=ma_fast.iloc[i]
-        ms=ma_slow.iloc[i]
-        dd=draw.iloc[i]
+        p=px.iloc[i]; mf=ma_fast.iloc[i]; ms=ma_slow.iloc[i]; dd=draw.iloc[i]
         if dd <= -dd_trigger/100:
             severe=True
         if severe and pd.notna(mf) and pd.notna(ms) and p >= mf*(1+recover_buffer/100) and p >= ms:
@@ -83,8 +89,8 @@ def run_staged(px, fast_ma, slow_ma, w1, w2, dd_trigger, severe_weight, recover_
     eq=initial*(1+ret*weight).cumprod()
     return eq,weight
 
-if st.button('🚀 다단계 ETF 방어 최적화 실행', use_container_width=True, type='primary'):
-    with st.spinner('다단계 비중조절 조합을 계산하고 있습니다...'):
+if st.button('🚀 다단계 ETF 방어 + 기간분할 검증 실행', use_container_width=True, type='primary'):
+    with st.spinner('다단계 비중조절과 기간분할 안정성을 계산하고 있습니다...'):
         px=load_price(ETF[etf_name],start,end)
         if px.empty:
             st.error('ETF 가격 데이터를 가져오지 못했습니다. 잠시 후 다시 실행해 주세요.')
@@ -100,7 +106,6 @@ if st.button('🚀 다단계 ETF 방어 최적화 실행', use_container_width=T
         bh_ret,bh_cagr,bh_mdd=metrics(bh)
         rows=[]; curves={}
 
-        # 4*4*3*3*4*3*2 = 3456개지만 연산은 단순 벡터/루프라 Streamlit에서 감당 가능
         fast_set=[60,80,100,120]
         slow_set=[120,140,160,200]
         w1_set=[70,80,90]
@@ -109,8 +114,8 @@ if st.button('🚀 다단계 ETF 방어 최적화 실행', use_container_width=T
         severe_set=[0,20,40]
         buffer_set=[0,2]
 
-        total=len(fast_set)*len(slow_set)*len(w1_set)*len(w2_set)*len(dd_set)*len(severe_set)*len(buffer_set)
-        bar=st.progress(0,text=f'0/{total} 조합')
+        valid_total=sum(1 for x in product(fast_set,slow_set,w1_set,w2_set,dd_set,severe_set,buffer_set) if x[0]<x[1] and x[3]<=x[2])
+        bar=st.progress(0,text=f'0/{valid_total} 조합')
         n=0
         for fast_ma,slow_ma,w1,w2,dd_trigger,severe_weight,buffer in product(
             fast_set,slow_set,w1_set,w2_set,dd_set,severe_set,buffer_set
@@ -120,27 +125,19 @@ if st.button('🚀 다단계 ETF 방어 최적화 실행', use_container_width=T
             eq,w=run_staged(px,fast_ma,slow_ma,w1,w2,dd_trigger,severe_weight,buffer)
             ret,cagr,mdd=metrics(eq)
             within=mdd>=-target_mdd
-            # 목표 안에서는 CAGR 최우선. 목표 밖에서는 초과 MDD에 큰 벌점.
             penalty=max(0,abs(mdd)-target_mdd)*4.0
             score=cagr-penalty
             rows.append({
-                '단기이평':fast_ma,
-                '장기이평':slow_ma,
-                '1차축소후 ETF비중(%)':w1,
-                '2차축소후 ETF비중(%)':w2,
-                '고점대비 최종방어(%)':dd_trigger,
-                '최종방어 ETF비중(%)':severe_weight,
-                '재진입버퍼(%)':buffer,
-                '누적수익률(%)':ret,
-                'CAGR(%)':cagr,
-                'MDD(%)':mdd,
-                '목표MDD충족':within,
-                '점수':score,
+                '단기이평':fast_ma,'장기이평':slow_ma,
+                '1차축소후 ETF비중(%)':w1,'2차축소후 ETF비중(%)':w2,
+                '고점대비 최종방어(%)':dd_trigger,'최종방어 ETF비중(%)':severe_weight,
+                '재진입버퍼(%)':buffer,'누적수익률(%)':ret,'CAGR(%)':cagr,'MDD(%)':mdd,
+                '목표MDD충족':within,'점수':score,
             })
             curves[(fast_ma,slow_ma,w1,w2,dd_trigger,severe_weight,buffer)]=eq
             n+=1
-            if n%50==0:
-                bar.progress(min(n/total,1.0),text=f'{n}/{total} 조합')
+            if n%50==0 or n==valid_total:
+                bar.progress(min(n/valid_total,1.0),text=f'{n}/{valid_total} 조합')
         bar.empty()
 
         res=pd.DataFrame(rows)
@@ -160,7 +157,7 @@ if st.button('🚀 다단계 ETF 방어 최적화 실행', use_container_width=T
         d.metric('다단계 방어 MDD',f"{best['MDD(%)']:.1f}%",f"{best['MDD(%)']-bh_mdd:+.1f}%p")
 
         st.success(
-            f"추천: {int(best['단기이평'])}일선 이탈→ETF {int(best['1차축소후 ETF비중(%)'])}% · "
+            f"전체기간 최고 CAGR 추천: {int(best['단기이평'])}일선 이탈→ETF {int(best['1차축소후 ETF비중(%)'])}% · "
             f"{int(best['장기이평'])}일선 이탈→ETF {int(best['2차축소후 ETF비중(%)'])}% · "
             f"고점대비 -{int(best['고점대비 최종방어(%)'])}%→ETF {int(best['최종방어 ETF비중(%)'])}% · "
             f"이평 회복(+{int(best['재진입버퍼(%)'])}% 버퍼) 시 정상복귀"
@@ -177,6 +174,67 @@ if st.button('🚀 다단계 ETF 방어 최적화 실행', use_container_width=T
         else:
             st.warning(f'MDD -{target_mdd}% 조건을 만족하는 조합이 없습니다.')
 
+        # ── 기간분할 안정성 검증 ─────────────────────────────────────────────
+        st.divider()
+        st.header('🧪 기간분할 안정성 검증')
+        st.caption('전체기간 상위 후보를 초기·중간·최근 3구간으로 나눠 같은 규칙이 반복적으로 작동했는지 확인합니다. 한 구간에만 맞는 과최적화 후보를 걸러냅니다.')
+
+        idx=px.index
+        cut1=idx[len(idx)//3]
+        cut2=idx[(len(idx)*2)//3]
+        periods=[('초기구간',idx[0],cut1),('중간구간',cut1,cut2),('최근구간',cut2,idx[-1])]
+
+        candidate_pool=(safe.head(30) if len(safe)>=5 else res.sort_values(['점수','CAGR(%)'],ascending=False).head(30)).copy()
+        robust_rows=[]
+        for _,cand in candidate_pool.iterrows():
+            ckey=(int(cand['단기이평']),int(cand['장기이평']),int(cand['1차축소후 ETF비중(%)']),int(cand['2차축소후 ETF비중(%)']),int(cand['고점대비 최종방어(%)']),int(cand['최종방어 ETF비중(%)']),int(cand['재진입버퍼(%)']))
+            ceq=curves[ckey]
+            seg_cagrs=[]; seg_mdds=[]; excess=[]; mdd_improvements=[]
+            for _,ps,pe in periods:
+                _,cc,cm=segment_metrics(ceq,ps,pe)
+                _,bc,bm=segment_metrics(bh,ps,pe)
+                seg_cagrs.append(cc); seg_mdds.append(cm); excess.append(cc-bc); mdd_improvements.append(cm-bm)
+            target_violations=sum(1 for m in seg_mdds if m < -target_mdd)
+            robust_score=(sum(excess)/3) + 0.5*min(excess) + 0.25*(sum(mdd_improvements)/3) - target_violations*5
+            robust_rows.append({
+                '단기이평':ckey[0],'장기이평':ckey[1],
+                '1차ETF비중(%)':ckey[2],'2차ETF비중(%)':ckey[3],
+                '최종방어하락(%)':ckey[4],'최종ETF비중(%)':ckey[5],'재진입버퍼(%)':ckey[6],
+                '전체CAGR(%)':cand['CAGR(%)'],'전체MDD(%)':cand['MDD(%)'],
+                '초기CAGR(%)':seg_cagrs[0],'중간CAGR(%)':seg_cagrs[1],'최근CAGR(%)':seg_cagrs[2],
+                '최악구간CAGR(%)':min(seg_cagrs),'평균ETF초과CAGR(%p)':sum(excess)/3,
+                '최악ETF초과CAGR(%p)':min(excess),'평균MDD개선(%p)':sum(mdd_improvements)/3,
+                '목표MDD위반구간':target_violations,'안정성점수':robust_score,
+            })
+
+        robust=pd.DataFrame(robust_rows).sort_values(['안정성점수','전체CAGR(%)'],ascending=False).reset_index(drop=True)
+        rb=robust.iloc[0]
+        st.success(
+            f"기간분할 최종 추천: {int(rb['단기이평'])}일선→ETF {int(rb['1차ETF비중(%)'])}% · "
+            f"{int(rb['장기이평'])}일선→ETF {int(rb['2차ETF비중(%)'])}% · "
+            f"고점 -{int(rb['최종방어하락(%)'])}%→ETF {int(rb['최종ETF비중(%)'])}% · "
+            f"재진입 버퍼 +{int(rb['재진입버퍼(%)'])}%"
+        )
+
+        r1,r2,r3,r4=st.columns(4)
+        r1.metric('안정성 추천 전체 CAGR',f"{rb['전체CAGR(%)']:.1f}%")
+        r2.metric('안정성 추천 전체 MDD',f"{rb['전체MDD(%)']:.1f}%")
+        r3.metric('평균 ETF 초과 CAGR',f"{rb['평균ETF초과CAGR(%p)']:+.1f}%p")
+        r4.metric('목표 MDD 위반 구간',f"{int(rb['목표MDD위반구간'])}/3")
+
+        st.subheader('🏆 기간분할 안정성 TOP10')
+        st.dataframe(robust.head(10).round(2),use_container_width=True,hide_index=True)
+
+        rb_key=(int(rb['단기이평']),int(rb['장기이평']),int(rb['1차ETF비중(%)']),int(rb['2차ETF비중(%)']),int(rb['최종방어하락(%)']),int(rb['최종ETF비중(%)']),int(rb['재진입버퍼(%)']))
+        rb_eq=curves[rb_key]
+        detail=[]
+        for name,ps,pe in periods:
+            rr,rc,rm=segment_metrics(rb_eq,ps,pe)
+            br,bc,bm=segment_metrics(bh,ps,pe)
+            detail.append({'기간':name,'방어 CAGR(%)':rc,'ETF CAGR(%)':bc,'초과 CAGR(%p)':rc-bc,'방어 MDD(%)':rm,'ETF MDD(%)':bm,'MDD 개선(%p)':rm-bm})
+        st.subheader('📅 최종 추천의 구간별 성적')
+        st.dataframe(pd.DataFrame(detail).round(2),use_container_width=True,hide_index=True)
+
         st.subheader('🔥 CAGR 50% 이상 후보')
         hi=res[res['CAGR(%)']>=50].sort_values(['MDD(%)','CAGR(%)'],ascending=[False,False])
         if len(hi):
@@ -184,6 +242,4 @@ if st.button('🚀 다단계 ETF 방어 최적화 실행', use_container_width=T
         else:
             st.info('이번 기간에는 CAGR 50% 이상인 방어 조합이 없습니다.')
 
-        st.subheader('📊 전체 후보 CAGR TOP15')
-        st.dataframe(res.sort_values('CAGR(%)',ascending=False).head(15).round(2),use_container_width=True,hide_index=True)
-        st.caption('목표는 Buy & Hold 수익률을 최대한 유지하면서 큰 하락 구간에서만 단계적으로 위험을 줄이는 것입니다. 최종 규칙은 기간분할 검증이 필요합니다.')
+        st.caption('과거 백테스트는 미래 수익을 보장하지 않습니다. 전체기간 최고값보다 기간분할에서 반복적으로 강한 규칙을 실전 후보로 우선하는 것이 좋습니다.')
