@@ -3,8 +3,8 @@ import streamlit as st
 import yfinance as yf
 from itertools import product
 
-st.title('🎛️ ETF 3모드 최적화 · 레거시 우수엔진 통합')
-st.caption('과거 성과가 좋았던 다단계 방어 엔진과 강세장 보존 엔진을 둘 다 계산한 뒤, 각 MDD 구간에서 CAGR이 가장 높은 후보를 선택합니다.')
+st.title('🎛️ ETF 3모드 최적화 · 워크포워드 검증')
+st.caption('전체기간 최적화와 별도로, 과거 구간에서만 전략을 선택하고 다음 미래 구간에 고정 적용하는 Out-of-Sample 검증을 수행합니다.')
 
 c1,c2,c3=st.columns(3)
 with c1: start=st.date_input('시작일',pd.Timestamp('2023-08-19'))
@@ -21,8 +21,7 @@ def load_price(ticker,start,end):
         d=yf.download(ticker,start=str(s.date()),end=str((e+pd.Timedelta(days=1)).date()),auto_adjust=True,progress=False,threads=False,timeout=15)
         if d is None or d.empty:d=yf.download(ticker,period='max',auto_adjust=True,progress=False,threads=False,timeout=15)
         if d is None or d.empty:return pd.Series(dtype=float)
-        x=d['Close']
-        if isinstance(x,pd.DataFrame):x=x.iloc[:,0]
+        x=d['Close'];x=x.iloc[:,0] if isinstance(x,pd.DataFrame) else x
         x=pd.to_numeric(x,errors='coerce').dropna();x.index=pd.to_datetime(x.index)
         if getattr(x.index,'tz',None) is not None:x.index=x.index.tz_localize(None)
         return x[(x.index>=s)&(x.index<=e)]
@@ -33,14 +32,12 @@ def metrics(eq):
     years=max((eq.index[-1]-eq.index[0]).days/365.25,1/365.25)
     return (eq.iloc[-1]/eq.iloc[0]-1)*100,((eq.iloc[-1]/eq.iloc[0])**(1/years)-1)*100,(eq/eq.cummax()-1).min()*100
 
-def equity(px,w,capital=None):
-    capital=initial if capital is None else capital
+def equity(px,w,capital):
     w=pd.Series(w,index=px.index).shift(1).fillna(1.0)
     return capital*(1+px.pct_change().fillna(0)*w).cumprod()
 
-def run_staged(px,fast,slow,w1,w2,ddtrig,severe,buffer,capital=None):
-    mf,ms=px.rolling(fast).mean(),px.rolling(slow).mean();dd=px/px.cummax()-1
-    out=[];risk=False
+def weights_staged(px,cfg):
+    fast,slow,w1,w2,ddtrig,severe,buffer=cfg;mf,ms=px.rolling(fast).mean(),px.rolling(slow).mean();dd=px/px.cummax()-1;out=[];risk=False
     for i,p in enumerate(px):
         if dd.iloc[i]<=-ddtrig/100:risk=True
         if risk and pd.notna(mf.iloc[i]) and pd.notna(ms.iloc[i]) and p>=mf.iloc[i]*(1+buffer/100) and p>=ms.iloc[i]:risk=False
@@ -49,11 +46,10 @@ def run_staged(px,fast,slow,w1,w2,ddtrig,severe,buffer,capital=None):
         elif pd.notna(mf.iloc[i]) and p<mf.iloc[i]:w=w1/100
         else:w=1.0
         out.append(w)
-    return equity(px,out,capital)
+    return out
 
-def run_bull(px,fast,slow,slope_days,weak,bear,ddtrig,severe,buffer,capital=None):
-    mf,ms=px.rolling(fast).mean(),px.rolling(slow).mean();slope=ms.pct_change(slope_days);dd=px/px.cummax()-1
-    out=[];risk=False
+def weights_bull(px,cfg):
+    fast,slow,slope_days,weak,bear,ddtrig,severe,buffer=cfg;mf,ms=px.rolling(fast).mean(),px.rolling(slow).mean();slope=ms.pct_change(slope_days);dd=px/px.cummax()-1;out=[];risk=False
     for i,p in enumerate(px):
         valid=pd.notna(ms.iloc[i]) and pd.notna(slope.iloc[i]);bull=valid and p>=ms.iloc[i] and slope.iloc[i]>0
         if bull:risk=False;w=1.0
@@ -65,92 +61,85 @@ def run_bull(px,fast,slow,slope_days,weak,bear,ddtrig,severe,buffer,capital=None
             elif pd.notna(mf.iloc[i]) and p<mf.iloc[i]:w=weak/100
             else:w=1.0
         out.append(w)
-    return equity(px,out,capital)
+    return out
 
-def add_row(rows,curves,engine,cfg,eq,bh_cagr):
-    ret,cagr,mdd=metrics(eq);key=(engine,)+tuple(cfg);curves[key]=eq
-    rows.append({'엔진':engine,'설정':str(tuple(cfg)),'누적수익률(%)':ret,'CAGR(%)':cagr,'MDD(%)':mdd,'포착률(%)':cagr/bh_cagr*100 if bh_cagr>0 else 100,'key':key})
+def run_engine(px,engine,cfg,capital):return equity(px,weights_staged(px,cfg) if engine=='기존 다단계' else weights_bull(px,cfg),capital)
 
-def validate_period(px,engine,cfg,label):
-    if len(px)<2:return None
-    eq=run_staged(px,*cfg,capital=initial) if engine=='기존 다단계' else run_bull(px,*cfg,capital=initial)
-    bh=initial*px/px.iloc[0]
-    ret,cagr,mdd=metrics(eq);_,bc,bm=metrics(bh)
-    return {'기간':label,'거래일':len(px),'전략 CAGR(%)':cagr,'전략 MDD(%)':mdd,'B&H CAGR(%)':bc,'B&H MDD(%)':bm,'CAGR 차이(%p)':cagr-bc,'MDD 개선(%p)':mdd-bm,'누적수익률(%)':ret}
-
-if st.button('🚀 레거시 기준 + 3모드 최적화 실행',type='primary',use_container_width=True):
-    ticker='292150.KS' if etf.startswith('TIGER') else '069500.KS';px=load_price(ticker,start,end)
-    if len(px)<205:st.error('가격 데이터가 부족합니다.');st.stop()
-    bh=initial*px/px.iloc[0];bh_ret,bh_cagr,bh_mdd=metrics(bh);rows=[];curves={}
+def grids(precise=False):
     if precise:
         fasts=[40,50,60,70,80,90,100,120];slows=[100,120,140,160,180,200];w1s=[70,80,90,100];w2s=[10,20,30,40,50,70];dds=[8,10,12,15,18,20];sevs=[0,10,20,30,40];bufs=[0,1,2,3]
     else:
         fasts=[40,60,80,100,120];slows=[100,120,140,160,200];w1s=[80,90,100];w2s=[20,30,40,50,70];dds=[10,12,15,18,20];sevs=[0,20,40];bufs=[0,2]
     staged=[x for x in product(fasts,slows,w1s,w2s,dds,sevs,bufs) if x[0]<x[1] and x[3]<=x[2]]
     bull=[x for x in product([40,60,80],[120,160,200],[10,20],[80,90,100],[30,50,70],[12,15,18,20],[0,20,40],[0,2]) if x[0]<x[1] and x[4]<=x[3]]
-    total=len(staged)+len(bull);bar=st.progress(0,text=f'0/{total}');n=0
-    for cfg in staged:
-        add_row(rows,curves,'기존 다단계',cfg,run_staged(px,*cfg),bh_cagr);n+=1
-        if n%100==0:bar.progress(n/total,text=f'{n}/{total}')
-    for cfg in bull:
-        add_row(rows,curves,'강세장 보존',cfg,run_bull(px,*cfg),bh_cagr);n+=1
-        if n%100==0 or n==total:bar.progress(n/total,text=f'{n}/{total}')
-    bar.empty();df=pd.DataFrame(rows)
+    return staged,bull
 
-    results=[];selected={};selected_meta={}
+def optimize(train,limit,staged,bull):
+    candidates=[]
+    for engine,configs in [('기존 다단계',staged),('강세장 보존',bull)]:
+        for cfg in configs:
+            eq=run_engine(train,engine,cfg,1.0);_,c,m=metrics(eq)
+            if m>=-limit:candidates.append((c,m,engine,cfg))
+    if not candidates:return None
+    return max(candidates,key=lambda z:(z[0],z[1]))
+
+def walk_forward(px,limit,staged,bull,train_days=360,test_days=120):
+    # calendar-day windows; indicators receive training history, but only future test returns count
+    start_date=px.index.min()+pd.Timedelta(days=train_days);capital=initial;parts=[];rows=[]
+    while start_date<px.index.max():
+        train_start=start_date-pd.Timedelta(days=train_days);test_end=min(start_date+pd.Timedelta(days=test_days),px.index.max())
+        train=px[(px.index>=train_start)&(px.index<start_date)]
+        test=px[(px.index>=start_date)&(px.index<=test_end)]
+        if len(train)<120 or len(test)<20:break
+        best=optimize(train,limit,staged,bull)
+        if best is None:break
+        _,_,engine,cfg=best
+        history=px[(px.index>=train_start)&(px.index<=test_end)]
+        w=weights_staged(history,cfg) if engine=='기존 다단계' else weights_bull(history,cfg)
+        w=pd.Series(w,index=history.index).shift(1).fillna(1.0)
+        wr=w.reindex(test.index).fillna(1.0);rets=test.pct_change().fillna(0)
+        eq=capital*(1+rets*wr).cumprod();capital=float(eq.iloc[-1]);parts.append(eq)
+        _,tc,tm=metrics(eq);bh=initial*test/test.iloc[0];_,bc,bm=metrics(bh)
+        rows.append({'학습기간':f'{train.index[0].date()}~{train.index[-1].date()}','미래검증':f'{test.index[0].date()}~{test.index[-1].date()}','엔진':engine,'설정':str(cfg),'OOS CAGR(%)':tc,'OOS MDD(%)':tm,'B&H CAGR(%)':bc,'B&H MDD(%)':bm,'검증종료자산(원)':capital})
+        start_date=test_end+pd.Timedelta(days=1)
+    if not parts:return pd.Series(dtype=float),pd.DataFrame()
+    return pd.concat(parts)[~pd.concat(parts).index.duplicated(keep='first')],pd.DataFrame(rows)
+
+if st.button('🚀 3모드 최적화 + 워크포워드 실행',type='primary',use_container_width=True):
+    ticker='292150.KS' if etf.startswith('TIGER') else '069500.KS';px=load_price(ticker,start,end)
+    if len(px)<205:st.error('가격 데이터가 부족합니다.');st.stop()
+    staged,bull=grids(precise);bh=initial*px/px.iloc[0];bh_ret,bh_cagr,bh_mdd=metrics(bh)
+    results=[];selected={};meta={}
     for name,limit in PROFILES.items():
-        safe=df[df['MDD(%)']>=-limit].sort_values(['CAGR(%)','MDD(%)'],ascending=[False,False])
-        if safe.empty:
-            tmp=df.copy();tmp['초과']=(-limit-tmp['MDD(%)']).clip(lower=0);best=tmp.sort_values(['초과','CAGR(%)'],ascending=[True,False]).iloc[0];status='❌ MDD 미달'
-        else:best=safe.iloc[0];status='✅ 충족'
-        eq=curves[best['key']];selected[name]=eq;selected_meta[name]=best
-        results.append({'모드':name,'목표MDD':-limit,'엔진':best['엔진'],'CAGR(%)':best['CAGR(%)'],'MDD(%)':best['MDD(%)'],'포착률(%)':best['포착률(%)'],'누적수익률(%)':best['누적수익률(%)'],'최종자산(원)':eq.iloc[-1],'목표충족':status})
+        best=optimize(px,limit,staged,bull)
+        if best is None:continue
+        c,m,engine,cfg=best;eq=run_engine(px,engine,cfg,initial);ret,cagr,mdd=metrics(eq);selected[name]=eq;meta[name]=(engine,cfg)
+        results.append({'모드':name,'목표MDD':-limit,'엔진':engine,'CAGR(%)':cagr,'MDD(%)':mdd,'포착률(%)':cagr/bh_cagr*100 if bh_cagr>0 else 100,'누적수익률(%)':ret,'최종자산(원)':eq.iloc[-1],'목표충족':'✅ 충족'})
+    st.subheader('📊 전체기간 3모드 비교');st.dataframe(pd.DataFrame(results).round(2),use_container_width=True,hide_index=True)
+    st.caption(f'Buy & Hold: CAGR {bh_cagr:.1f}% · MDD {bh_mdd:.1f}% · 누적수익률 {bh_ret:.1f}%');chart={'Buy & Hold':bh};chart.update(selected);st.line_chart(pd.DataFrame(chart))
 
-    r=pd.DataFrame(results);st.subheader('📊 3모드 비교');st.dataframe(r.round(2),use_container_width=True,hide_index=True)
-    st.caption(f'Buy & Hold: CAGR {bh_cagr:.1f}% · MDD {bh_mdd:.1f}% · 누적수익률 {bh_ret:.1f}%')
-    chart={'Buy & Hold':bh};chart.update(selected);st.line_chart(pd.DataFrame(chart))
-
-    st.subheader('🏆 MDD 구간별 실제 최고 CAGR')
-    bands=[]
-    for limit in [20,22,25,30]:
-        q=df[df['MDD(%)']>=-limit].sort_values(['CAGR(%)','MDD(%)'],ascending=[False,False])
-        if q.empty:bands.append({'MDD한도':f'-{limit}%','결과':'충족 후보 없음'})
-        else:
-            z=q.iloc[0];bands.append({'MDD한도':f'-{limit}%','엔진':z['엔진'],'CAGR(%)':z['CAGR(%)'],'MDD(%)':z['MDD(%)'],'포착률(%)':z['포착률(%)'],'설정':z['설정']})
-    st.dataframe(pd.DataFrame(bands).round(2),use_container_width=True,hide_index=True)
-
-    st.subheader('🧪 방어형 고정전략 기간분할 검증')
-    best=selected_meta['🛡️ 방어형'];cfg=tuple(best['key'][1:]);engine=best['엔진']
-    st.info(f"중요: 각 기간마다 다시 최적화하지 않고, 전체기간에서 선택된 방어형 설정 {cfg} ({engine})을 그대로 고정 적용합니다. 이것이 과최적화 여부를 보는 핵심입니다.")
-    tests=[]
-    years=sorted(px.index.year.unique())
-    for y in years:
-        sub=px[px.index.year==y]
-        if len(sub)>=40:
-            v=validate_period(sub,engine,cfg,str(y));
-            if v:tests.append(v)
-    # rolling 1-year windows from available start, non-overlapping for easy reading
-    anchor=px.index.min();k=1
-    while anchor<px.index.max():
-        stop=min(anchor+pd.DateOffset(years=1),px.index.max())
-        sub=px[(px.index>=anchor)&(px.index<=stop)]
-        if len(sub)>=100:
-            v=validate_period(sub,engine,cfg,f'1년구간 {k}: {anchor.date()}~{stop.date()}');
-            if v:tests.append(v)
-        anchor=stop+pd.Timedelta(days=1);k+=1
-    val=pd.DataFrame(tests)
-    if len(val):
-        st.dataframe(val.round(2),use_container_width=True,hide_index=True)
-        full_cagr=float(best['CAGR(%)']);yearly=val[val['기간'].astype(str).str.fullmatch(r'\d{4}')]
-        positive=(yearly['CAGR 차이(%p)']>=0).sum() if len(yearly) else 0
-        good_mdd=(yearly['MDD 개선(%p)']>0).sum() if len(yearly) else 0
-        st.metric('연도별 B&H 대비 CAGR 우위',f'{positive}/{len(yearly)}개 연도' if len(yearly) else '-')
-        st.metric('연도별 MDD 개선',f'{good_mdd}/{len(yearly)}개 연도' if len(yearly) else '-')
-        if len(yearly)>=2 and positive>=max(1,len(yearly)-1) and good_mdd>=max(1,len(yearly)-1):st.success('여러 연도에서 성과가 반복됩니다. 다음 단계로 워크포워드 검증을 진행할 가치가 있습니다.')
-        else:st.warning('전체기간 성과는 좋지만 기간별 일관성이 충분하지 않을 수 있습니다. 이 전략을 바로 실전 기대수익률로 해석하면 안 됩니다.')
-
-    st.subheader('🔬 기존 우수구간 검증')
-    legacy=df[(df['CAGR(%)']>=50)&(df['MDD(%)']>=-25)].sort_values(['CAGR(%)','MDD(%)'],ascending=[False,False])
-    if legacy.empty:st.warning('이번 날짜/가격 데이터에서는 CAGR 50% 이상 + MDD -25% 이내 조합이 재현되지 않았습니다.')
-    else:st.dataframe(legacy.head(15).drop(columns=['key']).round(2),use_container_width=True,hide_index=True)
-    st.warning('과거 백테스트는 미래 수익을 보장하지 않습니다. 특히 전체기간에서 고른 파라미터를 같은 전체기간으로 평가하면 성과가 과대평가될 수 있습니다.')
+    st.divider();st.header('🚶 워크포워드 실전 검증')
+    st.info('각 검증구간 시작 전에 이용 가능했던 과거 데이터만으로 방어형(MDD -22%) 전략을 다시 선택하고, 다음 미래구간에는 설정을 고정합니다. 미래 데이터를 보고 파라미터를 고르지 않습니다.')
+    a,b=st.columns(2)
+    with a: train_days=st.selectbox('학습기간',[360,540,720],index=0,format_func=lambda x:f'약 {x//30}개월')
+    with b: test_days=st.selectbox('미래 검증기간',[60,90,120,180],index=2,format_func=lambda x:f'약 {x//30}개월')
+    wf,wft=walk_forward(px,22,staged,bull,train_days,test_days)
+    if len(wf)<2:
+        st.warning('워크포워드 검증에 필요한 기간이 부족합니다. 시작일을 더 앞당겨 주세요.')
+    else:
+        wf_ret,wf_cagr,wf_mdd=metrics(wf);bh_oos=initial*px.reindex(wf.index)/px.reindex(wf.index).iloc[0];bo_ret,bo_cagr,bo_mdd=metrics(bh_oos)
+        fixed=selected.get('🛡️ 방어형',pd.Series(dtype=float));fixed_oos=fixed.reindex(wf.index).dropna();fx_ret,fx_cagr,fx_mdd=metrics(fixed_oos) if len(fixed_oos)>1 else (0,0,0)
+        comp=pd.DataFrame([
+            {'전략':'Buy & Hold (동일 OOS)','CAGR(%)':bo_cagr,'MDD(%)':bo_mdd,'누적수익률(%)':bo_ret,'최종 1,000만원':initial*(1+bo_ret/100)},
+            {'전략':'전체기간 선택 방어형','CAGR(%)':fx_cagr,'MDD(%)':fx_mdd,'누적수익률(%)':fx_ret,'최종 1,000만원':initial*(1+fx_ret/100)},
+            {'전략':'Walk-Forward OOS','CAGR(%)':wf_cagr,'MDD(%)':wf_mdd,'누적수익률(%)':wf_ret,'최종 1,000만원':wf.iloc[-1]}
+        ])
+        st.subheader('🏁 실전성 비교');st.dataframe(comp.round(2),use_container_width=True,hide_index=True)
+        st.line_chart(pd.DataFrame({'Walk-Forward OOS':wf,'Buy & Hold OOS':bh_oos}).dropna())
+        st.subheader('📋 구간별 Out-of-Sample 결과');st.dataframe(wft.round(2),use_container_width=True,hide_index=True)
+        wins=int((wft['OOS CAGR(%)']>=wft['B&H CAGR(%)']).sum());mddwins=int((wft['OOS MDD(%)']>wft['B&H MDD(%)']).sum());n=len(wft)
+        c1,c2,c3=st.columns(3);c1.metric('OOS CAGR',f'{wf_cagr:.1f}%');c2.metric('OOS MDD',f'{wf_mdd:.1f}%');c3.metric('B&H 대비 CAGR 우위',f'{wins}/{n} 구간')
+        if wf_mdd>=-22 and wf_cagr>=bo_cagr*0.9 and mddwins>=max(1,n//2):st.success('✅ 실전 채택 후보: OOS에서도 목표 MDD를 지키면서 Buy & Hold 수익의 90% 이상을 유지했습니다. 소액 전진검증 단계로 진행할 수 있습니다.')
+        elif wf_mdd>=-25 and wf_cagr>=bo_cagr*0.75:st.warning('🟡 보류/개선: 방어 효과는 있으나 수익 포착력이 아직 부족합니다. 학습·검증기간을 바꿔 안정성을 추가 확인하세요.')
+        else:st.error('❌ 실전 채택 보류: Out-of-Sample 결과가 충분히 안정적이지 않습니다. 전체기간 백테스트 CAGR을 실전 기대수익으로 사용하지 마세요.')
+    st.warning('워크포워드도 미래 수익을 보장하지 않습니다. 거래비용·세금·추적오차·체결가격을 포함하면 실제 성과는 더 낮아질 수 있습니다.')
