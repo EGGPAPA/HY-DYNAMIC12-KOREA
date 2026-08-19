@@ -30,7 +30,7 @@ PROFILES={
 if precise:
     st.warning('정밀 탐색은 후보가 많아 시간이 오래 걸립니다. 먼저 빠른 탐색으로 확인하세요.')
 else:
-    st.info('⚡ 빠른 탐색은 기존 우수구간 + 방어 강화 후보를 공통 계산합니다.')
+    st.info('⚡ 빠른 탐색은 기존 우수 설정 주변 1,836개 후보만 계산합니다. 기존 6,048개보다 약 70% 줄였습니다.')
 st.info(f'방어형 학습 MDD 한도는 -{PROFILES["🛡️ 방어형"]["train_mdd"]}%로 적용합니다.')
 
 @st.cache_data(ttl=1800,show_spinner=False)
@@ -62,8 +62,19 @@ def grids(precise=False):
         staged=[x for x in product(fasts,slows,w1s,w2s,dds,sevs,bufs) if x[0]<x[1] and x[3]<=x[2]]
         bull=[x for x in product([30,40,60,80],[120,140,160,200],[10,20],[80,90,100],[20,30,50],[10,12,15,18],[0,10,20,40],[0,1,2]) if x[0]<x[1] and x[4]<=x[3]]
     else:
-        staged=[x for x in product([40,60,80],[120,140,160],[80,90,100],[10,20,30,40],[10,12,15,18],[0,10,20,40],[0,2]) if x[0]<x[1] and x[3]<=x[2]]
-        bull=[x for x in product([40,60,80],[120,160],[10,20],[80,90,100],[20,30,50],[10,12,15,18],[0,10,20],[0,2]) if x[0]<x[1] and x[4]<=x[3]]
+        # 기존 우수 설정 주변만 압축 탐색. 핵심 40/160, 60/140, 60/160 조합은 유지한다.
+        staged=[x for x in product(
+            [40,60,80],[120,140,160],[90,100],[10,20,30],[10,12,15],[0,10,20],[0,2]
+        ) if x[0]<x[1] and x[3]<=x[2]]
+        bull=[x for x in product(
+            [40,60,80],[120,160],[10,20],[90,100],[20,30],[10,12,15],[0,10,20],[0,2]
+        ) if x[0]<x[1] and x[4]<=x[3]]
+        # 과거 최고권 설정을 명시적으로 보존
+        anchors=[
+            (40,160,100,20,15,0,0),(60,140,100,20,15,20,2),(60,140,100,20,18,40,2),
+            (60,160,100,20,15,20,2),(40,120,100,20,15,40,0)
+        ]
+        staged=list(dict.fromkeys(staged+anchors))
     return staged,bull
 
 def context(px,staged,bull):
@@ -113,7 +124,7 @@ def scan_candidates(px,staged,bull,progress=None,label='후보 탐색'):
         for cfg in configs:
             eq=simulate(px,engine,cfg,ctx,1.0);_,cagr,mdd=metrics(eq);capture=cagr/bh_cagr*100 if bh_cagr>0 else 100
             rows.append({'cagr':cagr,'mdd':mdd,'capture':capture,'engine':engine,'cfg':cfg});done+=1
-            if progress is not None and (done%100==0 or done==total):progress.progress(done/total,text=f'{label}: {done:,}/{total:,} 조합 ({done/total*100:.0f}%)')
+            if progress is not None and (done%50==0 or done==total):progress.progress(done/total,text=f'{label}: {done:,}/{total:,} 조합 ({done/total*100:.0f}%)')
     return rows,ctx
 
 def choose_from_scan(scan,limit,selector):
@@ -122,11 +133,9 @@ def choose_from_scan(scan,limit,selector):
     if selector=='max':return max(safe,key=lambda r:(r['cagr'],r['mdd']))
     best_cagr=max(r['cagr'] for r in safe)
     ratio=0.95 if selector=='balanced' else 0.90
-    # 음수 CAGR 구간에서도 최고 후보가 반드시 pool에 포함되도록 절대값 기반 허용폭을 사용한다.
     threshold=best_cagr-abs(best_cagr)*(1-ratio)
     pool=[r for r in safe if r['cagr']>=threshold]
-    if not pool:
-        pool=[max(safe,key=lambda r:(r['cagr'],r['mdd']))]
+    if not pool:pool=[max(safe,key=lambda r:(r['cagr'],r['mdd']))]
     return max(pool,key=lambda r:(r['mdd'],r['cagr'],r['capture']))
 
 def make_windows(px,train_days,test_days):
@@ -199,14 +208,12 @@ if st.button('🚀 OOS MDD 미세조정 + 안정성 검증 실행',type='primary
     passed=summary[(summary['CAGR≥목표'])&(summary['MDD≤목표'])].copy()
     if not passed.empty:
         passed=passed.sort_values(['손실구간','OOS MDD(%)','OOS CAGR(%)'],ascending=[True,False,False]);best=passed.iloc[0];st.success(f"✅ 목표 달성 후보: {best['모드']} · OOS CAGR {best['OOS CAGR(%)']:.1f}% · OOS MDD {best['OOS MDD(%)']:.1f}%")
-    else:
-        st.warning('🟡 기본 OOS 구간에서는 목표 동시충족 후보가 없습니다.')
+    else:st.warning('🟡 기본 OOS 구간에서는 목표 동시충족 후보가 없습니다.')
 
     st.divider();st.header('🧪 OOS 안정성 검증 · 방어형')
     st.info('방어형을 학습 12개월→검증 3개월, 12→4개월, 18→4개월, 18→6개월로 다시 워크포워드 검증합니다. 각 조합에서도 미래 데이터는 파라미터 선택에 쓰지 않습니다.')
     stabbar=st.progress(0,text='안정성 검증 준비 중...');stab=stability_validate(px,staged,bull,oos_cagr_floor,oos_mdd_target,stabbar);stabbar.progress(1.0,text='안정성 검증 완료 100%')
-    if stab.empty:
-        st.warning('안정성 검증에 필요한 데이터가 부족합니다.')
+    if stab.empty:st.warning('안정성 검증에 필요한 데이터가 부족합니다.')
     else:
         st.dataframe(stab.round(2),use_container_width=True,hide_index=True);passed_n=int(stab['동시충족'].sum());total_n=len(stab);rate=passed_n/total_n*100
         c1,c2,c3=st.columns(3);c1.metric('동시충족',f'{passed_n}/{total_n} 조합');c2.metric('안정성 통과율',f'{rate:.0f}%');c3.metric('평균 OOS MDD',f"{stab['OOS MDD(%)'].mean():.1f}%")
