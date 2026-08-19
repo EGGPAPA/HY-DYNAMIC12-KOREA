@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import pandas as pd
 import requests
 import streamlit as st
+import yfinance as yf
 
 REPO = "EGGPAPA/HY-DYNAMIC12-KOREA"
 BRANCH = "main"
@@ -71,9 +72,78 @@ def find_active(rows, code):
     return None, None
 
 
+def yf_symbol(code, market):
+    return f"{str(code).zfill(6)}.{ 'KQ' if str(market).upper() == 'KOSDAQ' else 'KS' }"
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def get_current_price(code, market):
+    symbol = yf_symbol(code, market)
+    try:
+        h = yf.Ticker(symbol).history(period="5d", auto_adjust=False)
+        if h is not None and not h.empty and "Close" in h.columns:
+            s = pd.to_numeric(h["Close"], errors="coerce").dropna()
+            if not s.empty:
+                return float(s.iloc[-1])
+    except Exception:
+        pass
+    try:
+        d = yf.download(symbol, period="5d", auto_adjust=False, progress=False, threads=False)
+        if d is not None and not d.empty:
+            x = d["Close"]
+            if isinstance(x, pd.DataFrame):
+                x = x.iloc[:, 0]
+            x = pd.to_numeric(x, errors="coerce").dropna()
+            if not x.empty:
+                return float(x.iloc[-1])
+    except Exception:
+        pass
+    return None
+
+
+def normalized_purchases(row):
+    """기존 holdings.json도 호환. 과거 단일 평균값은 1회 레거시 매수로 간주."""
+    purchases = row.get("purchases")
+    if isinstance(purchases, list) and purchases:
+        clean = []
+        for p in purchases:
+            try:
+                price = float(p.get("price", 0) or 0)
+                qty = float(p.get("quantity", 0) or 0)
+                if price > 0 and qty > 0:
+                    clean.append({
+                        "price": price,
+                        "quantity": qty,
+                        "executed_at": p.get("executed_at") or p.get("date") or "",
+                        "source": p.get("source", "매수"),
+                    })
+            except Exception:
+                pass
+        if clean:
+            return clean
+
+    avg = float(row.get("average_price", 0) or 0)
+    qty = float(row.get("quantity", 0) or 0)
+    if avg > 0 and qty > 0:
+        return [{
+            "price": avg,
+            "quantity": qty,
+            "executed_at": row.get("updated_at", ""),
+            "source": "기존보유",
+        }]
+    return []
+
+
+def calc_position(purchases):
+    total_qty = sum(float(p["quantity"]) for p in purchases)
+    total_cost = sum(float(p["price"]) * float(p["quantity"]) for p in purchases)
+    avg = total_cost / total_qty if total_qty > 0 else 0.0
+    return total_qty, total_cost, avg
+
+
 def render_holdings_tab():
     st.subheader("💼 보유종목 관리")
-    st.caption("실제 체결 매수가와 수량을 직접 입력합니다. 추가 매수 시 평균매수가를 자동 계산합니다.")
+    st.caption("여러 번 매수한 체결내역을 누적 저장하고, 가중평균 매수가와 현재 수익률을 자동 계산합니다.")
 
     try:
         holdings, holdings_sha = load_holdings()
@@ -90,22 +160,81 @@ def render_holdings_tab():
 
     if active:
         view = []
+        price_map = {}
+        total_cost_all = 0.0
+        total_value_all = 0.0
+
         for r in active:
-            avg = float(r.get("average_price", 0) or 0)
-            qty = float(r.get("quantity", 0) or 0)
+            purchases = normalized_purchases(r)
+            qty, total_cost, avg = calc_position(purchases)
+            market = r.get("market", "KOSPI")
+            current = get_current_price(r.get("ticker", ""), market)
+            price_map[str(r.get("ticker", "")).zfill(6)] = current
+            value = current * qty if current is not None else None
+            pnl = value - total_cost if value is not None else None
+            return_pct = (pnl / total_cost * 100) if pnl is not None and total_cost > 0 else None
+            total_cost_all += total_cost
+            if value is not None:
+                total_value_all += value
+
             view.append({
                 "종목코드": str(r.get("ticker", "")).zfill(6),
                 "종목명": r.get("name", ""),
-                "시장": r.get("market", "KOSPI"),
+                "시장": market,
+                "매수횟수": len(purchases),
                 "평균매수가(원)": round(avg),
                 "수량": qty,
-                "투입금액(원)": round(avg * qty),
+                "총매수금액(원)": round(total_cost),
+                "현재가(원)": round(current) if current is not None else None,
+                "평가금액(원)": round(value) if value is not None else None,
+                "평가손익(원)": round(pnl) if pnl is not None else None,
+                "현재수익률(%)": round(return_pct, 2) if return_pct is not None else None,
                 "손절(-3%)": round(avg * 0.97),
                 "+15%": round(avg * 1.15),
                 "+20%": round(avg * 1.20),
                 "+25%": round(avg * 1.25),
             })
+
+        if total_cost_all > 0 and total_value_all > 0:
+            p1, p2, p3 = st.columns(3)
+            total_pnl = total_value_all - total_cost_all
+            total_ret = total_pnl / total_cost_all * 100
+            p1.metric("총 매수금액", f"{total_cost_all:,.0f}원")
+            p2.metric("현재 평가금액", f"{total_value_all:,.0f}원")
+            p3.metric("전체 수익률", f"{total_ret:+.2f}%", f"{total_pnl:+,.0f}원")
+
         st.dataframe(pd.DataFrame(view), use_container_width=True, hide_index=True)
+
+        st.markdown("### 매수 체결내역")
+        for r in active:
+            purchases = normalized_purchases(r)
+            qty, total_cost, avg = calc_position(purchases)
+            code = str(r.get("ticker", "")).zfill(6)
+            current = price_map.get(code)
+            ret = ((current / avg) - 1) * 100 if current is not None and avg > 0 else None
+            label = f"{code} {r.get('name','')} · {len(purchases)}회 매수 · 평균 {avg:,.0f}원"
+            if ret is not None:
+                label += f" · 현재 {ret:+.2f}%"
+            with st.expander(label):
+                hist = []
+                cum_qty = 0.0
+                cum_cost = 0.0
+                for n, p in enumerate(purchases, 1):
+                    q = float(p["quantity"])
+                    pr = float(p["price"])
+                    cum_qty += q
+                    cum_cost += q * pr
+                    hist.append({
+                        "회차": n,
+                        "체결일시": p.get("executed_at", ""),
+                        "구분": p.get("source", "매수"),
+                        "체결가(원)": round(pr),
+                        "수량": q,
+                        "매수금액(원)": round(pr * q),
+                        "누적수량": cum_qty,
+                        "누적평균가(원)": round(cum_cost / cum_qty),
+                    })
+                st.dataframe(pd.DataFrame(hist), use_container_width=True, hide_index=True)
     else:
         st.info("현재 등록된 보유종목이 없습니다.")
 
@@ -129,10 +258,16 @@ def render_holdings_tab():
                 holdings, holdings_sha = load_holdings()
                 idx, old = find_active(holdings, code)
                 now = datetime.now(timezone.utc).isoformat()
+                new_trade = {
+                    "price": round(float(buy_price), 4),
+                    "quantity": round(float(buy_qty), 6),
+                    "executed_at": now,
+                    "source": "추가매수" if old is not None else "신규매수",
+                }
 
                 if old is None:
-                    new_avg = float(buy_price)
-                    new_qty = float(buy_qty)
+                    purchases = [new_trade]
+                    new_qty, total_cost, new_avg = calc_position(purchases)
                     holdings.append({
                         "ticker": code,
                         "name": name or code,
@@ -141,16 +276,17 @@ def render_holdings_tab():
                         "status": "holding",
                         "average_price": round(new_avg, 4),
                         "quantity": round(new_qty, 6),
+                        "purchases": purchases,
                         "stop_loss_pct": 3,
                         "enabled": True,
                         "updated_at": now,
                     })
                     msg = f"Add Korea holding {code}"
                 else:
-                    old_avg = float(old.get("average_price", 0) or 0)
-                    old_qty = float(old.get("quantity", 0) or 0)
-                    new_qty = old_qty + float(buy_qty)
-                    new_avg = ((old_avg * old_qty) + (float(buy_price) * float(buy_qty))) / new_qty
+                    purchases = normalized_purchases(old)
+                    # 기존 레거시 보유분도 최초 1회 매수로 보존한 뒤 새 체결을 추가
+                    purchases.append(new_trade)
+                    new_qty, total_cost, new_avg = calc_position(purchases)
                     old.update({
                         "name": name or old.get("name") or code,
                         "market": market,
@@ -158,6 +294,7 @@ def render_holdings_tab():
                         "status": "holding",
                         "average_price": round(new_avg, 4),
                         "quantity": round(new_qty, 6),
+                        "purchases": purchases,
                         "stop_loss_pct": float(old.get("stop_loss_pct", 3) or 3),
                         "enabled": True,
                         "updated_at": now,
@@ -166,7 +303,11 @@ def render_holdings_tab():
                     msg = f"Update Korea holding {code}"
 
                 save_holdings(holdings, holdings_sha, msg)
-                st.success(f"{name or code} 저장 완료 · 평균매수가 {new_avg:,.0f}원 · 총수량 {new_qty:g}")
+                st.success(
+                    f"{name or code} 저장 완료 · 이번 {buy_qty:g}주 @ {buy_price:,.0f}원 · "
+                    f"총 {new_qty:g}주 · 새 평균매수가 {new_avg:,.0f}원 · 매수 {len(purchases)}회"
+                )
+                get_current_price.clear()
                 st.rerun()
             except Exception as e:
                 st.error(str(e))
@@ -194,7 +335,7 @@ def render_holdings_tab():
     else:
         st.caption("전량 매도 처리할 보유종목이 없습니다.")
 
-    st.info("보유종목은 TOP12에서 빠져도 holdings.json에 남습니다. 평균매수가 기준 -3%, +15%, +20%, +25% 카카오 감시와 연결합니다.")
+    st.info("추가매수는 체결 건별로 저장되며 평균매수가는 가중평균으로 재계산합니다. 현재가는 Yahoo Finance 최근 종가 기준이며 장중 실시간 체결가와 차이가 날 수 있습니다.")
 
 
 def install_holdings_tab():
