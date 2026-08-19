@@ -121,8 +121,12 @@ def choose_from_scan(scan,limit,selector):
     if not safe:return None
     if selector=='max':return max(safe,key=lambda r:(r['cagr'],r['mdd']))
     best_cagr=max(r['cagr'] for r in safe)
-    if selector=='balanced':pool=[r for r in safe if r['cagr']>=best_cagr*0.95]
-    else:pool=[r for r in safe if r['cagr']>=best_cagr*0.90]
+    ratio=0.95 if selector=='balanced' else 0.90
+    # 음수 CAGR 구간에서도 최고 후보가 반드시 pool에 포함되도록 절대값 기반 허용폭을 사용한다.
+    threshold=best_cagr-abs(best_cagr)*(1-ratio)
+    pool=[r for r in safe if r['cagr']>=threshold]
+    if not pool:
+        pool=[max(safe,key=lambda r:(r['cagr'],r['mdd']))]
     return max(pool,key=lambda r:(r['mdd'],r['cagr'],r['capture']))
 
 def make_windows(px,train_days,test_days):
