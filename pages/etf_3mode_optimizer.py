@@ -148,6 +148,27 @@ def walk_forward_all(px,staged,bull,train_days,test_days,progress=None,profiles=
         r=pd.concat(rlist);r=r[~r.index.duplicated(keep='first')].sort_index();eq=initial*(1+r).cumprod();first_idx=r.index[0];prior=px.index[px.index<first_idx];base_idx=prior[-1] if len(prior) else first_idx-pd.Timedelta(days=1);curves[name]=pd.concat([pd.Series([initial],index=[base_idx]),eq])
     return curves,pd.DataFrame(details)
 
+def parse_cfg(text):
+    try:return tuple(int(float(x.strip())) for x in str(text).strip().strip('()').split(',') if x.strip())
+    except Exception:return None
+
+def replay_fixed_oos(px,detail,mode='🛡️ 방어형',cost_mult=1.0,extra_delay=0):
+    d=detail[detail['모드']==mode].copy() if not detail.empty else pd.DataFrame()
+    if d.empty:return pd.Series(dtype=float)
+    capital=float(initial);parts=[]
+    for _,row in d.iterrows():
+        cfg=parse_cfg(row['설정']);engine=row['엔진']
+        if cfg is None:continue
+        tr_start=pd.Timestamp(str(row['학습기간']).split('~')[0]);te_start,te_end=[pd.Timestamp(x) for x in str(row['미래검증']).split('~')]
+        history=px[(px.index>=tr_start)&(px.index<=te_end)];test=px[(px.index>=te_start)&(px.index<=te_end)]
+        if history.empty or test.empty:continue
+        hctx=context(history,[cfg] if engine=='기존 다단계' else [],[cfg] if engine=='강세장 보존' else []);signal=staged_weights(history,cfg,hctx) if engine=='기존 다단계' else bull_weights(history,cfg,hctx)
+        weight=signal.shift(1+extra_delay).fillna(1.0).reindex(test.index).fillna(1.0);asset_ret=history.pct_change().reindex(test.index).fillna(0.0);strategy_ret,_,_=cost_adjusted_returns(asset_ret,weight,fee_bps*cost_mult,slippage_bps*cost_mult,sell_tax_bps*cost_mult,1.0)
+        local=capital*(1+strategy_ret).cumprod();capital=float(local.iloc[-1]);parts.append(strategy_ret)
+    if not parts:return pd.Series(dtype=float)
+    r=pd.concat(parts);r=r[~r.index.duplicated(keep='first')].sort_index();eq=initial*(1+r).cumprod();first_idx=r.index[0];prior=px.index[px.index<first_idx];base_idx=prior[-1] if len(prior) else first_idx-pd.Timedelta(days=1)
+    return pd.concat([pd.Series([initial],index=[base_idx]),eq])
+
 def stability_validate(px,staged,bull,cagr_floor,mdd_target,progress=None,with_cost=False,cost_mult=1.0,extra_delay=0):
     combos=[(360,90),(360,120),(540,120),(540,180)];profile={'🛡️ 방어형':PROFILES['🛡️ 방어형']};rows=[]
     for i,(tr,te) in enumerate(combos,1):
@@ -178,18 +199,18 @@ if st.button('🚀 OOS + 안정성 + 실전 스트레스 검증 실행',type='pr
     if not stab.empty:
         st.dataframe(stab.round(2),use_container_width=True,hide_index=True);passed_n=int(stab['동시충족'].sum());total_n=len(stab);c1,c2,c3=st.columns(3);c1.metric('동시충족',f'{passed_n}/{total_n}');c2.metric('안정성 통과율',f'{passed_n/total_n*100:.0f}%');c3.metric('평균 OOS MDD',f"{stab['OOS MDD(%)'].mean():.1f}%")
 
-    st.divider();st.header('💸 기본 거래비용 반영 OOS');cost_curves,_=walk_forward_all(px,staged,bull,train_days,test_days,None,{'🛡️ 방어형':PROFILES['🛡️ 방어형']},True);cost_wf=cost_curves.get('🛡️ 방어형',pd.Series(dtype=float))
+    st.divider();st.header('💸 기본 거래비용 반영 OOS');cost_wf=replay_fixed_oos(px,detail,'🛡️ 방어형',1.0,0)
     if len(cost_wf)>=2:
         _,cc,cm=metrics(cost_wf);gross_wf=curves.get('🛡️ 방어형',pd.Series(dtype=float));_,gc,_=metrics(gross_wf);c1,c2,c3,c4=st.columns(4);c1.metric('비용후 OOS CAGR',f'{cc:.1f}%');c2.metric('비용후 OOS MDD',f'{cm:.1f}%');c3.metric('CAGR 비용차감',f'-{gc-cc:.1f}%p');c4.metric('비용후 최종자산',f'{cost_wf.iloc[-1]:,.0f}원');st.line_chart(pd.DataFrame({'비용 전 방어형':gross_wf,'비용 후 방어형':cost_wf}))
 
     st.divider();st.header('🧯 최종 실전 스트레스 테스트')
-    st.info('같은 방어형 선택 규칙을 고정하고 기본비용, 비용 2배, 비용 3배, 비용 2배+체결 1거래일 추가 지연을 비교합니다. 미래 데이터로 파라미터를 다시 맞추지 않습니다.')
-    scenarios=[('기본비용',1.0,0),('비용 2배',2.0,0),('비용 3배',3.0,0),('비용 2배 + 1일 지연',2.0,1)];stress_rows=[];sbar=st.progress(0,text='스트레스 테스트 준비 중...')
+    st.info('워크포워드에서 이미 선택된 방어형 설정을 그대로 재생합니다. 스트레스 시나리오마다 재최적화하지 않아 빠르고, 미래 데이터로 파라미터를 다시 맞추지 않습니다.')
+    scenarios=[('기본비용',1.0,0),('비용 2배',2.0,0),('비용 3배',3.0,0),('비용 2배 + 1일 지연',2.0,1)];stress_rows=[];sbar=st.progress(0,text='고정 설정 스트레스 테스트 준비 중...')
     for i,(label,mult,delay) in enumerate(scenarios,1):
-        scurves,_=walk_forward_all(px,staged,bull,train_days,test_days,None,{'🛡️ 방어형':PROFILES['🛡️ 방어형']},True,mult,delay);wf=scurves.get('🛡️ 방어형',pd.Series(dtype=float))
+        wf=replay_fixed_oos(px,detail,'🛡️ 방어형',mult,delay)
         if len(wf)>=2:
             _,cagr,mdd=metrics(wf);stress_rows.append({'시나리오':label,'비용배수':mult,'추가지연(거래일)':delay,'OOS CAGR(%)':cagr,'OOS MDD(%)':mdd,'최종자산(원)':wf.iloc[-1],'CAGR≥목표':cagr>=oos_cagr_floor,'MDD≤목표':mdd>=-oos_mdd_target,'동시충족':cagr>=oos_cagr_floor and mdd>=-oos_mdd_target})
-        sbar.progress(i/len(scenarios),text=f'스트레스 테스트 {i}/{len(scenarios)} 완료')
+        sbar.progress(i/len(scenarios),text=f'고정 설정 스트레스 테스트 {i}/{len(scenarios)} 완료')
     stress=pd.DataFrame(stress_rows)
     if not stress.empty:
         st.dataframe(stress.round(2),use_container_width=True,hide_index=True);sp=int(stress['동시충족'].sum());sn=len(stress);worst_cagr=stress['OOS CAGR(%)'].min();worst_mdd=stress['OOS MDD(%)'].min();c1,c2,c3=st.columns(3);c1.metric('스트레스 통과',f'{sp}/{sn}');c2.metric('최저 CAGR',f'{worst_cagr:.1f}%');c3.metric('최악 MDD',f'{worst_mdd:.1f}%')
