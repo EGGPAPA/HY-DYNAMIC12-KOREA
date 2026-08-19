@@ -63,7 +63,6 @@ def grids(precise=False):
         staged=[x for x in product(fasts,slows,w1s,w2s,dds,sevs,bufs) if x[0]<x[1] and x[3]<=x[2]]
         bull=[x for x in product([40,60,80],[120,160,200],[10,20],[80,90,100],[30,50,70],[12,15,18,20],[0,20,40],[0,2]) if x[0]<x[1] and x[4]<=x[3]]
     else:
-        # 과거 실제 우수 설정: 40/160/100/20/15/0/0, 60/140/100/20/15/20/2 등을 반드시 포함
         staged=[x for x in product(
             [40,60,80], [120,140,160], [90,100], [20,30,40],
             [12,15,18], [0,20,40], [0,2]
@@ -78,21 +77,18 @@ def context(px,staged,bull):
     close=px.to_numpy(dtype=float)
     ret=px.pct_change().fillna(0).to_numpy(dtype=float)
     dd=close/np.maximum.accumulate(close)-1.0
-    ma_days=set()
-    slope_pairs=set()
-    for cfg in staged:
-        ma_days.update([cfg[0],cfg[1]])
+    ma_days=set();slope_pairs=set()
+    for cfg in staged:ma_days.update([cfg[0],cfg[1]])
     for cfg in bull:
         ma_days.update([cfg[0],cfg[1]]);slope_pairs.add((cfg[1],cfg[2]))
     mas={d:px.rolling(d).mean().to_numpy(dtype=float) for d in ma_days}
     slopes={(slow,s):pd.Series(mas[slow],index=px.index).pct_change(s).to_numpy(dtype=float) for slow,s in slope_pairs}
     return close,ret,dd,mas,slopes
 
-def simulate_staged(px,cfg,ctx,capital=1.0):
-    close,ret,dd,mas,_=ctx
+def staged_weights(px,cfg,ctx):
+    close,_,dd,mas,_=ctx
     fast,slow,w1,w2,ddtrig,severe,buffer=cfg
-    mf,ms=mas[fast],mas[slow];risk=False;wealth=capital;vals=[]
-    peak=capital
+    mf,ms=mas[fast],mas[slow];risk=False;out=[]
     for i,p in enumerate(close):
         if dd[i]<=-ddtrig/100:risk=True
         if risk and not np.isnan(mf[i]) and not np.isnan(ms[i]) and p>=mf[i]*(1+buffer/100) and p>=ms[i]:risk=False
@@ -100,14 +96,13 @@ def simulate_staged(px,cfg,ctx,capital=1.0):
         elif not np.isnan(ms[i]) and p<ms[i]:w=w2/100
         elif not np.isnan(mf[i]) and p<mf[i]:w=w1/100
         else:w=1.0
-        if i>0:wealth*=1+ret[i]*prev_w
-        vals.append(wealth);prev_w=w
-    return pd.Series(vals,index=px.index)
+        out.append(w)
+    return pd.Series(out,index=px.index,dtype=float)
 
-def simulate_bull(px,cfg,ctx,capital=1.0):
-    close,ret,dd,mas,slopes=ctx
+def bull_weights(px,cfg,ctx):
+    close,_,dd,mas,slopes=ctx
     fast,slow,slope_days,weak,bear,ddtrig,severe,buffer=cfg
-    mf,ms=mas[fast],mas[slow];slope=slopes[(slow,slope_days)];risk=False;wealth=capital;vals=[]
+    mf,ms=mas[fast],mas[slow];slope=slopes[(slow,slope_days)];risk=False;out=[]
     for i,p in enumerate(close):
         valid=not np.isnan(ms[i]) and not np.isnan(slope[i]);bull=valid and p>=ms[i] and slope[i]>0
         if bull:risk=False;w=1.0
@@ -118,9 +113,16 @@ def simulate_bull(px,cfg,ctx,capital=1.0):
             elif valid and p<ms[i] and slope[i]<0:w=bear/100
             elif not np.isnan(mf[i]) and p<mf[i]:w=weak/100
             else:w=1.0
-        if i>0:wealth*=1+ret[i]*prev_w
-        vals.append(wealth);prev_w=w
-    return pd.Series(vals,index=px.index)
+        out.append(w)
+    return pd.Series(out,index=px.index,dtype=float)
+
+def simulate_staged(px,cfg,ctx,capital=1.0):
+    w=staged_weights(px,cfg,ctx).shift(1).fillna(1.0)
+    return capital*(1+px.pct_change().fillna(0)*w).cumprod()
+
+def simulate_bull(px,cfg,ctx,capital=1.0):
+    w=bull_weights(px,cfg,ctx).shift(1).fillna(1.0)
+    return capital*(1+px.pct_change().fillna(0)*w).cumprod()
 
 def scan_candidates(px,staged,bull,progress=None,label='후보 탐색'):
     ctx=context(px,staged,bull);rows=[];total=len(staged)+len(bull);done=0
@@ -149,28 +151,80 @@ def make_windows(px,train_days,test_days):
 
 def walk_forward_all(px,staged,bull,train_days,test_days,progress=None):
     windows=make_windows(px,train_days,test_days)
-    capitals={name:initial for name in PROFILES};parts={name:[] for name in PROFILES};details=[]
+    capitals={name:initial for name in PROFILES}
+    return_parts={name:[] for name in PROFILES}
+    details=[]
+
     for wi,(test_start,test_end) in enumerate(windows,1):
         train_start=test_start-pd.Timedelta(days=train_days)
         train=px[(px.index>=train_start)&(px.index<test_start)]
         test=px[(px.index>=test_start)&(px.index<=test_end)]
         scan,_=scan_candidates(train,staged,bull,None)
+
         for name,p in PROFILES.items():
             best=choose_from_scan(scan,p['mdd'])
             if best is None:continue
             _,_,engine,cfg=best
+
             history=px[(px.index>=train_start)&(px.index<=test_end)]
             hctx=context(history,[cfg] if engine=='기존 다단계' else [],[cfg] if engine=='강세장 보존' else [])
-            heq=simulate_staged(history,cfg,hctx,capitals[name]) if engine=='기존 다단계' else simulate_bull(history,cfg,hctx,capitals[name])
-            eq=heq.reindex(test.index).dropna();capitals[name]=float(eq.iloc[-1]);parts[name].append(eq)
-            _,oc,om=metrics(eq);bh=initial*test/test.iloc[0];_,bc,bm=metrics(bh)
-            details.append({'모드':name,'학습기간':f'{train.index[0].date()}~{train.index[-1].date()}','미래검증':f'{test.index[0].date()}~{test.index[-1].date()}','엔진':engine,'설정':str(cfg),'OOS CAGR(%)':oc,'OOS MDD(%)':om,'B&H CAGR(%)':bc,'B&H MDD(%)':bm,'손실구간':oc<0,'검증종료자산(원)':capitals[name]})
+            signal=staged_weights(history,cfg,hctx) if engine=='기존 다단계' else bull_weights(history,cfg,hctx)
+
+            # 전일 신호를 당일 수익률에 적용. 학습기간 수익은 절대 자산에 다시 누적하지 않는다.
+            applied_weight=signal.shift(1).fillna(1.0).reindex(test.index).fillna(1.0)
+            asset_ret=history.pct_change().reindex(test.index).fillna(0.0)
+            strategy_ret=(asset_ret*applied_weight).astype(float)
+
+            start_capital=capitals[name]
+            local_eq=start_capital*(1+strategy_ret).cumprod()
+            capitals[name]=float(local_eq.iloc[-1])
+            return_parts[name].append(strategy_ret)
+
+            # 구간 성과는 시작자산을 기준점으로 명시해 첫 거래일 수익률도 포함한다.
+            base_idx=train.index[-1]
+            local_metric_curve=pd.concat([
+                pd.Series([start_capital],index=[base_idx],dtype=float),
+                local_eq
+            ])
+            _,oc,om=metrics(local_metric_curve)
+
+            bh_ret=history.pct_change().reindex(test.index).fillna(0.0)
+            bh_local=initial*(1+bh_ret).cumprod()
+            bh_metric_curve=pd.concat([
+                pd.Series([initial],index=[base_idx],dtype=float),
+                bh_local
+            ])
+            _,bc,bm=metrics(bh_metric_curve)
+
+            details.append({
+                '모드':name,
+                '학습기간':f'{train.index[0].date()}~{train.index[-1].date()}',
+                '미래검증':f'{test.index[0].date()}~{test.index[-1].date()}',
+                '엔진':engine,
+                '설정':str(cfg),
+                'OOS CAGR(%)':oc,
+                'OOS MDD(%)':om,
+                'B&H CAGR(%)':bc,
+                'B&H MDD(%)':bm,
+                '손실구간':capitals[name]<start_capital,
+                '검증시작자산(원)':start_capital,
+                '검증종료자산(원)':capitals[name]
+            })
+
         if progress is not None:
             progress.progress(wi/max(len(windows),1),text=f'워크포워드: {wi}/{len(windows)} 구간 완료 ({wi/max(len(windows),1)*100:.0f}%)')
+
     curves={}
-    for name,plist in parts.items():
-        if plist:
-            s=pd.concat(plist);curves[name]=s[~s.index.duplicated(keep='first')]
+    for name,rlist in return_parts.items():
+        if not rlist:continue
+        r=pd.concat(rlist)
+        r=r[~r.index.duplicated(keep='first')].sort_index()
+        eq=initial*(1+r).cumprod()
+        first_idx=r.index[0]
+        prior=px.index[px.index<first_idx]
+        base_idx=prior[-1] if len(prior) else first_idx-pd.Timedelta(days=1)
+        curves[name]=pd.concat([pd.Series([initial],index=[base_idx],dtype=float),eq])
+
     return curves,pd.DataFrame(details)
 
 if st.button('🚀 3모드 OOS 실전 최적화 실행',type='primary',use_container_width=True):
@@ -204,12 +258,20 @@ if st.button('🚀 3모드 OOS 실전 최적화 실행',type='primary',use_conta
     for name,p in PROFILES.items():
         wf=curves.get(name,pd.Series(dtype=float));d=detail[detail['모드']==name] if not detail.empty else pd.DataFrame()
         if len(wf)<2 or d.empty:continue
-        ret,cagr,mdd=metrics(wf);losses=int(d['손실구간'].sum());n=len(d);wins=int((d['OOS CAGR(%)']>=d['B&H CAGR(%)']).sum());mddwins=int((d['OOS MDD(%)']>d['B&H MDD(%)']).sum())
+        ret,cagr,mdd=metrics(wf)
+        losses=int(d['손실구간'].sum());n=len(d)
+        wins=int((d['OOS CAGR(%)']>=d['B&H CAGR(%)']).sum())
+        mddwins=int((d['OOS MDD(%)']>d['B&H MDD(%)']).sum())
         summaries.append({'모드':name,'OOS CAGR(%)':cagr,'OOS MDD(%)':mdd,'손실구간':losses,'총구간':n,'B&H 대비 CAGR 우위':f'{wins}/{n}','MDD 개선구간':f'{mddwins}/{n}','최종자산(원)':wf.iloc[-1],'CAGR하한충족':cagr>=oos_cagr_floor,'모드MDD충족':mdd>=-p['mdd']})
     summary=pd.DataFrame(summaries)
     if summary.empty:st.warning('워크포워드 검증기간이 부족합니다.');st.stop()
     st.subheader('🏁 OOS 실전 후보 3종');st.dataframe(summary.round(2),use_container_width=True,hide_index=True);st.line_chart(pd.DataFrame(curves))
-    rank=summary.copy();rank['조건점수']=rank['CAGR하한충족'].astype(int)*2+rank['모드MDD충족'].astype(int)*2;rank=rank.sort_values(['조건점수','손실구간','OOS MDD(%)','OOS CAGR(%)'],ascending=[False,True,False,False]).reset_index(drop=True);best=rank.iloc[0]
-    st.subheader('🥇 실전 우선 후보');st.success(f"{best['모드']} · OOS CAGR {best['OOS CAGR(%)']:.1f}% · OOS MDD {best['OOS MDD(%)']:.1f}% · 손실 {int(best['손실구간'])}/{int(best['총구간'])} 구간")
+
+    rank=summary.copy()
+    rank['조건점수']=rank['CAGR하한충족'].astype(int)*2+rank['모드MDD충족'].astype(int)*2
+    rank=rank.sort_values(['조건점수','손실구간','OOS MDD(%)','OOS CAGR(%)'],ascending=[False,True,False,False]).reset_index(drop=True)
+    best=rank.iloc[0]
+    st.subheader('🥇 실전 우선 후보')
+    st.success(f"{best['모드']} · OOS CAGR {best['OOS CAGR(%)']:.1f}% · OOS MDD {best['OOS MDD(%)']:.1f}% · 손실 {int(best['손실구간'])}/{int(best['총구간'])} 구간")
     st.subheader('📋 구간별 Out-of-Sample 결과');st.dataframe(detail.round(2),use_container_width=True,hide_index=True)
     st.warning('과거 및 워크포워드 결과는 미래 수익을 보장하지 않습니다. 실제 거래비용·세금·추적오차를 반영하면 결과는 낮아질 수 있습니다.')
