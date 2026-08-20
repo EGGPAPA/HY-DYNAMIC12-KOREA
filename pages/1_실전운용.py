@@ -1,18 +1,25 @@
+import json
 import math
 from datetime import datetime
+from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
+import requests
 import streamlit as st
 import yfinance as yf
 
 st.set_page_config(page_title="실전운용 · ETF 매수/보유/매도", page_icon="💰", layout="wide")
 SEOUL = ZoneInfo("Asia/Seoul")
+DATA_DIR = Path("data")
+DATA_DIR.mkdir(exist_ok=True)
+KAKAO_STATE_FILE = DATA_DIR / "kakao_signal_state.json"
 
 ETF_MAP = {
     "TIGER 코리아TOP10": {"symbol": "292150.KS"},
     "KODEX200": {"symbol": "069500.KS"},
 }
+
 
 @st.cache_data(ttl=60, show_spinner=False)
 def get_history(symbol):
@@ -52,7 +59,6 @@ def analyze_signal(h):
     above160 = price > p160
     trend_ok = p40 > p160 and slope40 > 0 and slope160 >= 0
 
-    # 신규 매수자용 신호
     if not above160:
         buy_signal = "⏸️ 신규매수 대기"
         buy_action = "장기 추세가 아직 회복되지 않았습니다. 160일선 위로 올라오기 전에는 신규매수를 기다립니다."
@@ -74,7 +80,6 @@ def analyze_signal(h):
         buy_action = "160일선 위이지만 단기·장기 이동평균 정렬이 충분하지 않습니다. 추세 확인 후 진입합니다."
         buy_stage = 0
 
-    # 기존 보유자용 신호: 손익률/고정 손절이 아니라 추세 훼손 정도로 판단
     if price > p160:
         if price < p40 or slope40 <= 0:
             hold_signal = "🟢 보유"
@@ -118,6 +123,110 @@ def suggested_weight(stage):
     return 0.0
 
 
+def secret_value(name, default=""):
+    try:
+        value = st.secrets.get(name, default)
+        return str(value).strip() if value is not None else default
+    except Exception:
+        return default
+
+
+def kakao_config():
+    return {
+        "rest_api_key": secret_value("KAKAO_REST_API_KEY"),
+        "client_secret": secret_value("KAKAO_CLIENT_SECRET"),
+        "redirect_uri": secret_value("KAKAO_REDIRECT_URI"),
+        "refresh_token": secret_value("KAKAO_REFRESH_TOKEN"),
+    }
+
+
+def kakao_ready():
+    cfg = kakao_config()
+    return all(cfg[k] for k in ["rest_api_key", "client_secret", "refresh_token"])
+
+
+def kakao_access_token():
+    cfg = kakao_config()
+    if not kakao_ready():
+        return None, "Streamlit Secrets에 카카오 인증값이 부족합니다."
+    try:
+        response = requests.post(
+            "https://kauth.kakao.com/oauth/token",
+            data={
+                "grant_type": "refresh_token",
+                "client_id": cfg["rest_api_key"],
+                "refresh_token": cfg["refresh_token"],
+                "client_secret": cfg["client_secret"],
+            },
+            timeout=10,
+        )
+        data = response.json()
+        token = data.get("access_token")
+        if response.ok and token:
+            warning = ""
+            if data.get("refresh_token"):
+                warning = "카카오가 새 Refresh Token을 발급했습니다. 장기 운용을 위해 Streamlit Secrets의 KAKAO_REFRESH_TOKEN 갱신이 필요할 수 있습니다."
+            return token, warning
+        return None, data.get("error_description") or data.get("error") or f"HTTP {response.status_code}"
+    except Exception as e:
+        return None, f"토큰 갱신 오류: {type(e).__name__}"
+
+
+def send_kakao_message(text):
+    token, token_msg = kakao_access_token()
+    if not token:
+        return False, token_msg
+    cfg = kakao_config()
+    link_url = cfg["redirect_uri"] or "https://streamlit.io"
+    template = {
+        "object_type": "text",
+        "text": text,
+        "link": {"web_url": link_url, "mobile_web_url": link_url},
+        "button_title": "실전운용 보기",
+    }
+    try:
+        response = requests.post(
+            "https://kapi.kakao.com/v2/api/talk/memo/default/send",
+            headers={"Authorization": f"Bearer {token}"},
+            data={"template_object": json.dumps(template, ensure_ascii=False)},
+            timeout=10,
+        )
+        data = response.json()
+        if response.ok and data.get("result_code") == 0:
+            return True, token_msg or "카카오톡 전송 성공"
+        return False, data.get("msg") or data.get("message") or f"HTTP {response.status_code}"
+    except Exception as e:
+        return False, f"메시지 전송 오류: {type(e).__name__}"
+
+
+def load_signal_state():
+    try:
+        if KAKAO_STATE_FILE.exists():
+            return json.loads(KAKAO_STATE_FILE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+
+def save_signal_state(state):
+    try:
+        KAKAO_STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
+    except Exception:
+        pass
+
+
+def signal_message(etf_name, sig):
+    return (
+        f"[HY DYNAMIC12 실전신호]\n"
+        f"{etf_name}\n"
+        f"신규매수: {sig['buy_signal']}\n"
+        f"보유자: {sig['hold_signal']}\n"
+        f"현재가 {sig['price']:,.0f}원\n"
+        f"40일선 {sig['ma40']:,.0f}원 / 160일선 {sig['ma160']:,.0f}원\n"
+        f"40일선 기울기 {sig['slope40']:+.2f}% / 160일선 기울기 {sig['slope160']:+.2f}%"
+    )
+
+
 st.title("💰 실전운용 · ETF 매수/보유/매도")
 st.caption("손익·손절 기준이 아니라 40일선·160일선 추세로 신규매수자와 기존 보유자의 행동을 따로 판단합니다.")
 
@@ -154,6 +263,34 @@ with b2:
         st.warning(sig["hold_action"])
     else:
         st.success(sig["hold_action"])
+
+st.markdown("### 🔔 카카오 실전 알림")
+k1, k2, k3 = st.columns([1, 1, 1.4])
+k1.metric("카카오 연결", "준비됨" if kakao_ready() else "설정 필요")
+auto_kakao = k2.toggle("신호 변경 자동알림", value=True, disabled=not kakao_ready())
+if k3.button("📨 현재 신호 테스트 전송", use_container_width=True, disabled=not kakao_ready()):
+    ok, msg = send_kakao_message("[HY DYNAMIC12 테스트]\n카카오 실전 알림 연결이 정상입니다.\n\n" + signal_message(etf_name, sig))
+    if ok:
+        st.success(msg)
+    else:
+        st.error(msg)
+
+state = load_signal_state()
+current_key = f"{sig['buy_signal']}|{sig['hold_signal']}"
+previous_key = state.get(etf_name)
+if auto_kakao and kakao_ready():
+    if previous_key is None:
+        state[etf_name] = current_key
+        save_signal_state(state)
+        st.caption("자동알림 기준 신호를 저장했습니다. 다음부터 신호가 바뀔 때만 카카오톡을 보냅니다.")
+    elif previous_key != current_key:
+        ok, msg = send_kakao_message("🔔 ETF 실전 신호 변경\n\n" + signal_message(etf_name, sig))
+        if ok:
+            state[etf_name] = current_key
+            save_signal_state(state)
+            st.success("카카오톡으로 신호 변경 알림을 보냈습니다.")
+        else:
+            st.warning(f"카카오 자동알림 전송 실패: {msg}")
 
 st.markdown("### 판단 기준")
 criteria = pd.DataFrame([
@@ -228,5 +365,6 @@ st.line_chart(chart.tail(220))
 
 st.divider()
 st.caption("이 페이지는 고정 익절·손절률을 사용하지 않습니다. 매수·보유·비중축소·매도를 모두 40일선/160일선 추세로 판단합니다.")
+st.caption("카카오 자동알림은 앱이 실행되어 신호를 계산할 때 작동합니다. 백그라운드 상시감시는 별도의 스케줄러가 필요합니다.")
 st.caption("실제 주문은 자동 전송하지 않으며, 체결가는 증권사 호가와 다를 수 있습니다.")
 st.caption(f"계산시각: {datetime.now(SEOUL).strftime('%Y-%m-%d %H:%M:%S KST')}")
