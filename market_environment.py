@@ -22,6 +22,23 @@ SECTOR_ETFS = {
     "헬스케어": "143860.KS",
     "2차전지": "305720.KS",
 }
+SECTOR_STOCKS = {
+    "반도체": {
+        "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "042700.KS": "한미반도체",
+    },
+    "자동차": {
+        "005380.KS": "현대차", "000270.KS": "기아", "012330.KS": "현대모비스",
+    },
+    "금융": {
+        "105560.KS": "KB금융", "055550.KS": "신한지주", "086790.KS": "하나금융지주",
+    },
+    "헬스케어": {
+        "207940.KS": "삼성바이오로직스", "068270.KS": "셀트리온", "196170.KQ": "알테오젠",
+    },
+    "2차전지": {
+        "373220.KS": "LG에너지솔루션", "006400.KS": "삼성SDI", "247540.KQ": "에코프로비엠",
+    },
+}
 BREADTH_SAMPLE = {
     "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "005380.KS": "현대차",
     "000270.KS": "기아", "105560.KS": "KB금융", "055550.KS": "신한지주",
@@ -197,6 +214,50 @@ def _sector_strength():
         if change20 is not None:
             rows.append({"업종": name, "20일 수익률(%)": round(change20, 2)})
     return pd.DataFrame(rows).sort_values("20일 수익률(%)", ascending=False) if rows else pd.DataFrame()
+
+
+@st.cache_data(ttl=1800, show_spinner=False)
+def _sector_stock_candidates():
+    rows = []
+    for sector, members in SECTOR_STOCKS.items():
+        for symbol, name in members.items():
+            frame = _history(symbol, "6mo")
+            if frame.empty:
+                continue
+            close = pd.to_numeric(frame["Close"], errors="coerce").dropna()
+            volume = pd.to_numeric(frame.get("Volume"), errors="coerce").dropna()
+            if len(close) < 61:
+                continue
+            price = float(close.iloc[-1])
+            ret20 = (price / float(close.iloc[-21]) - 1) * 100
+            ret60 = (price / float(close.iloc[-61]) - 1) * 100
+            ma20 = float(close.tail(20).mean())
+            ma60 = float(close.tail(60).mean())
+            gap20 = (price / ma20 - 1) * 100 if ma20 else 0
+            volume_ratio = None
+            if len(volume) >= 20 and float(volume.tail(20).mean()) > 0:
+                volume_ratio = float(volume.tail(5).mean() / volume.tail(20).mean())
+            trend_score = float(np.clip(
+                50 + ret20 * 1.8 + ret60 * .55 + gap20 * 1.1
+                + (8 if price > ma20 > ma60 else 3 if price > ma60 else -10),
+                0, 100,
+            ))
+            if price > ma20 > ma60 and ret20 >= 5:
+                trend = "🟢 강한 상승"
+            elif price > ma60 and ret20 > 0:
+                trend = "🔵 상승"
+            elif price > ma60:
+                trend = "⚪ 중립"
+            else:
+                trend = "🟡 약세"
+            rows.append({
+                "업종": sector, "종목": name, "종목코드": symbol.split(".")[0],
+                "현재가(원)": round(price), "20일 수익률(%)": round(ret20, 2),
+                "60일 수익률(%)": round(ret60, 2), "20일선 대비(%)": round(gap20, 2),
+                "거래량 배수": round(volume_ratio, 2) if volume_ratio is not None else None,
+                "종목 추세점수": round(trend_score), "종목 추세": trend,
+            })
+    return pd.DataFrame(rows)
 
 
 def _export_history():
@@ -383,6 +444,58 @@ def render_market_environment(market_is_open=False):
         sector_view = sectors.copy()
         sector_view["평가"] = sector_view["20일 수익률(%)"].map(lambda value: "🟢 강세" if value >= 3 else "🔵 중립" if value >= -3 else "🟡 약세")
         right.dataframe(sector_view, use_container_width=True, hide_index=True)
+
+        candidates = _sector_stock_candidates()
+        if not candidates.empty:
+            sector_returns = sectors.set_index("업종")["20일 수익률(%)"].to_dict()
+            candidates["업종 강도점수"] = candidates["업종"].map(
+                lambda name: round(float(np.clip(50 + sector_returns.get(name, 0) * 4, 0, 100)))
+            )
+            candidates["종합 주도점수"] = (
+                candidates["종목 추세점수"] * .7 + candidates["업종 강도점수"] * .3
+            ).round().astype(int)
+            candidates["종합 평가"] = candidates["종합 주도점수"].map(_grade)
+            candidates = candidates.sort_values(
+                ["업종", "종합 주도점수"], ascending=[True, False]
+            )
+            candidates["업종내 순위"] = candidates.groupby("업종").cumcount() + 1
+
+            st.markdown("### 업종별 대표 종목")
+            st.caption("업종 ETF 강도 30%와 개별종목 추세 70%를 합산합니다. 업종이 약하면 개별종목 점수도 보수적으로 평가합니다.")
+            summary_rows = []
+            for sector in sectors["업종"]:
+                group = candidates[candidates["업종"] == sector].head(3)
+                if group.empty:
+                    continue
+                names = group.apply(
+                    lambda row: f"{row['종목']} {row['종합 주도점수']}점", axis=1
+                ).tolist()
+                summary_rows.append({
+                    "업종": sector,
+                    "업종 20일(%)": round(sector_returns.get(sector, 0), 2),
+                    "업종 평가": "🟢 강세" if sector_returns.get(sector, 0) >= 3 else "🔵 중립" if sector_returns.get(sector, 0) >= -3 else "🟡 약세",
+                    "대표 1": names[0] if len(names) > 0 else "-",
+                    "대표 2": names[1] if len(names) > 1 else "-",
+                    "대표 3": names[2] if len(names) > 2 else "-",
+                })
+            st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+
+            with st.expander("대표 종목 상세 평가 보기", expanded=True):
+                detail_columns = [
+                    "업종", "업종내 순위", "종목", "종목코드", "현재가(원)",
+                    "20일 수익률(%)", "60일 수익률(%)", "20일선 대비(%)",
+                    "거래량 배수", "종목 추세", "종합 주도점수", "종합 평가",
+                ]
+                st.dataframe(
+                    candidates[detail_columns], use_container_width=True, hide_index=True,
+                    column_config={
+                        "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "종합 주도점수": st.column_config.ProgressColumn(
+                            "종합 주도점수", min_value=0, max_value=100, format="%d"
+                        ),
+                    },
+                )
+                st.info("대표 종목은 업종 비교를 위한 관찰 후보입니다. 종목의 실적·공시·과열 여부를 확인한 뒤 TOP12 분석과 함께 사용하세요.")
 
     st.markdown("### KOSPI와 한국 수출")
     exports = _export_history()
