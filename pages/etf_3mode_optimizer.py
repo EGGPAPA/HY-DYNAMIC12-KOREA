@@ -178,6 +178,53 @@ def stability_validate(px,staged,bull,cagr_floor,mdd_target,progress=None,with_c
         if progress is not None:progress.progress(i/len(combos),text=f'안정성 검증 {i}/{len(combos)} 조합')
     return pd.DataFrame(rows)
 
+# --- 월봉 5개월선 3년 백테스트 ---
+def _monthly_from_daily(px):
+    if px is None or px.empty:return pd.Series(dtype=float)
+    m=px.resample('ME').last().dropna()
+    return m
+
+def _ma5_bt_rows(monthly,rising_only=False):
+    c=pd.to_numeric(monthly,errors='coerce').dropna();ma=c.rolling(5).mean();rows=[]
+    for i in range(5,len(c)):
+        if pd.isna(ma.iloc[i-1]) or pd.isna(ma.iloc[i]):continue
+        br=c.iloc[i-1]<=ma.iloc[i-1] and c.iloc[i]>ma.iloc[i]
+        slope=(ma.iloc[i]/ma.iloc[i-1]-1)*100 if ma.iloc[i-1] else 0
+        if not br or (rising_only and slope<=0):continue
+        entry=float(c.iloc[i]);future=c.iloc[i+1:min(i+13,len(c))]
+        max_ret=(float(future.max())/entry-1)*100 if not future.empty else np.nan
+        min_ret=(float(future.min())/entry-1)*100 if not future.empty else np.nan
+        row={'돌파월':str(c.index[i].date())[:7],'매수가':round(entry),'5개월선':round(float(ma.iloc[i])),'기울기(%)':round(float(slope),2),'최고수익률(%)':max_ret,'최대하락률(%)':min_ret,'+10%도달':bool(pd.notna(max_ret) and max_ret>=10),'+20%도달':bool(pd.notna(max_ret) and max_ret>=20)}
+        for n in (1,3,6,12):
+            j=i+n;row[f'{n}개월수익률(%)']=(float(c.iloc[j])/entry-1)*100 if j<len(c) else np.nan
+        rows.append(row)
+    return pd.DataFrame(rows)
+
+def _ma5_summary(bt,label):
+    if bt.empty:return {'전략':label,'신호수':0}
+    r={'전략':label,'신호수':len(bt)}
+    for n in (1,3,6,12):
+        s=pd.to_numeric(bt[f'{n}개월수익률(%)'],errors='coerce').dropna();r[f'{n}개월승률(%)']=round(s.gt(0).mean()*100,1) if len(s) else np.nan;r[f'{n}개월평균(%)']=round(s.mean(),2) if len(s) else np.nan;r[f'{n}개월중앙값(%)']=round(s.median(),2) if len(s) else np.nan
+    r['+10%도달률(%)']=round(bt['+10%도달'].mean()*100,1);r['+20%도달률(%)']=round(bt['+20%도달'].mean()*100,1);r['평균최대하락(%)']=round(pd.to_numeric(bt['최대하락률(%)'],errors='coerce').mean(),2)
+    return r
+
+def render_ma5_etf_backtest():
+    st.divider();st.header('📈 ETF 월봉 5개월선 · 3년 백테스트')
+    st.caption('선택 ETF를 최근 3년 월봉으로 검증합니다. 평균뿐 아니라 중앙값·최대하락·+10/+20% 도달률까지 함께 봅니다.')
+    ticker='292150.KS' if etf.startswith('TIGER') else '069500.KS';bt_end=pd.Timestamp(end);bt_start=bt_end-pd.DateOffset(years=3,months=6);px3=load_price(ticker,bt_start.date(),bt_end.date());monthly=_monthly_from_daily(px3)
+    if len(monthly)<18:st.warning('3년 백테스트에 필요한 월봉 데이터가 부족합니다.');return
+    simple=_ma5_bt_rows(monthly,False);rising=_ma5_bt_rows(monthly,True);summary=pd.DataFrame([_ma5_summary(simple,'단순 5개월선 돌파'),_ma5_summary(rising,'돌파 + 5개월선 상승')])
+    st.subheader('전략 성과 비교');st.dataframe(summary,use_container_width=True,hide_index=True)
+    detail=rising if not rising.empty else simple
+    st.subheader('과거 돌파 기록')
+    if detail.empty:st.info('최근 3년 동안 조건에 맞는 돌파 신호가 없습니다.')
+    else:
+        cfg={'매수가':st.column_config.NumberColumn('매수가',format='%d원'),'5개월선':st.column_config.NumberColumn('5개월선',format='%d원')};st.dataframe(detail.round(2),use_container_width=True,hide_index=True,column_config=cfg)
+        if pd.to_numeric(detail['12개월수익률(%)'],errors='coerce').dropna().abs().max()>300:st.warning('⚠️ 12개월 수익률 300% 초과 값이 있습니다. 액면분할·데이터 보정 여부를 반드시 재확인하세요.')
+    st.info('핵심: 평균수익률이 한 종목/한 구간에 끌려가지 않는지 중앙값을 함께 확인하고, 상승 중인 5개월선 조건이 단순 돌파보다 실제로 개선되는지 비교하세요.')
+
+render_ma5_etf_backtest()
+
 if st.button('🚀 OOS + 안정성 + 실전 스트레스 검증 실행',type='primary',use_container_width=True):
     ticker='292150.KS' if etf.startswith('TIGER') else '069500.KS';bar=st.progress(0,text='가격 데이터 불러오는 중...');status=st.empty();px=load_price(ticker,start,end)
     if len(px)<205:bar.empty();st.error('가격 데이터가 부족합니다.');st.stop()
