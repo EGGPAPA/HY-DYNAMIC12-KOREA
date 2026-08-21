@@ -196,7 +196,8 @@ def _export_history():
 def _risk_summary(breadth, usd_change, vix, vix_change, kospi_change, kosdaq_change, flow):
     score = 50
     reasons = []
-    if breadth:
+    valid_breadth = bool(breadth and breadth.get("rising", 0) + breadth.get("falling", 0) > 0)
+    if valid_breadth:
         if breadth["ratio"] >= 60:
             score -= 12
             reasons.append("상승 종목 확산")
@@ -273,11 +274,12 @@ def render_market_environment(market_is_open=False):
 
     st.markdown("### 시장 내부 건강도")
     b1, b2, b3, b4 = st.columns(4)
-    b1.metric("상승 종목 비율", f"{breadth.get('ratio', 0):.1f}%" if breadth else "자료 없음")
-    b2.metric("상승 / 하락", f"{breadth.get('rising', 0):,} / {breadth.get('falling', 0):,}" if breadth else "자료 없음")
+    valid_breadth = bool(breadth and breadth.get("rising", 0) + breadth.get("falling", 0) > 0)
+    b1.metric("상승 종목 비율", f"{breadth.get('ratio', 0):.1f}%" if valid_breadth else "자료 없음")
+    b2.metric("상승 / 하락", f"{breadth.get('rising', 0):,} / {breadth.get('falling', 0):,}" if valid_breadth else "자료 없음")
     b3.metric("KOSPI 20일", f"{kospi20:+.1f}%" if kospi20 is not None else "자료 없음")
     b4.metric("KOSDAQ 20일", f"{kosdaq20:+.1f}%" if kosdaq20 is not None else "자료 없음")
-    if breadth:
+    if valid_breadth:
         source = breadth.get("source", "KRX KOSPI·KOSDAQ 전체 종목")
         st.caption(f"시장 폭 기준일: {breadth['date']} · {source} · 상승 종목 비율은 보합을 제외해 계산")
 
