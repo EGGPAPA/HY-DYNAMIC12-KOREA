@@ -250,12 +250,33 @@ def _sector_stock_candidates():
                 trend = "⚪ 중립"
             else:
                 trend = "🟡 약세"
+            if gap20 >= 12:
+                entry_timing = "⏸️ 과열·추격금지"
+                entry_reason = "20일선 이격 12% 이상 · 20일선 부근 눌림을 기다림"
+            elif gap20 >= 6:
+                entry_timing = "🟡 눌림 대기"
+                entry_reason = "20일선 이격 6% 이상 · 현재가 추격보다 조정 대기"
+            elif price >= ma20 and price > ma60 and (volume_ratio is None or volume_ratio >= .8):
+                entry_timing = "🟢 1차 분할매수 검토"
+                entry_reason = "20일선 위 0~6% · 중기 추세와 거래량 조건 양호"
+            elif price < ma20 and price > ma60:
+                entry_timing = "🔵 20일선 회복 확인"
+                entry_reason = "60일선 위 조정 · 종가 기준 20일선 재돌파 확인"
+            else:
+                entry_timing = "⚪ 관망"
+                entry_reason = "60일선 추세 또는 거래량 조건 미충족"
+            first_watch = ma20 * 1.02
+            second_watch = max(ma60 * 1.02, ma20 * .96)
+            invalidation = ma60 * .97
             rows.append({
                 "업종": sector, "종목": name, "종목코드": symbol.split(".")[0],
                 "현재가(원)": round(price), "20일 수익률(%)": round(ret20, 2),
                 "60일 수익률(%)": round(ret60, 2), "20일선 대비(%)": round(gap20, 2),
                 "거래량 배수": round(volume_ratio, 2) if volume_ratio is not None else None,
                 "종목 추세점수": round(trend_score), "종목 추세": trend,
+                "매수시기": entry_timing, "매수시기 근거": entry_reason,
+                "1차 관찰가(원)": round(first_watch), "2차 관찰가(원)": round(second_watch),
+                "추세 무효선(원)": round(invalidation),
             })
     return pd.DataFrame(rows)
 
@@ -491,17 +512,24 @@ def render_market_environment(market_is_open=False):
                 strong = pd.concat([strong.reset_index(drop=True), links.reset_index(drop=True)], axis=1)
                 st.markdown("### 🟢 강한 상승 종목 모아보기")
                 st.caption("강한 상승은 가격·업종 모멘텀 평가이며 TOP12는 수급·유동성·펀더멘털까지 보는 별도 평가입니다. 두 조건이 겹치면 관심 우선순위를 높입니다.")
+                timing_counts = strong["매수시기"].value_counts()
+                timing_text = " · ".join(f"{name} {count}개" for name, count in timing_counts.items())
+                st.info("매수시기 요약 · " + timing_text)
                 st.dataframe(
                     strong[[
                         "관심 등급", "종목", "업종", "TOP12", "TOP12 판정",
-                        "현재가(원)", "20일 수익률(%)", "60일 수익률(%)",
+                        "매수시기", "현재가(원)", "1차 관찰가(원)", "2차 관찰가(원)",
+                        "추세 무효선(원)", "20일 수익률(%)", "60일 수익률(%)",
                         "20일선 대비(%)", "거래량 배수", "종합 주도점수",
-                        "종합 평가", "관심 이유",
+                        "종합 평가", "매수시기 근거", "관심 이유",
                     ]],
                     use_container_width=True,
                     hide_index=True,
                     column_config={
                         "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "1차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "2차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "추세 무효선(원)": st.column_config.NumberColumn(format="%,d원"),
                         "종합 주도점수": st.column_config.ProgressColumn(
                             "종합 주도점수", min_value=0, max_value=100, format="%d"
                         ),
@@ -543,6 +571,7 @@ def render_market_environment(market_is_open=False):
             with st.expander("대표 종목 상세 평가 보기 · 추세순 정렬", expanded=True):
                 detail_columns = [
                     "업종", "업종내 순위", "종목", "종목코드", "현재가(원)",
+                    "매수시기", "1차 관찰가(원)", "2차 관찰가(원)", "추세 무효선(원)",
                     "20일 수익률(%)", "60일 수익률(%)", "20일선 대비(%)",
                     "거래량 배수", "종목 추세", "종합 주도점수", "종합 평가",
                 ]
@@ -550,6 +579,9 @@ def render_market_environment(market_is_open=False):
                     candidates[detail_columns], use_container_width=True, hide_index=True,
                     column_config={
                         "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "1차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "2차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "추세 무효선(원)": st.column_config.NumberColumn(format="%,d원"),
                         "종합 주도점수": st.column_config.ProgressColumn(
                             "종합 주도점수", min_value=0, max_value=100, format="%d"
                         ),
