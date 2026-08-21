@@ -7,7 +7,9 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import yfinance as yf
-from korea_holdings_ui import install_holdings_tab
+from korea_holdings_ui import render_holdings_tab
+from monthly_ma5_ui import render_monthly_ma5_tab
+from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 
 try:
     from pykrx import stock
@@ -17,7 +19,6 @@ except Exception:
     PYKRX_OK = False
 
 st.set_page_config(page_title="HY DYNAMIC12 · 한국주식 실전선별", page_icon="🇰🇷", layout="wide")
-install_holdings_tab()
 
 SEOUL = ZoneInfo("Asia/Seoul")
 DATA_DIR = Path("data")
@@ -394,8 +395,9 @@ def apply_relative(rows, regime):
 
 st.title("🇰🇷 HY DYNAMIC12 · 한국주식 실전선별")
 st.caption("개별주식 후보를 찾는 화면입니다. ETF 매수·보유·매도 판단은 왼쪽 '실전운용'에서 별도로 관리합니다.")
+st.info("① 시장 데이터 확인 → ② 전체시장 자동분석 → ③ TOP12 검토 → ④ 매수 후 보유종목 기록")
 
-tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12"])
+tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🔥 5개월선 돌파", "📈 전략검증", "💼 보유종목"])
 
 with tabs[0]:
     regime = kospi_regime()
@@ -419,6 +421,11 @@ with tabs[0]:
             st.line_chart(chart)
         else:
             st.line_chart(m[["KOSPI YoY"]])
+        latest_price_date = pd.Timestamp(kd.index[-1]).strftime("%Y-%m-%d")
+        export_date = exp["date"].max().strftime("%Y-%m-%d") if not exp.empty else "자료 없음"
+        st.caption(f"가격: Yahoo Finance 조정주가 · 최근 가격 {latest_price_date} · 수출자료 최근 {export_date} · 화면 갱신 {datetime.now(SEOUL):%Y-%m-%d %H:%M KST}")
+    else:
+        st.error("KOSPI 가격 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
 
 with tabs[1]:
     st.subheader("🔎 KOSPI + KOSDAQ 전체시장 분석")
@@ -428,6 +435,8 @@ with tabs[1]:
         if universe.empty:
             st.error("KOSPI/KOSDAQ 종목목록을 가져오지 못했습니다.")
         else:
+            if len(universe) < 100:
+                st.warning(f"전체시장 종목목록이 아니라 비상 후보군 {len(universe):,}개를 사용합니다. KRX 연결 상태를 확인하세요.")
             flow_map, flow_auto_ok, flow_msg = get_auto_flow()
             st.write(f"종목목록: **{len(universe):,}개** · {uni_source}")
             st.write(f"수급: **{flow_msg}**")
@@ -442,6 +451,8 @@ with tabs[1]:
                 st.session_state["candidate_count"] = min(DEEP_CANDIDATE_COUNT, len(screen))
                 st.session_state["flow_auto_ok"] = flow_auto_ok
                 st.session_state["flow_msg"] = flow_msg
+                st.session_state["analysis_at"] = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
+                st.session_state["universe_source"] = uni_source
                 st.write(f"전체 적격종목 **{len(screen):,}개** → 정밀분석 후보 **{min(DEEP_CANDIDATE_COUNT, len(screen))}개**")
                 with st.spinner("상위 후보 정밀분석 중..."):
                     rows = deep_analyze(screen)
@@ -468,6 +479,7 @@ with tabs[2]:
     if not rows:
         st.info("먼저 '전체시장 분석'에서 자동분석을 실행하세요.")
     else:
+        st.caption(f"분석 기준시각: {st.session_state.get('analysis_at', '확인 불가')} · 종목목록: {st.session_state.get('universe_source', '확인 불가')} · 가격: Yahoo Finance 조정주가")
         top = rows[:FINAL_TOP_N]
         display = pd.DataFrame([
             {
@@ -504,4 +516,15 @@ with tabs[2]:
                 for r in active[:3]
             ]), use_container_width=True, hide_index=True)
 
+with tabs[3]:
+    render_monthly_ma5_tab()
+
+with tabs[4]:
+    universe, _ = get_full_universe()
+    render_individual_stock_ma5_backtest(universe)
+
+with tabs[5]:
+    render_holdings_tab()
+
 st.caption("역할 분리: 실전운용=ETF 매매 판단 · app=개별주식 TOP12 선별 · 보유종목=실제 체결/평균단가/수익률 · 전략검증=백테스트/OOS")
+
