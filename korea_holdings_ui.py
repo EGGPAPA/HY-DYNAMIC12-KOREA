@@ -78,15 +78,30 @@ def yf_symbol(code, market):
 
 @st.cache_data(ttl=60, show_spinner=False)
 def get_current_price(code, market):
+    """Yahoo Finance의 가능한 최신 가격을 가져오고, 실패하면 최근 종가로 폴백합니다."""
     symbol = yf_symbol(code, market)
     try:
-        h = yf.Ticker(symbol).history(period="5d", auto_adjust=False)
+        ticker = yf.Ticker(symbol)
+        try:
+            fi = ticker.fast_info
+            for key in ("last_price", "regular_market_price", "previous_close"):
+                try:
+                    value = fi.get(key) if hasattr(fi, "get") else getattr(fi, key, None)
+                    if value is not None and float(value) > 0:
+                        return float(value)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+
+        h = ticker.history(period="5d", interval="1d", auto_adjust=False)
         if h is not None and not h.empty and "Close" in h.columns:
             s = pd.to_numeric(h["Close"], errors="coerce").dropna()
             if not s.empty:
                 return float(s.iloc[-1])
     except Exception:
         pass
+
     try:
         d = yf.download(symbol, period="5d", auto_adjust=False, progress=False, threads=False)
         if d is not None and not d.empty:
@@ -143,7 +158,7 @@ def calc_position(purchases):
 
 def render_holdings_tab():
     st.subheader("💼 보유종목 관리")
-    st.caption("여러 번 매수한 체결내역을 누적 저장하고, 가중평균 매수가와 현재 수익률을 자동 계산합니다.")
+    st.caption("여러 번 매수한 실제 체결내역을 누적하고, 가중평균 매수가·현재가·평가손익·현재 수익률을 자동 계산합니다.")
 
     try:
         holdings, holdings_sha = load_holdings()
@@ -156,29 +171,32 @@ def render_holdings_tab():
     c1, c2, c3 = st.columns(3)
     c1.metric("보유종목", len(active))
     c2.metric("GitHub 저장", "준비됨" if github_pat() else "PAT 미설정")
-    c3.metric("카카오 감시", "연결 준비")
+    c3.metric("시세 갱신", "60초")
 
     if active:
         view = []
         price_map = {}
         total_cost_all = 0.0
         total_value_all = 0.0
+        priced_cost_all = 0.0
 
         for r in active:
             purchases = normalized_purchases(r)
             qty, total_cost, avg = calc_position(purchases)
             market = r.get("market", "KOSPI")
             current = get_current_price(r.get("ticker", ""), market)
-            price_map[str(r.get("ticker", "")).zfill(6)] = current
+            code = str(r.get("ticker", "")).zfill(6)
+            price_map[code] = current
             value = current * qty if current is not None else None
             pnl = value - total_cost if value is not None else None
             return_pct = (pnl / total_cost * 100) if pnl is not None and total_cost > 0 else None
             total_cost_all += total_cost
             if value is not None:
                 total_value_all += value
+                priced_cost_all += total_cost
 
             view.append({
-                "종목코드": str(r.get("ticker", "")).zfill(6),
+                "종목코드": code,
                 "종목명": r.get("name", ""),
                 "시장": market,
                 "매수횟수": len(purchases),
@@ -189,21 +207,27 @@ def render_holdings_tab():
                 "평가금액(원)": round(value) if value is not None else None,
                 "평가손익(원)": round(pnl) if pnl is not None else None,
                 "현재수익률(%)": round(return_pct, 2) if return_pct is not None else None,
-                "손절(-3%)": round(avg * 0.97),
-                "+15%": round(avg * 1.15),
-                "+20%": round(avg * 1.20),
-                "+25%": round(avg * 1.25),
             })
 
-        if total_cost_all > 0 and total_value_all > 0:
-            p1, p2, p3 = st.columns(3)
-            total_pnl = total_value_all - total_cost_all
-            total_ret = total_pnl / total_cost_all * 100
-            p1.metric("총 매수금액", f"{total_cost_all:,.0f}원")
-            p2.metric("현재 평가금액", f"{total_value_all:,.0f}원")
-            p3.metric("전체 수익률", f"{total_ret:+.2f}%", f"{total_pnl:+,.0f}원")
+        p1, p2, p3, p4 = st.columns(4)
+        total_pnl = total_value_all - priced_cost_all if priced_cost_all > 0 else 0.0
+        total_ret = total_pnl / priced_cost_all * 100 if priced_cost_all > 0 else 0.0
+        p1.metric("총 매수금액", f"{total_cost_all:,.0f}원")
+        p2.metric("현재 평가금액", f"{total_value_all:,.0f}원")
+        p3.metric("총 평가손익", f"{total_pnl:+,.0f}원")
+        p4.metric("전체 수익률", f"{total_ret:+.2f}%")
 
-        st.dataframe(pd.DataFrame(view), use_container_width=True, hide_index=True)
+        st.dataframe(
+            pd.DataFrame(view),
+            use_container_width=True,
+            hide_index=True,
+            column_config={
+                "현재수익률(%)": st.column_config.NumberColumn(format="%+.2f%%"),
+                "평가손익(원)": st.column_config.NumberColumn(format="%+,d원"),
+                "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+            },
+        )
+        st.caption(f"시세 기준: Yahoo Finance · 약 60초 캐시 · 화면 계산시각 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
 
         st.markdown("### 매수 체결내역")
         for r in active:
@@ -213,8 +237,10 @@ def render_holdings_tab():
             current = price_map.get(code)
             ret = ((current / avg) - 1) * 100 if current is not None and avg > 0 else None
             label = f"{code} {r.get('name','')} · {len(purchases)}회 매수 · 평균 {avg:,.0f}원"
+            if current is not None:
+                label += f" · 현재가 {current:,.0f}원"
             if ret is not None:
-                label += f" · 현재 {ret:+.2f}%"
+                label += f" · 수익률 {ret:+.2f}%"
             with st.expander(label):
                 hist = []
                 cum_qty = 0.0
@@ -277,14 +303,12 @@ def render_holdings_tab():
                         "average_price": round(new_avg, 4),
                         "quantity": round(new_qty, 6),
                         "purchases": purchases,
-                        "stop_loss_pct": 3,
                         "enabled": True,
                         "updated_at": now,
                     })
                     msg = f"Add Korea holding {code}"
                 else:
                     purchases = normalized_purchases(old)
-                    # 기존 레거시 보유분도 최초 1회 매수로 보존한 뒤 새 체결을 추가
                     purchases.append(new_trade)
                     new_qty, total_cost, new_avg = calc_position(purchases)
                     old.update({
@@ -295,10 +319,10 @@ def render_holdings_tab():
                         "average_price": round(new_avg, 4),
                         "quantity": round(new_qty, 6),
                         "purchases": purchases,
-                        "stop_loss_pct": float(old.get("stop_loss_pct", 3) or 3),
                         "enabled": True,
                         "updated_at": now,
                     })
+                    old.pop("stop_loss_pct", None)
                     holdings[idx] = old
                     msg = f"Update Korea holding {code}"
 
@@ -316,7 +340,7 @@ def render_holdings_tab():
     active_codes = [str(x.get("ticker", "")).zfill(6) for x in active if x.get("ticker")]
     if active_codes:
         close_code = st.selectbox("전량 매도할 종목", active_codes, key="kr_hold_close_code")
-        if st.button("✅ 전량 매도 → 감시 종료", use_container_width=True, key="kr_hold_close_btn"):
+        if st.button("✅ 전량 매도 → 보유종목에서 종료", use_container_width=True, key="kr_hold_close_btn"):
             try:
                 holdings, holdings_sha = load_holdings()
                 idx, old = find_active(holdings, close_code)
@@ -328,14 +352,14 @@ def render_holdings_tab():
                     old["closed_at"] = datetime.now(timezone.utc).isoformat()
                     holdings[idx] = old
                     save_holdings(holdings, holdings_sha, f"Close Korea holding {close_code}")
-                    st.success(f"{close_code} 전량 매도 처리 완료 · 자동감시 종료")
+                    st.success(f"{close_code} 전량 매도 처리 완료")
                     st.rerun()
             except Exception as e:
                 st.error(str(e))
     else:
         st.caption("전량 매도 처리할 보유종목이 없습니다.")
 
-    st.info("추가매수는 체결 건별로 저장되며 평균매수가는 가중평균으로 재계산합니다. 현재가는 Yahoo Finance 최근 종가 기준이며 장중 실시간 체결가와 차이가 날 수 있습니다.")
+    st.info("추가매수는 체결 건별로 저장되며 평균매수가는 가중평균으로 재계산합니다. 현재가는 Yahoo Finance의 가능한 최신 가격을 사용하고, 불가하면 최근 종가로 대체합니다.")
 
 
 def install_holdings_tab():
