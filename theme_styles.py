@@ -7,20 +7,23 @@ def inject_theme():
         """
         <style>
         :root {
-            --hy-navy: #12304a;
-            --hy-blue: #2474e5;
-            --hy-mint: #20b486;
-            --hy-sky: #eaf5ff;
-            --hy-surface: #ffffff;
-            --hy-border: #dce8f1;
+            --hy-navy: #263746;
+            --hy-blue: #2f6f7e;
+            --hy-mint: #3f8878;
+            --hy-sky: #e2e8f0;
+            --hy-surface: #f8fafc;
+            --hy-border: #cbd5df;
+        }
+        html, body, [class*="css"], .stApp, button, input, select, textarea {
+            font-family: "Pretendard", "SUIT", "Noto Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", sans-serif !important;
         }
         .stApp {
             background:
-                radial-gradient(circle at 92% 2%, rgba(44, 180, 160, .12), transparent 24rem),
-                linear-gradient(180deg, #f7fbff 0%, #ffffff 34rem);
+                radial-gradient(circle at 92% 2%, rgba(63, 136, 120, .09), transparent 24rem),
+                linear-gradient(180deg, #e9eef3 0%, #f1f4f7 34rem);
         }
         [data-testid="stSidebar"] {
-            background: linear-gradient(180deg, #eef8ff 0%, #f8fcff 62%, #f0fbf7 100%);
+            background: linear-gradient(180deg, #dde5ec 0%, #e7ecf1 62%, #e0e9e7 100%);
             border-right: 1px solid var(--hy-border);
         }
         [data-testid="stSidebarNav"] a {
@@ -30,7 +33,7 @@ def inject_theme():
             transition: background .15s ease, transform .15s ease;
         }
         [data-testid="stSidebarNav"] a:hover {
-            background: #dff2ff;
+            background: #cedce3;
             transform: translateX(2px);
         }
         .block-container {
@@ -38,20 +41,20 @@ def inject_theme():
             padding-top: 2.2rem;
             padding-bottom: 4rem;
         }
-        h1, h2, h3 { color: var(--hy-navy); letter-spacing: -.025em; }
-        h1 { font-weight: 800; }
+        h1, h2, h3 { color: var(--hy-navy); letter-spacing: -.035em; }
+        h1 { font-weight: 750; }
         [data-testid="stMetric"] {
-            background: rgba(255, 255, 255, .92);
+            background: rgba(248, 250, 252, .94);
             border: 1px solid var(--hy-border);
             border-radius: 16px;
             padding: 16px 18px;
-            box-shadow: 0 8px 24px rgba(43, 87, 120, .07);
+            box-shadow: 0 7px 20px rgba(38, 55, 70, .08);
         }
         [data-testid="stMetricValue"] { color: var(--hy-navy); }
         [data-testid="stMetricDelta"] { color: var(--hy-mint); }
         [data-baseweb="tab-list"] {
             gap: 8px;
-            background: #edf6fc;
+            background: #dfe7ed;
             border-radius: 14px;
             padding: 6px;
         }
@@ -61,22 +64,22 @@ def inject_theme():
             padding: 0 14px;
         }
         [aria-selected="true"][data-baseweb="tab"] {
-            background: #ffffff;
+            background: #f8fafc;
             color: var(--hy-blue);
-            box-shadow: 0 3px 12px rgba(36, 116, 229, .12);
+            box-shadow: 0 3px 12px rgba(47, 111, 126, .13);
         }
         .stButton > button[kind="primary"] {
-            background: linear-gradient(135deg, var(--hy-blue), #25a7c8);
+            background: linear-gradient(135deg, var(--hy-blue), #438b88);
             border: 0;
             border-radius: 12px;
-            box-shadow: 0 7px 18px rgba(36, 116, 229, .20);
+            box-shadow: 0 7px 18px rgba(47, 111, 126, .20);
             font-weight: 700;
         }
         .stButton > button:not([kind="primary"]) { border-radius: 12px; }
         [data-baseweb="input"], [data-baseweb="select"] > div {
             border-radius: 11px !important;
             border-color: var(--hy-border) !important;
-            background: #ffffff !important;
+            background: #f8fafc !important;
         }
         [data-testid="stAlert"] { border-radius: 14px; border-width: 1px; }
         [data-testid="stDataFrame"] {
