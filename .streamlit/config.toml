@@ -2,10 +2,10 @@
 magicEnabled = false
 
 [theme]
-base = "light"
-primaryColor = "#2F6F7E"
-backgroundColor = "#EEF2F6"
-secondaryBackgroundColor = "#E2E8F0"
-textColor = "#263746"
+base = "dark"
+primaryColor = "#45B8A6"
+backgroundColor = "#151B24"
+secondaryBackgroundColor = "#202936"
+textColor = "#E6EDF3"
 font = "sans serif"
 
