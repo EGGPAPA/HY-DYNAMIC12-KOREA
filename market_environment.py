@@ -1,5 +1,6 @@
 import json
 import os
+import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -79,15 +80,45 @@ def _business_day(offset=0):
 def _history(symbol, period="6mo"):
     try:
         frame = yf.Ticker(symbol).history(period=period, interval="1d", auto_adjust=True)
-        if frame is None or frame.empty:
-            return pd.DataFrame()
-        frame = frame.copy()
-        frame.index = pd.to_datetime(frame.index)
-        if getattr(frame.index, "tz", None) is not None:
-            frame.index = frame.index.tz_localize(None)
-        return frame.dropna(subset=["Close"])
+        if frame is not None and not frame.empty:
+            frame = frame.copy()
+            frame.index = pd.to_datetime(frame.index)
+            if getattr(frame.index, "tz", None) is not None:
+                frame.index = frame.index.tz_localize(None)
+            return frame.dropna(subset=["Close"])
     except Exception:
-        return pd.DataFrame()
+        pass
+    # Yahoo가 한국 종목을 일시적으로 누락해도 대표 종목/차트가 사라지지 않도록 보완합니다.
+    if symbol.endswith((".KS", ".KQ")):
+        try:
+            code = symbol.split(".")[0]
+            count = 270 if period == "1y" else 150
+            response = requests.get(
+                "https://fchart.stock.naver.com/sise.nhn",
+                params={
+                    "symbol": code, "timeframe": "day", "count": count, "requestType": "0",
+                },
+                headers={"User-Agent": "Mozilla/5.0"},
+                timeout=12,
+            )
+            response.raise_for_status()
+            records = []
+            for item in ET.fromstring(response.content).iter("item"):
+                values = item.attrib.get("data", "").split("|")
+                if len(values) < 6:
+                    continue
+                records.append(values[:6])
+            if records:
+                fallback = pd.DataFrame(
+                    records, columns=["Date", "Open", "High", "Low", "Close", "Volume"]
+                )
+                fallback["Date"] = pd.to_datetime(fallback["Date"], format="%Y%m%d")
+                for column in ("Open", "High", "Low", "Close", "Volume"):
+                    fallback[column] = pd.to_numeric(fallback[column], errors="coerce")
+                return fallback.set_index("Date").dropna(subset=["Close"])
+        except Exception:
+            pass
+    return pd.DataFrame()
 
 
 def _last_close(symbol, period="3mo"):
@@ -329,32 +360,26 @@ def _sector_stock_candidates(cache_version="sector-leaders-v2"):
 
 
 def _render_leader_stock_chart(all_candidates):
-    if all_candidates.empty:
-        return
     st.markdown("### 📈 업종 대표 종목 차트")
     st.caption("종목을 선택하면 최근 1년 종가와 20일·60일 이동평균선, 거래량을 확인할 수 있습니다.")
-    options = all_candidates.sort_values(["업종", "종합 주도점수"], ascending=[True, False]).copy()
-    options["_차트라벨"] = options.apply(
-        lambda row: f"{row['업종']} · {row['종목']} ({row['종목코드']})", axis=1
-    )
-    labels = options["_차트라벨"].tolist()
+    # 분석 데이터가 잠시 비어도 카카오를 포함한 전체 대표 종목은 선택할 수 있어야 합니다.
+    options = [
+        {
+            "업종": sector, "종목": name, "종목코드": symbol.split(".")[0],
+            "symbol": symbol, "label": f"{sector} · {name} ({symbol.split('.')[0]})",
+        }
+        for sector, members in SECTOR_STOCKS.items()
+        for symbol, name in members.items()
+    ]
+    labels = [item["label"] for item in options]
     default_index = next(
         (i for i, label in enumerate(labels) if "삼성바이오로직스" in label), 0
     )
     selected = st.selectbox(
         "차트 종목", labels, index=default_index, key="kr_leader_stock_chart"
     )
-    row = options[options["_차트라벨"] == selected].iloc[0]
-    symbol = next(
-        (
-            ticker for ticker, name in SECTOR_STOCKS.get(row["업종"], {}).items()
-            if ticker.split(".")[0] == str(row["종목코드"]).zfill(6)
-        ),
-        None,
-    )
-    if not symbol:
-        st.warning("선택한 종목의 차트 코드를 찾지 못했습니다.")
-        return
+    row = next(item for item in options if item["label"] == selected)
+    symbol = row["symbol"]
     frame = _history(symbol, "1y")
     if frame.empty:
         st.warning("선택한 종목의 가격 데이터를 불러오지 못했습니다.")
@@ -365,11 +390,35 @@ def _render_leader_stock_chart(all_candidates):
         "20일선": close.rolling(20).mean(),
         "60일선": close.rolling(60).mean(),
     }).dropna(how="all")
+    valid_close = close.dropna()
+    price = float(valid_close.iloc[-1])
+    ret20 = (price / float(valid_close.iloc[-21]) - 1) * 100 if len(valid_close) >= 21 else 0
+    ret60 = (price / float(valid_close.iloc[-61]) - 1) * 100 if len(valid_close) >= 61 else 0
+    ma20_series = valid_close.rolling(20).mean()
+    ma60_series = valid_close.rolling(60).mean()
+    leader_flags = (
+        (valid_close > ma20_series)
+        & (ma20_series > ma60_series)
+        & (valid_close.pct_change(20) * 100 >= 5)
+    )
+    leader_days = 0
+    for flag in reversed(leader_flags.fillna(False).tolist()):
+        if not flag:
+            break
+        leader_days += 1
+    leader_start = (
+        pd.Timestamp(valid_close.index[-leader_days]).strftime("%Y-%m-%d")
+        if leader_days else "-"
+    )
+    ma20 = float(valid_close.tail(20).mean())
+    ma60 = float(valid_close.tail(60).mean())
+    first_watch = ma20 * 1.02
+    invalidation = ma60 * .97
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("현재가", f"{int(row['현재가(원)']):,}원")
-    m2.metric("20일 수익률", f"{float(row['20일 수익률(%)']):+.1f}%")
-    m3.metric("60일 수익률", f"{float(row['60일 수익률(%)']):+.1f}%")
-    m4.metric("주도 지속", f"{int(row.get('주도 지속(거래일)', 0))}거래일")
+    m1.metric("현재가", f"{int(price):,}원")
+    m2.metric("20일 수익률", f"{ret20:+.1f}%")
+    m3.metric("60일 수익률", f"{ret60:+.1f}%")
+    m4.metric("주도 지속", f"{leader_days}거래일")
     st.line_chart(chart, use_container_width=True, height=420)
     volume = (
         pd.to_numeric(frame["Volume"], errors="coerce").dropna()
@@ -379,9 +428,9 @@ def _render_leader_stock_chart(all_candidates):
         st.caption("일별 거래량")
         st.bar_chart(volume.rename("거래량"), use_container_width=True, height=180)
     st.caption(
-        f"최초 포착일 {row.get('최초 포착일', '-')} · "
-        f"1차 관찰가 {int(row['1차 관찰가(원)']):,}원 · "
-        f"추세 무효선 {int(row['추세 무효선(원)']):,}원"
+        f"최초 포착일 {leader_start} · "
+        f"1차 관찰가 {int(first_watch):,}원 · "
+        f"추세 무효선 {int(invalidation):,}원"
     )
 
 
