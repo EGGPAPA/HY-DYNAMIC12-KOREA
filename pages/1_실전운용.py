@@ -116,11 +116,7 @@ def analyze_signal(h):
 
 
 def suggested_weight(stage):
-    if stage == 1:
-        return 0.50
-    if stage == 2:
-        return 0.80
-    return 0.0
+    return 0.50 if stage == 1 else 0.80 if stage == 2 else 0.0
 
 
 def secret_value(name, default=""):
@@ -165,7 +161,7 @@ def kakao_access_token():
         if response.ok and token:
             warning = ""
             if data.get("refresh_token"):
-                warning = "카카오가 새 Refresh Token을 발급했습니다. 장기 운용을 위해 Streamlit Secrets의 KAKAO_REFRESH_TOKEN 갱신이 필요할 수 있습니다."
+                warning = "카카오가 새 Refresh Token을 발급했습니다. Streamlit Secrets의 KAKAO_REFRESH_TOKEN 갱신이 필요할 수 있습니다."
             return token, warning
         return None, data.get("error_description") or data.get("error") or f"HTTP {response.status_code}"
     except Exception as e:
@@ -215,6 +211,15 @@ def save_signal_state(state):
         pass
 
 
+def normalized_state_item(state, etf_name):
+    item = state.get(etf_name)
+    if isinstance(item, dict):
+        return item
+    if isinstance(item, str):
+        return {"signal": item, "last_sent": ""}
+    return {"signal": "", "last_sent": ""}
+
+
 def signal_message(etf_name, sig):
     return (
         f"[HY DYNAMIC12 실전신호]\n"
@@ -251,10 +256,7 @@ st.markdown("### 👤 신규매수자 / 💼 기존 보유자")
 b1, b2 = st.columns(2)
 with b1:
     st.metric("신규매수 신호", sig["buy_signal"])
-    if sig["buy_stage"] > 0:
-        st.success(sig["buy_action"])
-    else:
-        st.info(sig["buy_action"])
+    st.success(sig["buy_action"]) if sig["buy_stage"] > 0 else st.info(sig["buy_action"])
 with b2:
     st.metric("보유자 신호", sig["hold_signal"])
     if sig["hold_signal"].startswith("🔴"):
@@ -264,31 +266,40 @@ with b2:
     else:
         st.success(sig["hold_action"])
 
-st.markdown("### 🔔 카카오 실전 알림")
-k1, k2, k3 = st.columns([1, 1, 1.4])
-k1.metric("카카오 연결", "준비됨" if kakao_ready() else "설정 필요")
-auto_kakao = k2.toggle("신호 변경 자동알림", value=True, disabled=not kakao_ready())
-if k3.button("📨 현재 신호 테스트 전송", use_container_width=True, disabled=not kakao_ready()):
+# 카카오 상태는 실전 화면을 방해하지 않도록 한 줄로 압축
+state = load_signal_state()
+item = normalized_state_item(state, etf_name)
+current_key = f"{sig['buy_signal']}|{sig['hold_signal']}"
+previous_key = item.get("signal", "")
+last_sent = item.get("last_sent", "") or "없음"
+
+st.markdown("### 🔔 카카오 알림")
+k1, k2, k3, k4 = st.columns([1, 1, 1.2, 1.2])
+k1.metric("연결", "✅ 정상" if kakao_ready() else "⚠️ 설정 필요")
+auto_kakao = k2.toggle("자동알림", value=True, disabled=not kakao_ready())
+k3.metric("마지막 발송", last_sent)
+if k4.button("📨 테스트", use_container_width=True, disabled=not kakao_ready()):
     ok, msg = send_kakao_message("[HY DYNAMIC12 테스트]\n카카오 실전 알림 연결이 정상입니다.\n\n" + signal_message(etf_name, sig))
     if ok:
-        st.success(msg)
+        now_text = datetime.now(SEOUL).strftime("%m-%d %H:%M")
+        state[etf_name] = {"signal": previous_key or current_key, "last_sent": now_text}
+        save_signal_state(state)
+        st.success("테스트 메시지 전송 완료")
+        st.rerun()
     else:
         st.error(msg)
 
-state = load_signal_state()
-current_key = f"{sig['buy_signal']}|{sig['hold_signal']}"
-previous_key = state.get(etf_name)
 if auto_kakao and kakao_ready():
-    if previous_key is None:
-        state[etf_name] = current_key
+    if not previous_key:
+        state[etf_name] = {"signal": current_key, "last_sent": item.get("last_sent", "")}
         save_signal_state(state)
-        st.caption("자동알림 기준 신호를 저장했습니다. 다음부터 신호가 바뀔 때만 카카오톡을 보냅니다.")
     elif previous_key != current_key:
         ok, msg = send_kakao_message("🔔 ETF 실전 신호 변경\n\n" + signal_message(etf_name, sig))
         if ok:
-            state[etf_name] = current_key
+            now_text = datetime.now(SEOUL).strftime("%m-%d %H:%M")
+            state[etf_name] = {"signal": current_key, "last_sent": now_text}
             save_signal_state(state)
-            st.success("카카오톡으로 신호 변경 알림을 보냈습니다.")
+            st.success(f"신호 변경 알림 전송 완료 · {now_text}")
         else:
             st.warning(f"카카오 자동알림 전송 실패: {msg}")
 
