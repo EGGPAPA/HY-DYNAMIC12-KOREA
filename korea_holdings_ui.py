@@ -8,6 +8,7 @@ import requests
 import streamlit as st
 import yfinance as yf
 from monthly_ma5_ui import render_monthly_ma5_tab
+from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 
 REPO = "EGGPAPA/HY-DYNAMIC12-KOREA"
 BRANCH = "main"
@@ -120,16 +121,30 @@ def render_holdings_tab():
         else:ps=normalized_purchases(old)+[trade];nq,_,na=calc_position(ps);old.update({"name":name or old.get("name"),"market":market,"average_price":na,"quantity":nq,"purchases":ps,"updated_at":now});rows[idx]=old
         save_holdings(rows,sha,f"Update Korea holding {code}");st.success("저장 완료");st.rerun()
 
+def _load_backtest_universe():
+    try:
+        import app as _app
+        universe,_ = _app.get_full_universe()
+        return universe
+    except Exception:
+        try:
+            df=pd.read_csv("korea_universe.csv",dtype={"종목코드":str})
+            df["종목코드"]=df["종목코드"].astype(str).str.zfill(6)
+            return df
+        except Exception:
+            return pd.DataFrame(columns=["종목코드","종목명","시장"])
+
 def install_holdings_tab():
     if getattr(st,"_hy_korea_holdings_tab_installed",False):return
     original_tabs=st.tabs;original_dataframe=st.dataframe
     def wrapped_tabs(labels,*args,**kwargs):
         labels=list(labels)
         if "💼 보유종목" in labels:return original_tabs(labels,*args,**kwargs)
-        containers=original_tabs(labels+["🔥 5개월선 돌파","💼 보유종목"],*args,**kwargs)
-        with containers[-2]:render_monthly_ma5_tab()
+        containers=original_tabs(labels+["🔥 5개월선 돌파","📈 개별종목 5개월선 백테스트","💼 보유종목"],*args,**kwargs)
+        with containers[-3]:render_monthly_ma5_tab()
+        with containers[-2]:render_individual_stock_ma5_backtest(_load_backtest_universe())
         with containers[-1]:render_holdings_tab()
-        return containers[:-2]
+        return containers[:-3]
     def wrapped_dataframe(data=None,*args,**kwargs):
         try:
             if isinstance(data,pd.DataFrame) and "KOREA점수" in data.columns:data=data.drop(columns=["KOREA점수"])
