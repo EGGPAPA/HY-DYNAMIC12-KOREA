@@ -3,9 +3,9 @@ magicEnabled = false
 
 [theme]
 base = "light"
-primaryColor = "#2474E5"
-backgroundColor = "#F7FBFF"
-secondaryBackgroundColor = "#EAF5FF"
-textColor = "#12304A"
+primaryColor = "#2F6F7E"
+backgroundColor = "#EEF2F6"
+secondaryBackgroundColor = "#E2E8F0"
+textColor = "#263746"
 font = "sans serif"
 
