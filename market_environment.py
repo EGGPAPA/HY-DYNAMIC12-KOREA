@@ -42,6 +42,21 @@ SECTOR_STOCKS = {
     "2차전지": {
         "373220.KS": "LG에너지솔루션", "006400.KS": "삼성SDI", "247540.KQ": "에코프로비엠",
     },
+    "방산·조선": {
+        "012450.KS": "한화에어로스페이스", "042660.KS": "한화오션", "329180.KS": "HD현대중공업",
+    },
+    "전력·원전": {
+        "034020.KS": "두산에너빌리티", "010120.KS": "LS ELECTRIC", "052690.KS": "한전기술",
+    },
+    "인터넷·게임": {
+        "035420.KS": "NAVER", "035720.KS": "카카오", "259960.KS": "크래프톤",
+    },
+    "화학·소재": {
+        "051910.KS": "LG화학", "096770.KS": "SK이노베이션", "005490.KS": "POSCO홀딩스",
+    },
+    "소비·유통": {
+        "090430.KS": "아모레퍼시픽", "004170.KS": "신세계", "097950.KS": "CJ제일제당",
+    },
 }
 BREADTH_SAMPLE = {
     "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "005380.KS": "현대차",
@@ -221,7 +236,7 @@ def _sector_strength():
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
-def _sector_stock_candidates():
+def _sector_stock_candidates(cache_version="sector-leaders-v2"):
     rows = []
     for sector, members in SECTOR_STOCKS.items():
         for symbol, name in members.items():
@@ -237,6 +252,21 @@ def _sector_stock_candidates():
             ret60 = (price / float(close.iloc[-61]) - 1) * 100
             ma20 = float(close.tail(20).mean())
             ma60 = float(close.tail(60).mean())
+            ma20_series = close.rolling(20).mean()
+            ma60_series = close.rolling(60).mean()
+            ret20_series = close.pct_change(20) * 100
+            leader_flags = (
+                (close > ma20_series) & (ma20_series > ma60_series) & (ret20_series >= 5)
+            )
+            leader_days = 0
+            for flag in reversed(leader_flags.fillna(False).tolist()):
+                if not flag:
+                    break
+                leader_days += 1
+            leader_start = (
+                pd.Timestamp(close.index[-leader_days]).strftime("%Y-%m-%d")
+                if leader_days else "-"
+            )
             gap20 = (price / ma20 - 1) * 100 if ma20 else 0
             volume_ratio = None
             if len(volume) >= 20 and float(volume.tail(20).mean()) > 0:
@@ -289,7 +319,9 @@ def _sector_stock_candidates():
                 "매수시기": entry_status, "매수시기 근거": entry_reason,
                 "1차 관찰가(원)": round(first_watch), "2차 관찰가(원)": round(second_watch),
                 "추세 무효선(원)": round(invalidation),
+                "최초 포착일": leader_start, "주도 지속(거래일)": leader_days,
                 "_진입조건충족": entry_ready, "_20일선": ma20,
+                "_정배열": bool(price > ma20 > ma60),
                 "_조건가격": near_first, "_조건20일선": above_ma20,
                 "_조건거래량": volume_ok, "_조건추세": trend_valid,
             })
@@ -594,6 +626,32 @@ def render_market_environment(market_is_open=False):
             )
             candidates["업종내 순위"] = candidates.groupby("업종").cumcount() + 1
 
+            sector_leaders = candidates.groupby("업종", as_index=False).agg(
+                **{
+                    "업종 20일(%)": ("20일 수익률(%)", "mean"),
+                    "업종 60일(%)": ("60일 수익률(%)", "mean"),
+                    "상승종목 비율(%)": ("_정배열", lambda values: float(values.mean() * 100)),
+                }
+            )
+            sector_leaders["ETF 20일(%)"] = sector_leaders["업종"].map(sector_returns).fillna(0)
+            sector_leaders["업종점수"] = (
+                50
+                + sector_leaders["업종 20일(%)"] * 1.1
+                + sector_leaders["업종 60일(%)"] * .35
+                + (sector_leaders["상승종목 비율(%)"] - 50) * .25
+                + sector_leaders["ETF 20일(%)"] * .8
+            ).clip(0, 100).round(1)
+            sector_leaders["평가"] = sector_leaders["업종점수"].map(
+                lambda value: "🟢 강세" if value >= 70 else "🔵 중립" if value >= 55 else "🟡 약세"
+            )
+            sector_leaders = sector_leaders.sort_values("업종점수", ascending=False).head(5)
+            leading_sectors = sector_leaders["업종"].tolist()
+            candidates = candidates[candidates["업종"].isin(leading_sectors)].copy()
+            candidates = candidates.sort_values(
+                ["업종", "_추세순서", "종합 주도점수"], ascending=[True, True, False]
+            )
+            candidates["업종내 순위"] = candidates.groupby("업종").cumcount() + 1
+
             strong = candidates[candidates["종목 추세"] == "🟢 강한 상승"].copy()
             if not strong.empty:
                 top_rows = st.session_state.get("kr_rows", [])
@@ -708,31 +766,46 @@ def render_market_environment(market_is_open=False):
             else:
                 st.info("현재 기준을 모두 충족하는 ‘강한 상승’ 종목은 없습니다. 일반 상승 종목은 아래 상세표에서 확인하세요.")
 
-            st.markdown("### 업종별 대표 종목")
-            st.caption("업종 ETF 강도 30%와 개별종목 추세 70%를 합산합니다. 업종이 약하면 개별종목 점수도 보수적으로 평가합니다.")
+            st.markdown("### 주도 업종 · 업종별 최강 종목")
+            st.caption("업종 평균 20일·60일 성과, 상승종목 비율과 업종 ETF 흐름을 먼저 평가한 뒤 상위 5개 업종만 표시합니다.")
             summary_rows = []
-            for sector in sectors["업종"]:
+            for sector in leading_sectors:
                 group = candidates[candidates["업종"] == sector].sort_values(
                     "종합 주도점수", ascending=False
                 ).head(3)
                 if group.empty:
                     continue
-                names = group.apply(
-                    lambda row: f"{row['종목']} {row['종합 주도점수']}점", axis=1
-                ).tolist()
+                leader = group.iloc[0]
+                sector_row = sector_leaders[sector_leaders["업종"] == sector].iloc[0]
                 summary_rows.append({
                     "업종": sector,
-                    "업종 20일(%)": round(sector_returns.get(sector, 0), 2),
-                    "업종 평가": "🟢 강세" if sector_returns.get(sector, 0) >= 3 else "🔵 중립" if sector_returns.get(sector, 0) >= -3 else "🟡 약세",
-                    "대표 1": names[0] if len(names) > 0 else "-",
-                    "대표 2": names[1] if len(names) > 1 else "-",
-                    "대표 3": names[2] if len(names) > 2 else "-",
+                    "최강 종목": f"⭐ {leader['종목']}",
+                    "현재가(원)": int(leader["현재가(원)"]),
+                    "종목 20일(%)": round(float(leader["20일 수익률(%)"]), 1),
+                    "최초 포착일": leader.get("최초 포착일", "-"),
+                    "주도 지속": f"{int(leader.get('주도 지속(거래일)', 0))}일",
+                    "매수 신호": "🟢 1차 검토" if leader["_진입조건충족"] else "⏳ 관찰",
+                    "업종 20일(%)": round(float(sector_row["업종 20일(%)"]), 1),
+                    "업종 60일(%)": round(float(sector_row["업종 60일(%)"]), 1),
+                    "상승종목 비율(%)": round(float(sector_row["상승종목 비율(%)"])),
+                    "업종 평가": sector_row["평가"],
+                    "2·3위 종목": ", ".join(group.iloc[1:]["종목"].tolist()) or "-",
+                    "업종점수": sector_row["업종점수"],
                 })
-            st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+            st.dataframe(
+                pd.DataFrame(summary_rows), use_container_width=True, hide_index=True,
+                column_config={
+                    "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+                    "업종점수": st.column_config.ProgressColumn(
+                        "업종점수", min_value=0, max_value=100, format="%.1f"
+                    ),
+                },
+            )
 
             with st.expander("대표 종목 상세 평가 보기 · 추세순 정렬", expanded=True):
                 detail_columns = [
                     "업종", "업종내 순위", "종목", "종목코드", "현재가(원)",
+                    "최초 포착일", "주도 지속(거래일)",
                     "매수시기", "1차 관찰가(원)", "2차 관찰가(원)", "추세 무효선(원)",
                     "20일 수익률(%)", "60일 수익률(%)", "20일선 대비(%)",
                     "거래량 배수", "종목 추세", "종합 주도점수", "종합 평가",
