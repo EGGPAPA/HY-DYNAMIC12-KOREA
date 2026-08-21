@@ -22,6 +22,11 @@ LEADERS = {
     "금융": {"105560.KS": "KB금융", "055550.KS": "신한지주", "086790.KS": "하나금융지주"},
     "헬스케어": {"207940.KS": "삼성바이오로직스", "068270.KS": "셀트리온", "196170.KQ": "알테오젠"},
     "2차전지": {"373220.KS": "LG에너지솔루션", "006400.KS": "삼성SDI", "247540.KQ": "에코프로비엠"},
+    "방산·조선": {"012450.KS": "한화에어로스페이스", "042660.KS": "한화오션", "329180.KS": "HD현대중공업"},
+    "전력·원전": {"034020.KS": "두산에너빌리티", "010120.KS": "LS ELECTRIC", "052690.KS": "한전기술"},
+    "인터넷·게임": {"035420.KS": "NAVER", "035720.KS": "카카오", "259960.KS": "크래프톤"},
+    "화학·소재": {"051910.KS": "LG화학", "096770.KS": "SK이노베이션", "005490.KS": "POSCO홀딩스"},
+    "소비·유통": {"090430.KS": "아모레퍼시픽", "004170.KS": "신세계", "097950.KS": "CJ제일제당"},
 }
 
 
@@ -44,8 +49,24 @@ def analyze(symbol: str, name: str, sector: str) -> dict | None:
         ma20 = float(close.tail(20).mean())
         ma60 = float(close.tail(60).mean())
         ret20 = (price / float(close.iloc[-21]) - 1) * 100
+        ret60 = (price / float(close.iloc[-61]) - 1) * 100
         gap20 = (price / ma20 - 1) * 100
         volume_ratio = float(volume.tail(5).mean() / volume.tail(20).mean())
+        ma20_series = close.rolling(20).mean()
+        ma60_series = close.rolling(60).mean()
+        leader_flags = (
+            (close > ma20_series) & (ma20_series > ma60_series)
+            & (close.pct_change(20) * 100 >= 5)
+        )
+        leader_days = 0
+        for flag in reversed(leader_flags.fillna(False).tolist()):
+            if not flag:
+                break
+            leader_days += 1
+        leader_start = (
+            pd.Timestamp(close.index[-leader_days]).strftime("%Y-%m-%d")
+            if leader_days else "-"
+        )
         first_watch = ma20 * 1.02
         invalidation = ma60 * .97
         conditions = {
@@ -61,6 +82,9 @@ def analyze(symbol: str, name: str, sector: str) -> dict | None:
             "sector": sector, "price": price, "ma20": ma20, "ma60": ma60,
             "first_watch": first_watch, "invalidation": invalidation,
             "gap20": gap20, "volume_ratio": volume_ratio,
+            "ret20": ret20, "ret60": ret60,
+            "leader_start": leader_start, "leader_days": leader_days,
+            "score": max(0, min(100, 50 + ret20 * 1.2 + ret60 * .35 + min(volume_ratio, 2) * 7)),
             "strong": strong, "ready": ready, "conditions": conditions,
         }
     except Exception as exc:
@@ -106,6 +130,7 @@ def message(rows: list[dict], now: datetime) -> str:
     for row in rows:
         lines.extend([
             "", f"{row['name']} ({row['sector']})",
+            f"최초 포착 {row['leader_start']} / 주도 지속 {row['leader_days']}거래일",
             f"현재가 {row['price']:,.0f}원 / 1차 관찰가 {row['first_watch']:,.0f}원",
             f"20일선 대비 {row['gap20']:+.1f}% / 거래량 {row['volume_ratio']:.2f}배",
             f"추세 무효선 {row['invalidation']:,.0f}원",
@@ -144,12 +169,33 @@ def main() -> int:
             result = analyze(symbol, name, sector)
             if result:
                 rows.append(result)
-    ready = [row for row in rows if row["ready"]]
+    sector_rank = []
+    for sector in LEADERS:
+        members = [row for row in rows if row["sector"] == sector]
+        if not members:
+            continue
+        avg20 = sum(row["ret20"] for row in members) / len(members)
+        avg60 = sum(row["ret60"] for row in members) / len(members)
+        breadth = sum(row["strong"] for row in members) / len(members) * 100
+        sector_score = max(0, min(100, 50 + avg20 * 1.1 + avg60 * .35 + (breadth - 50) * .25))
+        sector_rank.append((sector_score, sector))
+    leading_sectors = {sector for _, sector in sorted(sector_rank, reverse=True)[:5]}
+    representatives = []
+    for sector in leading_sectors:
+        members = sorted(
+            [row for row in rows if row["sector"] == sector],
+            key=lambda row: (row["ready"], row["score"]), reverse=True,
+        )
+        representatives.extend(members[:3])
+    ready = [row for row in representatives if row["ready"]]
     state = load_state()
     today = now.strftime("%Y-%m-%d")
     sent_today = set(state.get("sent", {}).get(today, []))
     newly_ready = [row for row in ready if row["code"] not in sent_today]
-    print(f"Scanned {len(rows)} leaders; ready={len(ready)}; new={len(newly_ready)}")
+    print(
+        f"Scanned {len(rows)} stocks; leading sectors={len(leading_sectors)}; "
+        f"representatives={len(representatives)}; ready={len(ready)}; new={len(newly_ready)}"
+    )
     if not newly_ready:
         return 0
     send_kakao(message(newly_ready, now))
