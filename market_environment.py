@@ -328,6 +328,63 @@ def _sector_stock_candidates(cache_version="sector-leaders-v2"):
     return pd.DataFrame(rows)
 
 
+def _render_leader_stock_chart(all_candidates):
+    if all_candidates.empty:
+        return
+    st.markdown("### 📈 업종 대표 종목 차트")
+    st.caption("종목을 선택하면 최근 1년 종가와 20일·60일 이동평균선, 거래량을 확인할 수 있습니다.")
+    options = all_candidates.sort_values(["업종", "종합 주도점수"], ascending=[True, False]).copy()
+    options["_차트라벨"] = options.apply(
+        lambda row: f"{row['업종']} · {row['종목']} ({row['종목코드']})", axis=1
+    )
+    labels = options["_차트라벨"].tolist()
+    default_index = next(
+        (i for i, label in enumerate(labels) if "삼성바이오로직스" in label), 0
+    )
+    selected = st.selectbox(
+        "차트 종목", labels, index=default_index, key="kr_leader_stock_chart"
+    )
+    row = options[options["_차트라벨"] == selected].iloc[0]
+    symbol = next(
+        (
+            ticker for ticker, name in SECTOR_STOCKS.get(row["업종"], {}).items()
+            if ticker.split(".")[0] == str(row["종목코드"]).zfill(6)
+        ),
+        None,
+    )
+    if not symbol:
+        st.warning("선택한 종목의 차트 코드를 찾지 못했습니다.")
+        return
+    frame = _history(symbol, "1y")
+    if frame.empty:
+        st.warning("선택한 종목의 가격 데이터를 불러오지 못했습니다.")
+        return
+    close = pd.to_numeric(frame["Close"], errors="coerce")
+    chart = pd.DataFrame({
+        "종가": close,
+        "20일선": close.rolling(20).mean(),
+        "60일선": close.rolling(60).mean(),
+    }).dropna(how="all")
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("현재가", f"{int(row['현재가(원)']):,}원")
+    m2.metric("20일 수익률", f"{float(row['20일 수익률(%)']):+.1f}%")
+    m3.metric("60일 수익률", f"{float(row['60일 수익률(%)']):+.1f}%")
+    m4.metric("주도 지속", f"{int(row.get('주도 지속(거래일)', 0))}거래일")
+    st.line_chart(chart, use_container_width=True, height=420)
+    volume = (
+        pd.to_numeric(frame["Volume"], errors="coerce").dropna()
+        if "Volume" in frame else pd.Series(dtype=float)
+    )
+    if not volume.empty:
+        st.caption("일별 거래량")
+        st.bar_chart(volume.rename("거래량"), use_container_width=True, height=180)
+    st.caption(
+        f"최초 포착일 {row.get('최초 포착일', '-')} · "
+        f"1차 관찰가 {int(row['1차 관찰가(원)']):,}원 · "
+        f"추세 무효선 {int(row['추세 무효선(원)']):,}원"
+    )
+
+
 def _export_history():
     if not EXPORT_FILE.exists():
         return pd.DataFrame()
@@ -625,6 +682,7 @@ def render_market_environment(market_is_open=False):
                 ["_추세순서", "종합 주도점수"], ascending=[True, False]
             )
             candidates["업종내 순위"] = candidates.groupby("업종").cumcount() + 1
+            all_candidates = candidates.copy()
 
             sector_leaders = candidates.groupby("업종", as_index=False).agg(
                 **{
@@ -823,6 +881,8 @@ def render_market_environment(market_is_open=False):
                     },
                 )
                 st.info("대표 종목은 업종 비교를 위한 관찰 후보입니다. 종목의 실적·공시·과열 여부를 확인한 뒤 TOP12 분석과 함께 사용하세요.")
+
+            _render_leader_stock_chart(all_candidates)
 
     st.markdown("### KOSPI와 한국 수출")
     exports = _export_history()
