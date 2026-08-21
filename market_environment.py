@@ -111,7 +111,7 @@ def _sample_breadth():
         falling = int((changes < 0).sum())
         flat = int((changes == 0).sum())
         if rising + falling == 0:
-            return {}
+            raise ValueError("empty breadth sample")
         return {
             "date": pd.Timestamp(close.index[-1]).strftime("%Y%m%d"),
             "rising": rising, "falling": falling, "flat": flat,
@@ -119,7 +119,27 @@ def _sample_breadth():
             "source": f"대표 유동성 종목 {len(changes)}개 표본",
         }
     except Exception:
-        return {}
+        changes = []
+        latest = None
+        for symbol in BREADTH_SAMPLE:
+            frame = _history(symbol, "5d")
+            close = pd.to_numeric(frame.get("Close"), errors="coerce").dropna() if not frame.empty else pd.Series(dtype=float)
+            if len(close) >= 2:
+                changes.append((float(close.iloc[-1]) / float(close.iloc[-2]) - 1) * 100)
+                latest = frame.index[-1]
+        if not changes:
+            return {}
+        rising = sum(value > 0 for value in changes)
+        falling = sum(value < 0 for value in changes)
+        flat = sum(value == 0 for value in changes)
+        if rising + falling == 0:
+            return {}
+        return {
+            "date": pd.Timestamp(latest).strftime("%Y%m%d") if latest is not None else "확인 불가",
+            "rising": rising, "falling": falling, "flat": flat,
+            "ratio": rising / (rising + falling) * 100,
+            "source": f"대표 유동성 종목 {len(changes)}개 개별조회 표본",
+        }
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -252,6 +272,70 @@ def _money(value):
     return f"{value / 100_000_000_000:+.2f}천억"
 
 
+def _grade(score):
+    if score >= 67:
+        return "🟢 우호적"
+    if score >= 45:
+        return "🔵 중립"
+    return "🟡 경계"
+
+
+def _evaluations(breadth, flow, kospi20, kosdaq20, usd20, vix, vix20, us10y, us10y20, sectors):
+    items = []
+    if kospi20 is not None and kosdaq20 is not None:
+        value = (kospi20 + kosdaq20) / 2
+        score = float(np.clip(50 + value * 3, 0, 100))
+        text = f"KOSPI {kospi20:+.1f}% · KOSDAQ {kosdaq20:+.1f}%"
+        items.append(("지수 추세", score, text, 1.25))
+    valid_breadth = bool(breadth and breadth.get("rising", 0) + breadth.get("falling", 0) > 0)
+    if valid_breadth:
+        ratio = float(breadth["ratio"])
+        text = f"상승 {breadth['rising']} · 하락 {breadth['falling']} · 상승비율 {ratio:.1f}%"
+        items.append(("시장 확산", ratio, text, 1.2))
+    if usd20 is not None:
+        score = float(np.clip(50 - usd20 * 6, 0, 100))
+        items.append(("환율 환경", score, f"원/달러 20일 {usd20:+.1f}%", 1.0))
+    if vix is not None:
+        score = 90 if vix < 16 else 72 if vix < 20 else 50 if vix < 25 else 28 if vix < 30 else 10
+        if vix20 is not None:
+            score = float(np.clip(score - max(vix20, 0) * .5, 0, 100))
+        items.append(("변동성", score, f"VIX {vix:.1f}" + (f" · 20일 {vix20:+.1f}%" if vix20 is not None else ""), 1.1))
+    if us10y is not None:
+        score = float(np.clip(78 - max(us10y - 3.5, 0) * 18 - max(us10y20 or 0, 0) * .7, 0, 100))
+        items.append(("금리 부담", score, f"미 10년물 {us10y:.2f}%" + (f" · 20일 {us10y20:+.1f}%" if us10y20 is not None else ""), .8))
+    if sectors is not None and not sectors.empty:
+        values = pd.to_numeric(sectors["20일 수익률(%)"], errors="coerce").dropna()
+        if not values.empty:
+            positive = float(values.gt(0).mean() * 100)
+            median = float(values.median())
+            score = float(np.clip(positive * .7 + np.clip(50 + median * 4, 0, 100) * .3, 0, 100))
+            items.append(("업종 확산", score, f"상승 업종 {int(values.gt(0).sum())}/{len(values)} · 중앙값 {median:+.1f}%", .9))
+    foreign = flow.get("외국인20") if flow else None
+    institution = flow.get("기관20") if flow else None
+    if foreign is not None and institution is not None:
+        combined = float(foreign + institution)
+        score = float(np.clip(50 + combined / 1_000_000_000_000 * 16, 0, 100))
+        days = flow.get("period_days", 20)
+        items.append(("투자자 수급", score, f"{days}일 외국인 {_money(foreign)} · 기관 {_money(institution)}", 1.1))
+    return items
+
+
+def _overall_evaluation(items):
+    if not items:
+        return 50, "판단보류", "평가 가능한 데이터가 부족합니다."
+    total_weight = sum(item[3] for item in items)
+    score = int(round(sum(item[1] * item[3] for item in items) / total_weight))
+    if score >= 72:
+        return score, "적극 가능", "추세와 위험환경이 우호적입니다. 과열 종목만 피하고 분할 진입합니다."
+    if score >= 58:
+        return score, "선별 매수", "환경은 대체로 양호하지만 종목별 추세 확인이 필요합니다."
+    if score >= 43:
+        return score, "분할매수", "상반된 신호가 공존합니다. 평소 계획의 절반 이하로 나눠 접근합니다."
+    if score >= 30:
+        return score, "관망 우선", "불리한 요인이 더 많습니다. 신규매수보다 현금과 기존 보유 관리가 우선입니다."
+    return score, "위험 회피", "시장 내부와 글로벌 위험이 동시에 악화된 구간입니다. 신규매수를 보류합니다."
+
+
 def render_market_environment(market_is_open=False):
     breadth = _market_breadth()
     flow = _investor_flow()
@@ -261,46 +345,44 @@ def render_market_environment(market_is_open=False):
     vix, vix20, _ = _last_close("^VIX", "3mo")
     us10y, us10y20, _ = _last_close("^TNX", "3mo")
 
-    score, label, action, reasons = _risk_summary(
-        breadth, usd20, vix, vix20, kospi20, kosdaq20, flow
+    sectors = _sector_strength()
+    evaluations = _evaluations(
+        breadth, flow, kospi20, kosdaq20, usd20, vix, vix20, us10y, us10y20, sectors
     )
+    score, action, summary = _overall_evaluation(evaluations)
+    confidence = len(evaluations)
 
-    top1, top2, top3 = st.columns([1, 1, 1.15])
-    top1.metric("시장 위험점수", f"{score}/100", label)
+    top1, top2, top3, top4 = st.columns([1, .8, 1, 1.2])
+    top1.metric("시장 종합평가", f"{score}/100", _grade(score))
     top2.metric("한국 정규장", "OPEN" if market_is_open else "CLOSED", "09:00~15:30 KST")
     top3.metric("오늘의 대응", action)
-    if reasons:
-        st.caption("판단 근거 · " + " · ".join(reasons))
+    top4.metric("평가 신뢰도", f"{confidence}/7", "수집된 평가 항목")
+    st.info(summary)
 
-    st.markdown("### 시장 내부 건강도")
-    b1, b2, b3, b4 = st.columns(4)
-    valid_breadth = bool(breadth and breadth.get("rising", 0) + breadth.get("falling", 0) > 0)
-    b1.metric("상승 종목 비율", f"{breadth.get('ratio', 0):.1f}%" if valid_breadth else "자료 없음")
-    b2.metric("상승 / 하락", f"{breadth.get('rising', 0):,} / {breadth.get('falling', 0):,}" if valid_breadth else "자료 없음")
-    b3.metric("KOSPI 20일", f"{kospi20:+.1f}%" if kospi20 is not None else "자료 없음")
-    b4.metric("KOSDAQ 20일", f"{kosdaq20:+.1f}%" if kosdaq20 is not None else "자료 없음")
-    if valid_breadth:
-        source = breadth.get("source", "KRX KOSPI·KOSDAQ 전체 종목")
-        st.caption(f"시장 폭 기준일: {breadth['date']} · {source} · 상승 종목 비율은 보합을 제외해 계산")
+    st.markdown("### 항목별 시장 평가")
+    evaluation_frame = pd.DataFrame([
+        {"평가 항목": name, "점수": round(item_score), "판정": _grade(item_score), "판단 근거": detail}
+        for name, item_score, detail, _ in evaluations
+    ]).sort_values("점수", ascending=False)
+    st.dataframe(
+        evaluation_frame,
+        use_container_width=True,
+        hide_index=True,
+        column_config={"점수": st.column_config.ProgressColumn("점수", min_value=0, max_value=100, format="%d")},
+    )
+    missing = 7 - confidence
+    if missing:
+        st.caption(f"현재 {missing}개 평가 항목은 원천 데이터 지연으로 제외했습니다. 없는 값을 0점으로 처리하지 않습니다.")
+    if breadth and breadth.get("source"):
+        st.caption(f"시장 확산: {breadth['source']} · 기준일 {breadth.get('date', '확인 불가')}")
 
-    st.markdown("### 수급·환율·글로벌 위험")
-    r1, r2, r3, r4, r5 = st.columns(5)
-    flow_days = flow.get("period_days", 20) if flow else 20
-    r1.metric(f"외국인 {flow_days}일", _money(flow.get("외국인20") if flow else None))
-    r2.metric(f"기관 {flow_days}일", _money(flow.get("기관20") if flow else None))
-    r3.metric("원/달러", f"{usdkrw:,.1f}원" if usdkrw else "자료 없음", f"20일 {usd20:+.1f}%" if usd20 is not None else None)
-    r4.metric("VIX", f"{vix:.1f}" if vix else "자료 없음", f"20일 {vix20:+.1f}%" if vix20 is not None else None)
-    r5.metric("미국 10년물", f"{us10y:.2f}%" if us10y else "자료 없음", f"20일 {us10y20:+.1f}%" if us10y20 is not None else None)
-    if flow:
-        market_note = "KOSPI·KOSDAQ" if flow_days == 1 else "KOSPI"
-        st.caption(f"KRX 수급 기준일: {flow.get('date', '확인 불가')} · 금액은 {market_note} 누적 순매수")
-
-    sectors = _sector_strength()
     if not sectors.empty:
-        st.markdown("### 주요 업종 20일 상대강도")
+        st.markdown("### 주도·부진 업종 평가")
         left, right = st.columns([1.6, 1])
         left.bar_chart(sectors.set_index("업종"), horizontal=True)
-        right.dataframe(sectors, use_container_width=True, hide_index=True)
+        sector_view = sectors.copy()
+        sector_view["평가"] = sector_view["20일 수익률(%)"].map(lambda value: "🟢 강세" if value >= 3 else "🔵 중립" if value >= -3 else "🟡 약세")
+        right.dataframe(sector_view, use_container_width=True, hide_index=True)
 
     st.markdown("### KOSPI와 한국 수출")
     exports = _export_history()
@@ -321,5 +403,5 @@ def render_market_environment(market_is_open=False):
     else:
         st.error("KOSPI 가격 데이터를 불러오지 못했습니다.")
 
-    st.info("위험점수는 시장 폭·환율·VIX·외국인 수급·KOSDAQ 상대강도를 단순 합산한 보조지표이며 매매를 자동 결정하지 않습니다.")
+    st.warning("종합평가는 추세·시장 확산·환율·VIX·금리·업종·수급을 가중평균한 보조지표입니다. 개별종목의 실적과 가격 추세를 대신하지 않습니다.")
 
