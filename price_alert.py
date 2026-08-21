@@ -75,6 +75,11 @@ def save_state(state):
 
 
 def main():
+    if env("KAKAO_FORCE_TEST").lower() in {"1", "true", "yes"}:
+        send_kakao("🔔 HY DYNAMIC12 자동알림 테스트\n\nSK하이닉스 가격감시 시스템 정상 연결\nGitHub Actions → KakaoTalk 전송 성공\n\n※ 테스트 메시지입니다.")
+        print("Kakao forced test message sent successfully")
+        return
+
     lv = levels(history()); p = lv["price"]
     state = load_state(); previous = float(state.get("price", p))
     events = []
