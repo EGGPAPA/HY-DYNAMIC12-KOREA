@@ -220,16 +220,48 @@ def calc_position(purchases):
     return total_qty, total_cost, avg
 
 
+def sell_guide(avg, current):
+    """평균매수가 기준 손절/분할익절 참고선과 현재 매도 판단을 계산합니다."""
+    if avg <= 0:
+        return None, None, None, None, "판단불가", "평균매수가 확인"
+
+    stop = avg * 0.97
+    take1 = avg * 1.15
+    take2 = avg * 1.20
+    take3 = avg * 1.25
+
+    if current is None:
+        state = "시세없음"
+        action = "현재가 갱신 필요"
+    elif current <= stop:
+        state = "🔴 손절선 이탈"
+        action = "손절/비중축소 검토"
+    elif current >= take3:
+        state = "🟣 3차 익절 구간"
+        action = "+25% 이상 · 분할익절/추세보유"
+    elif current >= take2:
+        state = "🔵 2차 익절 구간"
+        action = "+20% 이상 · 추가익절 검토"
+    elif current >= take1:
+        state = "🟡 1차 익절 구간"
+        action = "+15% 이상 · 일부익절 검토"
+    else:
+        state = "🟢 보유 구간"
+        action = "보유 유지"
+
+    return stop, take1, take2, take3, state, action
+
+
 def render_holdings_tab():
     st.subheader("💼 보유종목 관리")
-    st.caption("여러 번 매수한 실제 체결내역을 누적하고, KIS 현재가 기준으로 평가손익과 수익률을 계산합니다.")
+    st.caption("여러 번 매수한 실제 체결내역을 누적하고, KIS 현재가 기준으로 평가손익·수익률·매도 참고구간을 계산합니다.")
 
     top1, top2 = st.columns([2, 1])
     if kis_ready():
         top1.info("📡 시세원: 한국투자증권 KIS 현재가 우선 · 실패 시 Yahoo Finance 폴백")
     else:
         top1.warning("📡 KIS 키가 없어 Yahoo Finance로 조회합니다. Streamlit Secrets에 KIS_APP_KEY / KIS_APP_SECRET을 등록하세요.")
-    if top2.button("🔄 현재가 즉시 갱신", use_container_width=True):
+    if top2.button("🔄 현재가 즉시 갱신", use_container_width=True, key="holdings_refresh_price"):
         clear_price_cache()
         st.rerun()
 
@@ -265,6 +297,8 @@ def render_holdings_tab():
             value = current * qty if current is not None else None
             pnl = value - total_cost if value is not None else None
             return_pct = (pnl / total_cost * 100) if pnl is not None and total_cost > 0 else None
+            stop, take1, take2, take3, state, action = sell_guide(avg, current)
+
             total_cost_all += total_cost
             if value is not None:
                 total_value_all += value
@@ -283,6 +317,12 @@ def render_holdings_tab():
                 "평가금액(원)": round(value) if value is not None else None,
                 "평가손익(원)": round(pnl) if pnl is not None else None,
                 "현재수익률(%)": round(return_pct, 2) if return_pct is not None else None,
+                "손절(-3%)(원)": round(stop) if stop is not None else None,
+                "1차익절(+15%)(원)": round(take1) if take1 is not None else None,
+                "2차익절(+20%)(원)": round(take2) if take2 is not None else None,
+                "3차익절(+25%)(원)": round(take3) if take3 is not None else None,
+                "현재상태": state,
+                "매도판단": action,
             })
 
         p1, p2, p3, p4 = st.columns(4)
@@ -301,12 +341,16 @@ def render_holdings_tab():
                 "현재수익률(%)": st.column_config.NumberColumn(format="%+.2f%%"),
                 "평가손익(원)": st.column_config.NumberColumn(format="%+,d원"),
                 "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+                "손절(-3%)(원)": st.column_config.NumberColumn(format="%,d원"),
+                "1차익절(+15%)(원)": st.column_config.NumberColumn(format="%,d원"),
+                "2차익절(+20%)(원)": st.column_config.NumberColumn(format="%,d원"),
+                "3차익절(+25%)(원)": st.column_config.NumberColumn(format="%,d원"),
             },
         )
         used_sources = sorted(set(source_map.values()))
         st.caption(
             f"실제 사용 시세원: {', '.join(used_sources)} · KIS 10초/Yahoo 60초 캐시 · "
-            f"화면 계산시각 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            f"매도선은 평균매수가 기준 참고선 · 화면 계산시각 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         )
 
         st.markdown("### 매수 체결내역")
@@ -317,12 +361,15 @@ def render_holdings_tab():
             current = price_map.get(code)
             source = source_map.get(code, "없음")
             ret = ((current / avg) - 1) * 100 if current is not None and avg > 0 else None
+            _, _, _, _, state, action = sell_guide(avg, current)
             label = f"{code} {r.get('name','')} · {len(purchases)}회 매수 · 평균 {avg:,.0f}원"
             if current is not None:
                 label += f" · 현재가 {current:,.0f}원({source})"
             if ret is not None:
                 label += f" · 수익률 {ret:+.2f}%"
+            label += f" · {state}"
             with st.expander(label):
+                st.caption(f"매도판단: {action}")
                 hist = []
                 cum_qty = 0.0
                 cum_cost = 0.0
@@ -403,7 +450,6 @@ def render_holdings_tab():
                         "enabled": True,
                         "updated_at": now,
                     })
-                    old.pop("stop_loss_pct", None)
                     holdings[idx] = old
                     msg = f"Update Korea holding {code}"
 
@@ -440,7 +486,7 @@ def render_holdings_tab():
     else:
         st.caption("전량 매도 처리할 보유종목이 없습니다.")
 
-    st.info("현재가는 한국투자증권 KIS REST 현재가를 우선 사용합니다. KIS 조회가 실패할 때만 Yahoo Finance로 자동 대체합니다.")
+    st.info("현재가는 한국투자증권 KIS REST 현재가를 우선 사용합니다. 손절 -3%, 1차 +15%, 2차 +20%, 3차 +25%는 평균매수가 기준의 매도 참고선이며 실제 매도는 추세·시장상황과 함께 판단하세요.")
 
 
 def install_holdings_tab():
