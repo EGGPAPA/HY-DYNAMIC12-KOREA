@@ -12,16 +12,21 @@ REPO = "EGGPAPA/HY-DYNAMIC12-KOREA"
 BRANCH = "main"
 HOLDINGS_PATH = "holdings.json"
 API_URL = f"https://api.github.com/repos/{REPO}/contents/{HOLDINGS_PATH}"
+KIS_BASE_URL = "https://openapi.koreainvestment.com:9443"
+
+
+def secret_value(name, default=""):
+    try:
+        value = st.secrets.get(name, default)
+        if value:
+            return str(value).strip()
+    except Exception:
+        pass
+    return os.getenv(name, default).strip()
 
 
 def github_pat():
-    try:
-        v = st.secrets.get("GITHUB_PAT", "")
-        if v:
-            return str(v).strip()
-    except Exception:
-        pass
-    return os.getenv("GITHUB_PAT", "").strip()
+    return secret_value("GITHUB_PAT")
 
 
 def headers():
@@ -72,13 +77,72 @@ def find_active(rows, code):
     return None, None
 
 
+def kis_ready():
+    return bool(secret_value("KIS_APP_KEY") and secret_value("KIS_APP_SECRET"))
+
+
+@st.cache_data(ttl=60 * 60 * 20, show_spinner=False)
+def kis_access_token(app_key, app_secret):
+    try:
+        r = requests.post(
+            f"{KIS_BASE_URL}/oauth2/tokenP",
+            json={
+                "grant_type": "client_credentials",
+                "appkey": app_key,
+                "appsecret": app_secret,
+            },
+            timeout=10,
+        )
+        data = r.json()
+        token = data.get("access_token")
+        if r.ok and token:
+            return token
+    except Exception:
+        pass
+    return None
+
+
+@st.cache_data(ttl=10, show_spinner=False)
+def get_kis_price(code):
+    app_key = secret_value("KIS_APP_KEY")
+    app_secret = secret_value("KIS_APP_SECRET")
+    if not app_key or not app_secret:
+        return None
+    token = kis_access_token(app_key, app_secret)
+    if not token:
+        return None
+    try:
+        r = requests.get(
+            f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price",
+            headers={
+                "authorization": f"Bearer {token}",
+                "appkey": app_key,
+                "appsecret": app_secret,
+                "tr_id": "FHKST01010100",
+                "custtype": "P",
+            },
+            params={
+                "FID_COND_MRKT_DIV_CODE": "J",
+                "FID_INPUT_ISCD": str(code).zfill(6),
+            },
+            timeout=10,
+        )
+        data = r.json()
+        output = data.get("output") or {}
+        value = output.get("stck_prpr")
+        if r.ok and value is not None and float(value) > 0:
+            return float(value)
+    except Exception:
+        pass
+    return None
+
+
 def yf_symbol(code, market):
-    return f"{str(code).zfill(6)}.{ 'KQ' if str(market).upper() == 'KOSDAQ' else 'KS' }"
+    return f"{str(code).zfill(6)}.{'KQ' if str(market).upper() == 'KOSDAQ' else 'KS'}"
 
 
 @st.cache_data(ttl=60, show_spinner=False)
-def get_current_price(code, market):
-    """Yahoo Finance의 가능한 최신 가격을 가져오고, 실패하면 최근 종가로 폴백합니다."""
+def get_yahoo_price(code, market):
     symbol = yf_symbol(code, market)
     try:
         ticker = yf.Ticker(symbol)
@@ -93,7 +157,6 @@ def get_current_price(code, market):
                     pass
         except Exception:
             pass
-
         h = ticker.history(period="5d", interval="1d", auto_adjust=False)
         if h is not None and not h.empty and "Close" in h.columns:
             s = pd.to_numeric(h["Close"], errors="coerce").dropna()
@@ -101,23 +164,25 @@ def get_current_price(code, market):
                 return float(s.iloc[-1])
     except Exception:
         pass
-
-    try:
-        d = yf.download(symbol, period="5d", auto_adjust=False, progress=False, threads=False)
-        if d is not None and not d.empty:
-            x = d["Close"]
-            if isinstance(x, pd.DataFrame):
-                x = x.iloc[:, 0]
-            x = pd.to_numeric(x, errors="coerce").dropna()
-            if not x.empty:
-                return float(x.iloc[-1])
-    except Exception:
-        pass
     return None
 
 
+def get_current_price(code, market):
+    price = get_kis_price(code)
+    if price is not None:
+        return price, "KIS"
+    price = get_yahoo_price(code, market)
+    if price is not None:
+        return price, "Yahoo"
+    return None, "없음"
+
+
+def clear_price_cache():
+    get_kis_price.clear()
+    get_yahoo_price.clear()
+
+
 def normalized_purchases(row):
-    """기존 holdings.json도 호환. 과거 단일 평균값은 1회 레거시 매수로 간주."""
     purchases = row.get("purchases")
     if isinstance(purchases, list) and purchases:
         clean = []
@@ -136,7 +201,6 @@ def normalized_purchases(row):
                 pass
         if clean:
             return clean
-
     avg = float(row.get("average_price", 0) or 0)
     qty = float(row.get("quantity", 0) or 0)
     if avg > 0 and qty > 0:
@@ -158,7 +222,16 @@ def calc_position(purchases):
 
 def render_holdings_tab():
     st.subheader("💼 보유종목 관리")
-    st.caption("여러 번 매수한 실제 체결내역을 누적하고, 가중평균 매수가·현재가·평가손익·현재 수익률을 자동 계산합니다.")
+    st.caption("여러 번 매수한 실제 체결내역을 누적하고, KIS 현재가 기준으로 평가손익과 수익률을 계산합니다.")
+
+    top1, top2 = st.columns([2, 1])
+    if kis_ready():
+        top1.info("📡 시세원: 한국투자증권 KIS 현재가 우선 · 실패 시 Yahoo Finance 폴백")
+    else:
+        top1.warning("📡 KIS 키가 없어 Yahoo Finance로 조회합니다. Streamlit Secrets에 KIS_APP_KEY / KIS_APP_SECRET을 등록하세요.")
+    if top2.button("🔄 현재가 즉시 갱신", use_container_width=True):
+        clear_price_cache()
+        st.rerun()
 
     try:
         holdings, holdings_sha = load_holdings()
@@ -171,11 +244,12 @@ def render_holdings_tab():
     c1, c2, c3 = st.columns(3)
     c1.metric("보유종목", len(active))
     c2.metric("GitHub 저장", "준비됨" if github_pat() else "PAT 미설정")
-    c3.metric("시세 갱신", "60초")
+    c3.metric("KIS 캐시", "10초" if kis_ready() else "Yahoo 60초")
 
     if active:
         view = []
         price_map = {}
+        source_map = {}
         total_cost_all = 0.0
         total_value_all = 0.0
         priced_cost_all = 0.0
@@ -184,9 +258,10 @@ def render_holdings_tab():
             purchases = normalized_purchases(r)
             qty, total_cost, avg = calc_position(purchases)
             market = r.get("market", "KOSPI")
-            current = get_current_price(r.get("ticker", ""), market)
             code = str(r.get("ticker", "")).zfill(6)
+            current, source = get_current_price(code, market)
             price_map[code] = current
+            source_map[code] = source
             value = current * qty if current is not None else None
             pnl = value - total_cost if value is not None else None
             return_pct = (pnl / total_cost * 100) if pnl is not None and total_cost > 0 else None
@@ -199,6 +274,7 @@ def render_holdings_tab():
                 "종목코드": code,
                 "종목명": r.get("name", ""),
                 "시장": market,
+                "시세원": source,
                 "매수횟수": len(purchases),
                 "평균매수가(원)": round(avg),
                 "수량": qty,
@@ -227,18 +303,23 @@ def render_holdings_tab():
                 "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
             },
         )
-        st.caption(f"시세 기준: Yahoo Finance · 약 60초 캐시 · 화면 계산시각 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        used_sources = sorted(set(source_map.values()))
+        st.caption(
+            f"실제 사용 시세원: {', '.join(used_sources)} · KIS 10초/Yahoo 60초 캐시 · "
+            f"화면 계산시각 {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        )
 
         st.markdown("### 매수 체결내역")
         for r in active:
             purchases = normalized_purchases(r)
-            qty, total_cost, avg = calc_position(purchases)
+            _, _, avg = calc_position(purchases)
             code = str(r.get("ticker", "")).zfill(6)
             current = price_map.get(code)
+            source = source_map.get(code, "없음")
             ret = ((current / avg) - 1) * 100 if current is not None and avg > 0 else None
             label = f"{code} {r.get('name','')} · {len(purchases)}회 매수 · 평균 {avg:,.0f}원"
             if current is not None:
-                label += f" · 현재가 {current:,.0f}원"
+                label += f" · 현재가 {current:,.0f}원({source})"
             if ret is not None:
                 label += f" · 수익률 {ret:+.2f}%"
             with st.expander(label):
@@ -293,7 +374,7 @@ def render_holdings_tab():
 
                 if old is None:
                     purchases = [new_trade]
-                    new_qty, total_cost, new_avg = calc_position(purchases)
+                    new_qty, _, new_avg = calc_position(purchases)
                     holdings.append({
                         "ticker": code,
                         "name": name or code,
@@ -310,7 +391,7 @@ def render_holdings_tab():
                 else:
                     purchases = normalized_purchases(old)
                     purchases.append(new_trade)
-                    new_qty, total_cost, new_avg = calc_position(purchases)
+                    new_qty, _, new_avg = calc_position(purchases)
                     old.update({
                         "name": name or old.get("name") or code,
                         "market": market,
@@ -331,7 +412,7 @@ def render_holdings_tab():
                     f"{name or code} 저장 완료 · 이번 {buy_qty:g}주 @ {buy_price:,.0f}원 · "
                     f"총 {new_qty:g}주 · 새 평균매수가 {new_avg:,.0f}원 · 매수 {len(purchases)}회"
                 )
-                get_current_price.clear()
+                clear_price_cache()
                 st.rerun()
             except Exception as e:
                 st.error(str(e))
@@ -359,7 +440,7 @@ def render_holdings_tab():
     else:
         st.caption("전량 매도 처리할 보유종목이 없습니다.")
 
-    st.info("추가매수는 체결 건별로 저장되며 평균매수가는 가중평균으로 재계산합니다. 현재가는 Yahoo Finance의 가능한 최신 가격을 사용하고, 불가하면 최근 종가로 대체합니다.")
+    st.info("현재가는 한국투자증권 KIS REST 현재가를 우선 사용합니다. KIS 조회가 실패할 때만 Yahoo Finance로 자동 대체합니다.")
 
 
 def install_holdings_tab():
