@@ -103,12 +103,15 @@ def _sample_breadth():
             progress=False, threads=True,
         )
         close = data["Close"] if isinstance(data.columns, pd.MultiIndex) else data[["Close"]]
+        close = close.dropna(how="all").ffill()
         if close is None or close.empty or len(close) < 2:
             return {}
-        changes = close.ffill().pct_change().iloc[-1].dropna() * 100
+        changes = close.pct_change(fill_method=None).iloc[-1].dropna() * 100
         rising = int((changes > 0).sum())
         falling = int((changes < 0).sum())
         flat = int((changes == 0).sum())
+        if rising + falling == 0:
+            return {}
         return {
             "date": pd.Timestamp(close.index[-1]).strftime("%Y%m%d"),
             "rising": rising, "falling": falling, "flat": flat,
