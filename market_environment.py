@@ -464,13 +464,39 @@ def render_market_environment(market_is_open=False):
 
             strong = candidates[candidates["종목 추세"] == "🟢 강한 상승"].copy()
             if not strong.empty:
+                top_rows = st.session_state.get("kr_rows", [])
+                top_map = {
+                    str(row.get("_종목코드", "")).zfill(6): row
+                    for row in top_rows[:12]
+                    if row.get("_종목코드")
+                }
+
+                def top12_link(row):
+                    if not top_rows:
+                        return "분석 전", "-", "🔎 관심 등록 전", "전체시장 분석을 실행하면 TOP12와 자동 비교"
+                    matched = top_map.get(str(row["종목코드"]).zfill(6))
+                    if matched:
+                        decision = str(matched.get("판정", "TOP12"))
+                        if decision.startswith("🟢") or decision.startswith("🟡"):
+                            interest = "⭐ 최우선 관심"
+                            reason = "강한 상승 + TOP12 정량평가 동시 충족"
+                        else:
+                            interest = "👀 교차검증 관심"
+                            reason = "강한 상승이며 TOP12 포함, 판정 조건 추가 확인"
+                        return "🏆 포함", decision, interest, reason
+                    return "미포함", "-", "👀 모멘텀 관심", "가격 추세는 강하지만 TOP12 수급·펀더멘털 조건 미충족"
+
+                links = strong.apply(top12_link, axis=1, result_type="expand")
+                links.columns = ["TOP12", "TOP12 판정", "관심 등급", "관심 이유"]
+                strong = pd.concat([strong.reset_index(drop=True), links.reset_index(drop=True)], axis=1)
                 st.markdown("### 🟢 강한 상승 종목 모아보기")
-                st.caption("가격이 20일선·60일선 위에 있고 최근 20일 상승률도 강한 종목입니다. 종합 주도점수 순으로 정렬합니다.")
+                st.caption("강한 상승은 가격·업종 모멘텀 평가이며 TOP12는 수급·유동성·펀더멘털까지 보는 별도 평가입니다. 두 조건이 겹치면 관심 우선순위를 높입니다.")
                 st.dataframe(
                     strong[[
-                        "종목", "업종", "현재가(원)", "20일 수익률(%)",
-                        "60일 수익률(%)", "20일선 대비(%)", "거래량 배수",
-                        "종합 주도점수", "종합 평가",
+                        "관심 등급", "종목", "업종", "TOP12", "TOP12 판정",
+                        "현재가(원)", "20일 수익률(%)", "60일 수익률(%)",
+                        "20일선 대비(%)", "거래량 배수", "종합 주도점수",
+                        "종합 평가", "관심 이유",
                     ]],
                     use_container_width=True,
                     hide_index=True,
@@ -481,6 +507,14 @@ def render_market_environment(market_is_open=False):
                         ),
                     },
                 )
+                if not top_rows:
+                    st.info("현재는 강한 상승 종목만 표시했습니다. ‘전체시장 분석’을 실행하면 이 표에 TOP12 포함 여부와 최우선 관심 종목이 자동 표시됩니다.")
+                else:
+                    priority_count = int(strong["관심 등급"].eq("⭐ 최우선 관심").sum())
+                    if priority_count:
+                        st.success(f"강한 상승과 TOP12를 동시에 충족한 최우선 관심 종목이 {priority_count}개 있습니다.")
+                    else:
+                        st.warning("현재 강한 상승 종목 중 TOP12 매수후보와 동시에 겹치는 종목은 없습니다. 모멘텀 관찰만 하고 추격매수는 피하세요.")
             else:
                 st.info("현재 기준을 모두 충족하는 ‘강한 상승’ 종목은 없습니다. 일반 상승 종목은 아래 상세표에서 확인하세요.")
 
