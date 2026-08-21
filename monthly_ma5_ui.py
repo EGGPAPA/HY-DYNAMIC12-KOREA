@@ -1,3 +1,4 @@
+import sys
 import pandas as pd
 import streamlit as st
 import yfinance as yf
@@ -47,12 +48,22 @@ def _signal(h):
     return label, score, now, ma_now, gap, slope, vol_ratio
 
 
+def _get_universe():
+    # Streamlit executes app.py as __main__. Importing `app` here executes the
+    # whole app a second time and creates duplicate widget keys. Reuse the
+    # already-running module instead.
+    main_mod = sys.modules.get("__main__")
+    fn = getattr(main_mod, "get_full_universe", None)
+    if not callable(fn):
+        raise RuntimeError("실행 중인 앱에서 종목목록 함수를 찾지 못했습니다.")
+    return fn()
+
+
 def render_monthly_ma5_tab():
     st.subheader("🔥 월봉 5개월 이동평균선 돌파")
     st.caption("KOSPI·KOSDAQ 종목에서 월봉 5개월선 신규 상향돌파와 돌파 유지 종목을 찾습니다. 현재 월봉은 월말 전까지 잠정 신호입니다.")
     try:
-        from app import get_full_universe
-        universe, source = get_full_universe()
+        universe, source = _get_universe()
     except Exception as e:
         st.error(f"종목목록을 불러오지 못했습니다: {e}")
         return
