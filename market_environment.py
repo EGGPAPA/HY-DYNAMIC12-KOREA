@@ -22,6 +22,14 @@ SECTOR_ETFS = {
     "헬스케어": "143860.KS",
     "2차전지": "305720.KS",
 }
+BREADTH_SAMPLE = {
+    "005930.KS": "삼성전자", "000660.KS": "SK하이닉스", "005380.KS": "현대차",
+    "000270.KS": "기아", "105560.KS": "KB금융", "055550.KS": "신한지주",
+    "035420.KS": "NAVER", "035720.KS": "카카오", "068270.KS": "셀트리온",
+    "207940.KS": "삼성바이오", "012450.KS": "한화에어로", "042660.KS": "한화오션",
+    "247540.KQ": "에코프로비엠", "086520.KQ": "에코프로", "196170.KQ": "알테오젠",
+    "058470.KQ": "리노공업", "214150.KQ": "클래시스", "039030.KQ": "이오테크닉스",
+}
 
 
 def _business_day(offset=0):
@@ -60,7 +68,7 @@ def _last_close(symbol, period="3mo"):
 @st.cache_data(ttl=1800, show_spinner=False)
 def _market_breadth():
     if stock is None:
-        return {}
+        return _sample_breadth()
     for offset in range(8):
         date = _business_day(offset).strftime("%Y%m%d")
         frames = []
@@ -84,7 +92,31 @@ def _market_breadth():
             return {"date": date, "rising": rising, "falling": falling, "flat": flat, "ratio": ratio}
         except Exception:
             continue
-    return {}
+    return _sample_breadth()
+
+
+def _sample_breadth():
+    """Fallback breadth based on a disclosed representative liquid-stock sample."""
+    try:
+        data = yf.download(
+            list(BREADTH_SAMPLE), period="5d", interval="1d", auto_adjust=True,
+            progress=False, threads=True,
+        )
+        close = data["Close"] if isinstance(data.columns, pd.MultiIndex) else data[["Close"]]
+        if close is None or close.empty or len(close) < 2:
+            return {}
+        changes = close.ffill().pct_change().iloc[-1].dropna() * 100
+        rising = int((changes > 0).sum())
+        falling = int((changes < 0).sum())
+        flat = int((changes == 0).sum())
+        return {
+            "date": pd.Timestamp(close.index[-1]).strftime("%Y%m%d"),
+            "rising": rising, "falling": falling, "flat": flat,
+            "ratio": rising / max(rising + falling, 1) * 100,
+            "source": f"대표 유동성 종목 {len(changes)}개 표본",
+        }
+    except Exception:
+        return {}
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -113,7 +145,25 @@ def _investor_flow():
         result["date"] = pd.Timestamp(frame.index[-1]).strftime("%Y-%m-%d")
         return result
     except Exception:
-        return {}
+        pass
+    for offset in range(8):
+        date = _business_day(offset).strftime("%Y%m%d")
+        try:
+            result = {"date": f"{date[:4]}-{date[4:6]}-{date[6:]}", "period_days": 1}
+            for investor, label in (("외국인", "외국인"), ("기관합계", "기관")):
+                total = 0.0
+                for market in ("KOSPI", "KOSDAQ"):
+                    frame = stock.get_market_net_purchases_of_equities_by_ticker(
+                        date, date, market, investor
+                    )
+                    if frame is not None and not frame.empty and "순매수거래대금" in frame:
+                        total += float(pd.to_numeric(frame["순매수거래대금"], errors="coerce").fillna(0).sum())
+                result[f"{label}20"] = total
+            if any(abs(result.get(k, 0)) > 0 for k in ("외국인20", "기관20")):
+                return result
+        except Exception:
+            continue
+    return {}
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
@@ -225,17 +275,20 @@ def render_market_environment(market_is_open=False):
     b3.metric("KOSPI 20일", f"{kospi20:+.1f}%" if kospi20 is not None else "자료 없음")
     b4.metric("KOSDAQ 20일", f"{kosdaq20:+.1f}%" if kosdaq20 is not None else "자료 없음")
     if breadth:
-        st.caption(f"시장 폭 기준일: {breadth['date']} · 상승 종목 비율은 보합을 제외해 계산")
+        source = breadth.get("source", "KRX KOSPI·KOSDAQ 전체 종목")
+        st.caption(f"시장 폭 기준일: {breadth['date']} · {source} · 상승 종목 비율은 보합을 제외해 계산")
 
     st.markdown("### 수급·환율·글로벌 위험")
     r1, r2, r3, r4, r5 = st.columns(5)
-    r1.metric("외국인 20일", _money(flow.get("외국인20") if flow else None))
-    r2.metric("기관 20일", _money(flow.get("기관20") if flow else None))
+    flow_days = flow.get("period_days", 20) if flow else 20
+    r1.metric(f"외국인 {flow_days}일", _money(flow.get("외국인20") if flow else None))
+    r2.metric(f"기관 {flow_days}일", _money(flow.get("기관20") if flow else None))
     r3.metric("원/달러", f"{usdkrw:,.1f}원" if usdkrw else "자료 없음", f"20일 {usd20:+.1f}%" if usd20 is not None else None)
     r4.metric("VIX", f"{vix:.1f}" if vix else "자료 없음", f"20일 {vix20:+.1f}%" if vix20 is not None else None)
     r5.metric("미국 10년물", f"{us10y:.2f}%" if us10y else "자료 없음", f"20일 {us10y20:+.1f}%" if us10y20 is not None else None)
     if flow:
-        st.caption(f"KRX 수급 기준일: {flow.get('date', '확인 불가')} · 금액은 KOSPI 누적 순매수")
+        market_note = "KOSPI·KOSDAQ" if flow_days == 1 else "KOSPI"
+        st.caption(f"KRX 수급 기준일: {flow.get('date', '확인 불가')} · 금액은 {market_note} 누적 순매수")
 
     sectors = _sector_strength()
     if not sectors.empty:
