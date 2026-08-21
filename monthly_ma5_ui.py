@@ -70,7 +70,6 @@ def _trade_plan(label, px, ma, gap, slope, vr):
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _get_universe():
-    """MA5 탭이 app.py의 __main__ 상태에 의존하지 않고 독립적으로 종목목록을 만든다."""
     try:
         from pykrx import stock
         d = datetime.now().date()
@@ -143,7 +142,10 @@ def render_monthly_ma5_tab():
     rows = st.session_state.get("kr_ma5_rows", [])
     if rows:
         st.success(f"조건 충족 {len(rows)}종목")
-        st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        df = pd.DataFrame(rows)
+        price_cols = ["현재가", "5개월선", "1차매수가", "2차매수가", "3차매수가", "손절기준", "1차목표(+10%)", "2차목표(+20%)"]
+        column_config = {col: st.column_config.NumberColumn(col, format="%d원") for col in price_cols}
+        st.dataframe(df, use_container_width=True, hide_index=True, column_config=column_config)
         st.markdown("### 📌 매매 방법")
         st.markdown("**🟢 1차매수 검토**: 예정금액 30% → **2차** 5개월선 부근 30% → **3차** 5개월선 -3% 부근 40%  \n**🟡 눌림대기/추격금지**: 현재가 추격매수 대신 5개월선 쪽 조정을 기다림  \n**🔵 보유·눌림매수**: 5개월선 위 추세 유지 시 보유 관점  \n**🔴 매도검토**: 월봉 기준 추세 훼손 여부 재확인")
         st.warning("월봉 신호는 월말 종가로 확정됩니다. 손절·목표 가격은 기계적 참고선이며 실적·뉴스·시장 상황도 함께 확인하세요.")
