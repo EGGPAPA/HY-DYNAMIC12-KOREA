@@ -11,6 +11,7 @@ import yfinance as yf
 from korea_holdings_ui import render_holdings_tab
 from monthly_ma5_ui import render_monthly_ma5_tab
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
+from market_environment import render_market_environment
 
 try:
     from pykrx import stock
@@ -403,32 +404,7 @@ st.info("① 시장 데이터 확인 → ② 전체시장 자동분석 → ③ T
 tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🔥 5개월선 돌파", "📈 전략검증", "💼 보유종목"])
 
 with tabs[0]:
-    regime = kospi_regime()
-    c1, c2 = st.columns(2)
-    c1.metric("현재 시장 레짐", regime)
-    c2.metric("한국 정규장", "OPEN" if market_open() else "CLOSED", "09:00~15:30 KST")
-    st.subheader("KOSPI vs 한국 수출 YoY")
-    kd = yf_history("^KS11", "5y")
-    exp = load_export_history()
-    if not kd.empty:
-        k = pd.DataFrame({"KOSPI": kd["Close"]})
-        if getattr(k.index, "tz", None) is not None:
-            k.index = k.index.tz_localize(None)
-        m = k.resample("ME").last()
-        m["KOSPI YoY"] = m["KOSPI"].pct_change(12) * 100
-        if not exp.empty:
-            e = exp.set_index("date")
-            use = [c for c in ["export_yoy", "semi_yoy"] if c in e.columns]
-            chart = m[["KOSPI YoY"]].join(e[use], how="outer").sort_index()
-            chart = chart.rename(columns={"export_yoy": "수출 YoY", "semi_yoy": "반도체 수출 YoY"})
-            st.line_chart(chart)
-        else:
-            st.line_chart(m[["KOSPI YoY"]])
-        latest_price_date = pd.Timestamp(kd.index[-1]).strftime("%Y-%m-%d")
-        export_date = exp["date"].max().strftime("%Y-%m-%d") if not exp.empty else "자료 없음"
-        st.caption(f"가격: Yahoo Finance 조정주가 · 최근 가격 {latest_price_date} · 수출자료 최근 {export_date} · 화면 갱신 {datetime.now(SEOUL):%Y-%m-%d %H:%M KST}")
-    else:
-        st.error("KOSPI 가격 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.")
+    render_market_environment(market_is_open=market_open())
 
 with tabs[1]:
     st.subheader("🔎 KOSPI + KOSDAQ 전체시장 분석")
