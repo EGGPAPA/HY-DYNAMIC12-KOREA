@@ -1,3 +1,5 @@
+import json
+import os
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -6,6 +8,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 import yfinance as yf
+import requests
 
 try:
     from pykrx import stock
@@ -15,6 +18,7 @@ except Exception:
 
 SEOUL = ZoneInfo("Asia/Seoul")
 EXPORT_FILE = Path("export_history.csv")
+LEADER_ALERT_STATE = Path("data/leader_alert_state.json")
 SECTOR_ETFS = {
     "반도체": "091160.KS",
     "자동차": "091180.KS",
@@ -268,15 +272,26 @@ def _sector_stock_candidates():
             first_watch = ma20 * 1.02
             second_watch = max(ma60 * 1.02, ma20 * .96)
             invalidation = ma60 * .97
+            near_first = abs(price / first_watch - 1) <= .02 if first_watch else False
+            above_ma20 = price >= ma20
+            volume_ok = volume_ratio is not None and volume_ratio >= .70
+            trend_valid = price > invalidation
+            entry_ready = bool(
+                trend == "🟢 강한 상승" and near_first and above_ma20 and volume_ok and trend_valid
+            )
+            entry_status = "🚨 1차 분할매수 조건 충족" if entry_ready else entry_timing
             rows.append({
                 "업종": sector, "종목": name, "종목코드": symbol.split(".")[0],
                 "현재가(원)": round(price), "20일 수익률(%)": round(ret20, 2),
                 "60일 수익률(%)": round(ret60, 2), "20일선 대비(%)": round(gap20, 2),
                 "거래량 배수": round(volume_ratio, 2) if volume_ratio is not None else None,
                 "종목 추세점수": round(trend_score), "종목 추세": trend,
-                "매수시기": entry_timing, "매수시기 근거": entry_reason,
+                "매수시기": entry_status, "매수시기 근거": entry_reason,
                 "1차 관찰가(원)": round(first_watch), "2차 관찰가(원)": round(second_watch),
                 "추세 무효선(원)": round(invalidation),
+                "_진입조건충족": entry_ready, "_20일선": ma20,
+                "_조건가격": near_first, "_조건20일선": above_ma20,
+                "_조건거래량": volume_ok, "_조건추세": trend_valid,
             })
     return pd.DataFrame(rows)
 
@@ -418,6 +433,102 @@ def _overall_evaluation(items):
     return score, "위험 회피", "시장 내부와 글로벌 위험이 동시에 악화된 구간입니다. 신규매수를 보류합니다."
 
 
+def _secret(name, default=""):
+    try:
+        value = st.secrets.get(name, default)
+        if value:
+            return str(value).strip()
+    except Exception:
+        pass
+    return str(os.getenv(name, default)).strip()
+
+
+def _kakao_ready():
+    return bool(
+        _secret("KAKAO_REST_API_KEY")
+        and _secret("KAKAO_CLIENT_SECRET")
+        and _secret("KAKAO_REFRESH_TOKEN")
+    )
+
+
+@st.cache_data(ttl=60 * 60 * 5, show_spinner=False)
+def _kakao_token(rest_key, client_secret, refresh_token):
+    try:
+        response = requests.post(
+            "https://kauth.kakao.com/oauth/token",
+            data={
+                "grant_type": "refresh_token", "client_id": rest_key,
+                "client_secret": client_secret, "refresh_token": refresh_token,
+            },
+            timeout=10,
+        )
+        data = response.json()
+        return data.get("access_token") if response.ok else None
+    except Exception:
+        return None
+
+
+def _send_kakao(text):
+    token = _kakao_token(
+        _secret("KAKAO_REST_API_KEY"), _secret("KAKAO_CLIENT_SECRET"),
+        _secret("KAKAO_REFRESH_TOKEN"),
+    )
+    if not token:
+        return False, "카카오 인증 토큰을 가져오지 못했습니다."
+    link = _secret("KAKAO_REDIRECT_URI", "https://hy-dynamic12-korea-nfxvcb3ntgddwdeydldbsb.streamlit.app/")
+    template = {
+        "object_type": "text", "text": text,
+        "link": {"web_url": link, "mobile_web_url": link},
+        "button_title": "주도주 확인",
+    }
+    try:
+        response = requests.post(
+            "https://kapi.kakao.com/v2/api/talk/memo/default/send",
+            headers={"Authorization": f"Bearer {token}"},
+            data={"template_object": json.dumps(template, ensure_ascii=False)},
+            timeout=10,
+        )
+        data = response.json()
+        if response.ok and data.get("result_code") == 0:
+            return True, "카카오 알림 전송 완료"
+        return False, data.get("msg") or data.get("message") or f"HTTP {response.status_code}"
+    except Exception as exc:
+        return False, f"카카오 전송 오류: {type(exc).__name__}"
+
+
+def _load_alert_state():
+    try:
+        if LEADER_ALERT_STATE.exists():
+            return json.loads(LEADER_ALERT_STATE.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return {}
+
+
+def _save_alert_state(state):
+    try:
+        LEADER_ALERT_STATE.parent.mkdir(exist_ok=True)
+        LEADER_ALERT_STATE.write_text(
+            json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+    except Exception:
+        pass
+
+
+def _leader_alert_message(ready):
+    lines = ["[HY DYNAMIC12 주도주 알림]", "🚨 1차 분할매수 조건 충족"]
+    for _, row in ready.iterrows():
+        lines.extend([
+            "",
+            f"{row['종목']} ({row['업종']})",
+            f"현재가 {row['현재가(원)']:,.0f}원 / 1차 관찰가 {row['1차 관찰가(원)']:,.0f}원",
+            f"20일선 대비 {row['20일선 대비(%)']:+.1f}% / 거래량 {row['거래량 배수']:.2f}배",
+            f"추세 무효선 {row['추세 무효선(원)']:,.0f}원 / {row.get('관심 등급', '')}",
+        ])
+    lines.append("\n관찰가 부근 지지 확인용 신호이며 실제 주문은 직접 판단하세요.")
+    return "\n".join(lines)
+
+
 def render_market_environment(market_is_open=False):
     breadth = _market_breadth()
     flow = _investor_flow()
@@ -535,6 +646,57 @@ def render_market_environment(market_is_open=False):
                         ),
                     },
                 )
+                ready = strong[strong["_진입조건충족"]].copy()
+                st.markdown("#### 매수조건 확인")
+                condition_view = strong[["종목", "현재가(원)", "1차 관찰가(원)"]].copy()
+                condition_view["관찰가 ±2%"] = strong["_조건가격"].map(lambda value: "✅" if value else "대기")
+                condition_view["20일선 위"] = strong["_조건20일선"].map(lambda value: "✅" if value else "대기")
+                condition_view["거래량 ≥0.7배"] = strong["_조건거래량"].map(lambda value: "✅" if value else "대기")
+                condition_view["무효선 위"] = strong["_조건추세"].map(lambda value: "✅" if value else "대기")
+                condition_view["최종 신호"] = strong["_진입조건충족"].map(
+                    lambda value: "🚨 조건 충족" if value else "⏳ 대기"
+                )
+                st.dataframe(
+                    condition_view, use_container_width=True, hide_index=True,
+                    column_config={
+                        "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "1차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
+                    },
+                )
+
+                st.markdown("#### 카카오 1차 매수조건 알림")
+                k1, k2, k3 = st.columns([1, 1, 1.4])
+                k1.metric("카카오 연결", "✅ 준비됨" if _kakao_ready() else "⚠️ 설정 필요")
+                k2.metric("현재 조건 충족", f"{len(ready)}종목")
+                auto_alert = k3.toggle(
+                    "조건 신규충족 시 자동알림", value=False,
+                    disabled=not _kakao_ready(), key="leader_kakao_auto",
+                )
+                if st.button(
+                    "📨 현재 충족 종목 카카오 알림 보내기",
+                    disabled=not _kakao_ready() or ready.empty,
+                    use_container_width=True,
+                    key="leader_kakao_manual",
+                ):
+                    ok, message = _send_kakao(_leader_alert_message(ready))
+                    st.success(message) if ok else st.error(message)
+
+                if auto_alert and _kakao_ready() and not ready.empty:
+                    state = _load_alert_state()
+                    signature = datetime.now(SEOUL).strftime("%Y-%m-%d") + ":" + ",".join(
+                        sorted(ready["종목코드"].astype(str))
+                    )
+                    if state.get("last_signature") != signature:
+                        ok, message = _send_kakao(_leader_alert_message(ready))
+                        if ok:
+                            _save_alert_state({
+                                "last_signature": signature,
+                                "sent_at": datetime.now(SEOUL).isoformat(),
+                            })
+                            st.success("새로운 1차 분할매수 충족 신호를 카카오로 보냈습니다.")
+                        else:
+                            st.warning(message)
+                st.caption("자동알림은 앱이 실행되어 데이터를 다시 계산할 때 작동합니다. 장중 상시감시는 별도 스케줄러가 필요합니다.")
                 if not top_rows:
                     st.info("현재는 강한 상승 종목만 표시했습니다. ‘전체시장 분석’을 실행하면 이 표에 TOP12 포함 여부와 최우선 관심 종목이 자동 표시됩니다.")
                 else:
