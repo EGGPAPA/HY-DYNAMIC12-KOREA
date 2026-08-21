@@ -16,7 +16,6 @@ def _clip(v, lo=0.0, hi=100.0):
 
 
 def _momentum_score(ret_1m, ret_3m):
-    # 0% 부근=50점, 강한 상승=고득점, 강한 하락=저득점
     return _clip(50 + ret_1m * 180 + ret_3m * 90)
 
 
@@ -44,12 +43,10 @@ def _ret(s, days):
 
 
 def _basket_score(symbols):
-    vals = []
-    details = []
+    vals, details = [], []
     for symbol in symbols:
         s = _history(symbol, "6mo")
-        r1 = _ret(s, 21)
-        r3 = _ret(s, 63)
+        r1, r3 = _ret(s, 21), _ret(s, 63)
         if r1 is None or r3 is None:
             continue
         score = _momentum_score(r1, r3)
@@ -61,14 +58,15 @@ def _basket_score(symbols):
 def _chart_score():
     s = _history(SK_SYMBOL, "1y")
     if len(s) < 160:
-        return 50.0, "데이터 부족"
+        return 50.0, "데이터 부족", {}
     p = float(s.iloc[-1])
     ma20 = float(s.tail(20).mean())
+    ma40 = float(s.tail(40).mean())
     ma60 = float(s.tail(60).mean())
     ma120 = float(s.tail(120).mean())
     ma160 = float(s.tail(160).mean())
-    r1 = _ret(s, 21) or 0.0
-    r3 = _ret(s, 63) or 0.0
+    prev40 = float(s.iloc[-21:-1].tail(40).mean()) if len(s) >= 61 else ma40
+    r1, r3 = _ret(s, 21) or 0.0, _ret(s, 63) or 0.0
     score = 35
     score += 12 if p > ma20 else 0
     score += 14 if p > ma60 else 0
@@ -76,91 +74,108 @@ def _chart_score():
     score += 15 if p > ma160 else 0
     score += _clip(10 + r1 * 35 + r3 * 20, 0, 10)
     text = f"현재가가 20/60/120/160일선 중 {sum([p>ma20,p>ma60,p>ma120,p>ma160])}개 위"
-    return _clip(score), text
+    technical = {"price": p, "ma20": ma20, "ma40": ma40, "ma60": ma60, "ma120": ma120, "ma160": ma160,
+                 "ma40_rising": ma40 > prev40, "r1": r1, "r3": r3}
+    return _clip(score), text, technical
 
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _fundamental_score():
     try:
         info = yf.Ticker(SK_SYMBOL).info or {}
-        revenue_growth = info.get("revenueGrowth")
-        earnings_growth = info.get("earningsGrowth")
-        roe = info.get("returnOnEquity")
-        forward_pe = info.get("forwardPE")
-        score = 50.0
-        notes = []
+        revenue_growth, earnings_growth = info.get("revenueGrowth"), info.get("earningsGrowth")
+        roe, forward_pe = info.get("returnOnEquity"), info.get("forwardPE")
+        score, notes = 50.0, []
         if isinstance(revenue_growth, (int, float)):
-            score += _clip(revenue_growth * 60, -12, 12)
-            notes.append(f"매출성장 {revenue_growth*100:+.1f}%")
+            score += _clip(revenue_growth * 60, -12, 12); notes.append(f"매출성장 {revenue_growth*100:+.1f}%")
         if isinstance(earnings_growth, (int, float)):
-            score += _clip(earnings_growth * 35, -15, 15)
-            notes.append(f"이익성장 {earnings_growth*100:+.1f}%")
+            score += _clip(earnings_growth * 35, -15, 15); notes.append(f"이익성장 {earnings_growth*100:+.1f}%")
         if isinstance(roe, (int, float)):
-            score += _clip((roe - 0.10) * 35, -8, 10)
-            notes.append(f"ROE {roe*100:.1f}%")
+            score += _clip((roe - 0.10) * 35, -8, 10); notes.append(f"ROE {roe*100:.1f}%")
         if isinstance(forward_pe, (int, float)) and forward_pe > 0:
-            score += 5 if forward_pe <= 15 else (2 if forward_pe <= 25 else -4)
-            notes.append(f"Fwd PER {forward_pe:.1f}")
+            score += 5 if forward_pe <= 15 else (2 if forward_pe <= 25 else -4); notes.append(f"Fwd PER {forward_pe:.1f}")
         return _clip(score), " · ".join(notes) if notes else "Yahoo 재무데이터 제한"
     except Exception:
         return 50.0, "재무데이터 조회 실패"
 
 
+def _split_signals(total, technical):
+    p = technical.get("price", 0)
+    ma40 = technical.get("ma40", 0)
+    ma160 = technical.get("ma160", 0)
+    ma40_rising = technical.get("ma40_rising", False)
+
+    # 보유 판단: 장기 추세와 종합점수를 중심으로 판단
+    if total >= 58 and p >= ma160:
+        hold = "🟢 계속 보유"
+        hold_note = "장기 추세가 살아 있고 종합점수도 보유 기준을 충족합니다."
+    elif total >= 45 and p >= ma160:
+        hold = "🟡 보유 · 경계"
+        hold_note = "장기선 위이지만 종합 모멘텀이 약해져 비중 확대는 보류합니다."
+    elif p < ma160 or total < 45:
+        hold = "🔴 비중축소/매도 검토"
+        hold_note = "160일선 이탈 또는 종합점수 약화가 확인됐습니다."
+    else:
+        hold = "🟡 보유 관찰"
+        hold_note = "방향성이 명확해질 때까지 기존 물량 중심으로 관찰합니다."
+
+    # 신규/추가매수: 추격매수 방지. 40일선 근처 눌림 또는 재회복을 선호
+    gap40 = (p / ma40 - 1) if ma40 else 0
+    if total >= 70 and p >= ma160 and ma40_rising and -0.03 <= gap40 <= 0.025:
+        buy = "🟢 매수 가능"
+        buy_note = "40일선 부근의 눌림 구간이며 장기 추세와 종합점수가 강합니다."
+    elif total >= 58 and p >= ma160:
+        buy = "🟡 눌림 매수 대기"
+        if gap40 > 0.025:
+            buy_note = f"현재가가 40일선보다 {gap40*100:.1f}% 높아 추격매수보다 조정을 기다립니다."
+        elif gap40 < -0.03:
+            buy_note = f"현재가가 40일선보다 {abs(gap40)*100:.1f}% 낮습니다. 40일선 재회복을 확인한 뒤 매수를 검토합니다."
+        else:
+            buy_note = "40일선 부근이지만 종합점수 70점 미만이라 추가 확인 후 매수합니다."
+    else:
+        buy = "🟠 신규매수 보류"
+        buy_note = "종합점수 또는 장기 추세가 신규매수 기준을 충족하지 않습니다."
+    return hold, hold_note, buy, buy_note, gap40
+
+
 @st.cache_data(ttl=900, show_spinner=False)
 def get_skhynix_assessment():
-    chart, chart_note = _chart_score()
-    semi, semi_detail = _basket_score(SEMIS)
-    ai, ai_detail = _basket_score(AI_INFRA)
+    chart, chart_note, technical = _chart_score()
+    semi, _ = _basket_score(SEMIS)
+    ai, _ = _basket_score(AI_INFRA)
     p7, p7_detail = _basket_score(P7)
     fundamental, fundamental_note = _fundamental_score()
-
     total = chart * 0.30 + semi * 0.25 + ai * 0.20 + p7 * 0.15 + fundamental * 0.10
-    if total >= 80:
-        verdict = "🟢 적극매수 후보"
-    elif total >= 70:
-        verdict = "🟢 매수/보유 우위"
-    elif total >= 58:
-        verdict = "🟡 보유 · 눌림 매수 대기"
-    elif total >= 45:
-        verdict = "🟠 중립 · 비중확대 보류"
-    else:
-        verdict = "🔴 비중축소/매도 검토"
-
-    return {
-        "chart": round(chart, 1),
-        "semi": round(semi, 1),
-        "ai": round(ai, 1),
-        "p7": round(p7, 1),
-        "fundamental": round(fundamental, 1),
-        "total": round(total, 1),
-        "verdict": verdict,
-        "chart_note": chart_note,
-        "fundamental_note": fundamental_note,
-        "p7_available": len(p7_detail),
-        "updated": datetime.now().strftime("%Y-%m-%d %H:%M"),
-    }
+    hold, hold_note, buy, buy_note, gap40 = _split_signals(total, technical)
+    return {"chart": round(chart,1), "semi": round(semi,1), "ai": round(ai,1), "p7": round(p7,1),
+            "fundamental": round(fundamental,1), "total": round(total,1), "hold": hold, "hold_note": hold_note,
+            "buy": buy, "buy_note": buy_note, "gap40": gap40, "technical": technical, "chart_note": chart_note,
+            "fundamental_note": fundamental_note, "p7_available": len(p7_detail), "updated": datetime.now().strftime("%Y-%m-%d %H:%M")}
 
 
 def render_skhynix_assessment():
     st.markdown("### 🧠 SK하이닉스 종합판단")
-    st.caption("차트만 보지 않고 반도체·AI 인프라·월가 P7 흐름·기업 재무를 함께 계산합니다. P7 = SanDisk, Marvell, Micron, Intel, Dell, AMD, Broadcom.")
+    st.caption("보유 여부와 신규/추가매수 시점을 분리합니다. 차트·반도체/HBM·AI 인프라·월가 P7·기업 재무를 함께 계산합니다.")
     try:
         a = get_skhynix_assessment()
-        c1, c2, c3 = st.columns([1, 1, 2])
+        c1, c2, c3 = st.columns([1, 1.5, 1.5])
         c1.metric("종합점수", f"{a['total']:.1f}점")
-        c2.metric("최종판단", a["verdict"])
-        c3.caption(f"자동 갱신: 약 15분 · 계산 {a['updated']} · P7 {a['p7_available']}/7 종목 반영")
+        c2.metric("① 보유 판단", a["hold"])
+        c3.metric("② 신규/추가매수", a["buy"])
+        st.success(f"보유: {a['hold_note']}") if "계속" in a["hold"] else st.warning(f"보유: {a['hold_note']}")
+        st.info(f"매수: {a['buy_note']}")
+
+        t = a["technical"]
+        if t:
+            st.caption(f"현재가 {t['price']:,.0f}원 · 40일선 {t['ma40']:,.0f}원 · 160일선 {t['ma160']:,.0f}원 · 40일선 대비 {a['gap40']*100:+.1f}%")
 
         df = pd.DataFrame([
-            {"평가축": "차트/추세", "비중": "30%", "점수": a["chart"]},
-            {"평가축": "반도체/HBM 환경", "비중": "25%", "점수": a["semi"]},
-            {"평가축": "AI 인프라 수요", "비중": "20%", "점수": a["ai"]},
-            {"평가축": "월가 P7", "비중": "15%", "점수": a["p7"]},
-            {"평가축": "기업/실적", "비중": "10%", "점수": a["fundamental"]},
-        ])
+            {"평가축":"차트/추세","비중":"30%","점수":a["chart"]}, {"평가축":"반도체/HBM 환경","비중":"25%","점수":a["semi"]},
+            {"평가축":"AI 인프라 수요","비중":"20%","점수":a["ai"]}, {"평가축":"월가 P7","비중":"15%","점수":a["p7"]},
+            {"평가축":"기업/실적","비중":"10%","점수":a["fundamental"]}])
         st.dataframe(df, use_container_width=True, hide_index=True,
-                     column_config={"점수": st.column_config.ProgressColumn(min_value=0, max_value=100, format="%.1f")})
-        st.caption(f"차트: {a['chart_note']} · 기업/실적: {a['fundamental_note']}")
-        st.info("반도체/HBM 점수는 SOXX·SMH·Micron, AI 수요는 NVDA·Broadcom·AMD·Micron·Dell의 시장 흐름을 대용지표로 사용합니다. HBM 계약/가격과 뉴스 자체를 직접 판독하는 점수는 아니므로 매도선·실적 발표와 함께 보세요.")
+                     column_config={"점수": st.column_config.ProgressColumn(min_value=0,max_value=100,format="%.1f")})
+        st.caption(f"차트: {a['chart_note']} · 기업/실적: {a['fundamental_note']} · 계산 {a['updated']} · P7 {a['p7_available']}/7")
+        st.info("매수 판단은 추격매수를 피하도록 40일선 눌림/재회복과 160일 장기추세를 함께 봅니다. 반도체/HBM과 AI 점수는 시장 대용지표이며 실제 HBM 계약·가격 뉴스 자체를 직접 판독하는 점수는 아닙니다.")
     except Exception as e:
         st.warning(f"SK하이닉스 종합판단을 계산하지 못했습니다: {e}")
