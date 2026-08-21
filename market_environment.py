@@ -455,16 +455,42 @@ def render_market_environment(market_is_open=False):
                 candidates["종목 추세점수"] * .7 + candidates["업종 강도점수"] * .3
             ).round().astype(int)
             candidates["종합 평가"] = candidates["종합 주도점수"].map(_grade)
+            trend_priority = {"🟢 강한 상승": 0, "🔵 상승": 1, "⚪ 중립": 2, "🟡 약세": 3}
+            candidates["_추세순서"] = candidates["종목 추세"].map(trend_priority).fillna(9)
             candidates = candidates.sort_values(
-                ["업종", "종합 주도점수"], ascending=[True, False]
+                ["_추세순서", "종합 주도점수"], ascending=[True, False]
             )
             candidates["업종내 순위"] = candidates.groupby("업종").cumcount() + 1
+
+            strong = candidates[candidates["종목 추세"] == "🟢 강한 상승"].copy()
+            if not strong.empty:
+                st.markdown("### 🟢 강한 상승 종목 모아보기")
+                st.caption("가격이 20일선·60일선 위에 있고 최근 20일 상승률도 강한 종목입니다. 종합 주도점수 순으로 정렬합니다.")
+                st.dataframe(
+                    strong[[
+                        "종목", "업종", "현재가(원)", "20일 수익률(%)",
+                        "60일 수익률(%)", "20일선 대비(%)", "거래량 배수",
+                        "종합 주도점수", "종합 평가",
+                    ]],
+                    use_container_width=True,
+                    hide_index=True,
+                    column_config={
+                        "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+                        "종합 주도점수": st.column_config.ProgressColumn(
+                            "종합 주도점수", min_value=0, max_value=100, format="%d"
+                        ),
+                    },
+                )
+            else:
+                st.info("현재 기준을 모두 충족하는 ‘강한 상승’ 종목은 없습니다. 일반 상승 종목은 아래 상세표에서 확인하세요.")
 
             st.markdown("### 업종별 대표 종목")
             st.caption("업종 ETF 강도 30%와 개별종목 추세 70%를 합산합니다. 업종이 약하면 개별종목 점수도 보수적으로 평가합니다.")
             summary_rows = []
             for sector in sectors["업종"]:
-                group = candidates[candidates["업종"] == sector].head(3)
+                group = candidates[candidates["업종"] == sector].sort_values(
+                    "종합 주도점수", ascending=False
+                ).head(3)
                 if group.empty:
                     continue
                 names = group.apply(
@@ -480,7 +506,7 @@ def render_market_environment(market_is_open=False):
                 })
             st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
 
-            with st.expander("대표 종목 상세 평가 보기", expanded=True):
+            with st.expander("대표 종목 상세 평가 보기 · 추세순 정렬", expanded=True):
                 detail_columns = [
                     "업종", "업종내 순위", "종목", "종목코드", "현재가(원)",
                     "20일 수익률(%)", "60일 수익률(%)", "20일선 대비(%)",
