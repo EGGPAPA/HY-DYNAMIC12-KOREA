@@ -1,0 +1,62 @@
+name: Leader entry monitor
+
+on:
+  schedule:
+    # Korea Standard Time 09:00-14:50, weekdays
+    - cron: "*/10 0-5 * * 1-5"
+    # Korea Standard Time 15:00-15:30, weekdays
+    - cron: "0,10,20,30 6 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: "Run outside Korean market hours for testing"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: leader-entry-monitor
+  cancel-in-progress: false
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+      KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+      KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+      KAKAO_REDIRECT_URI: ${{ secrets.KAKAO_REDIRECT_URI }}
+      FORCE_RUN: ${{ inputs.force_run || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install monitor dependencies
+        run: pip install "pandas>=2.0" "yfinance>=0.2.40" "requests>=2.31"
+
+      - name: Scan leaders and send new alerts
+        run: python scripts/monitor_leader_entries.py
+
+      - name: Persist sent-alert state
+        run: |
+          git add -- data/leader_alert_state.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "No alert state change"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "Update leader alert state [skip ci]"
+          git pull --rebase origin main
+          git push origin HEAD:main
+
