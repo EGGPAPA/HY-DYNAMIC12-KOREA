@@ -7,6 +7,7 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 import streamlit as st
+from theme_styles import inject_theme
 import yfinance as yf
 
 st.set_page_config(page_title="실전운용 · ETF 매수/보유/매도", page_icon="💰", layout="wide")
@@ -231,6 +232,8 @@ def signal_message(etf_name, sig):
         f"40일선 기울기 {sig['slope40']:+.2f}% / 160일선 기울기 {sig['slope160']:+.2f}%"
     )
 
+
+inject_theme()
 
 st.title("💰 실전운용 · ETF 매수/보유/매도")
 st.caption("손익·손절 기준이 아니라 40일선·160일선 추세로 신규매수자와 기존 보유자의 행동을 따로 판단합니다.")
