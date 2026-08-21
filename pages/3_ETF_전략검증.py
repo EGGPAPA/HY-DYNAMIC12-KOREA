@@ -4,8 +4,8 @@ import streamlit as st
 import yfinance as yf
 from itertools import product
 
-st.title('🎛️ ETF 3모드 최적화 · OOS 안정성 검증')
-st.caption('OOS MDD 미세조정 + 기간 안정성 + 거래비용 + 체결지연 스트레스 테스트를 함께 검증합니다.')
+st.title('🧪 ETF 전략검증 · 3MODE OOS')
+st.caption('ETF 3MODE의 기간 안정성, 거래비용, 체결지연과 OOS 성과를 한 화면에서 검증합니다.')
 
 c1,c2,c3=st.columns(3)
 with c1: start=st.date_input('시작일',pd.Timestamp('2023-08-19'))
@@ -267,3 +267,4 @@ if st.button('🚀 OOS + 안정성 + 실전 스트레스 검증 실행',type='pr
 
     st.subheader('📋 기본 구간별 Out-of-Sample 결과');st.dataframe(detail.round(2),use_container_width=True,hide_index=True)
     st.warning('백테스트·워크포워드는 미래 성과를 보장하지 않습니다. 실제 체결가격·세금·추적오차와 시장 구조 변화로 실전 결과는 달라질 수 있습니다.')
+

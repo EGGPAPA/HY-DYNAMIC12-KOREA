@@ -96,12 +96,15 @@ def _get_universe():
             df["종목코드"] = df["종목코드"].astype(str).str.zfill(6)
             df["시장"] = df["시장"].astype(str).str.upper()
             df = df[["종목코드", "종목명", "시장"]].drop_duplicates("종목코드")
-            if not df.empty:
+            if len(df) >= 100:
                 return df, "korea_universe.csv"
         except Exception:
             pass
     fallback = [("005930","삼성전자","KOSPI"),("000660","SK하이닉스","KOSPI"),("035420","NAVER","KOSPI"),("035720","카카오","KOSPI"),("005380","현대차","KOSPI"),("000270","기아","KOSPI"),("207940","삼성바이오로직스","KOSPI"),("068270","셀트리온","KOSPI"),("373220","LG에너지솔루션","KOSPI"),("012450","한화에어로스페이스","KOSPI"),("042660","한화오션","KOSPI"),("105560","KB금융","KOSPI"),("055550","신한지주","KOSPI"),("086790","하나금융지주","KOSPI"),("316140","우리금융지주","KOSPI"),("028260","삼성물산","KOSPI"),("247540","에코프로비엠","KOSDAQ"),("086520","에코프로","KOSDAQ"),("196170","알테오젠","KOSDAQ"),("028300","HLB","KOSDAQ"),("058470","리노공업","KOSDAQ")]
-    return pd.DataFrame(fallback, columns=["종목코드", "종목명", "시장"]), "기본 후보군 fallback"
+    fallback_df = pd.DataFrame(fallback, columns=["종목코드", "종목명", "시장"])
+    if 'df' in locals() and not df.empty:
+        fallback_df = pd.concat([df, fallback_df], ignore_index=True).drop_duplicates("종목코드")
+    return fallback_df, "제한된 비상 후보군 (KRX 연결 실패)"
 
 
 def _forward_return(c, i, months):
@@ -143,6 +146,7 @@ def _summary(bt, label):
         s=pd.to_numeric(bt[col],errors="coerce").dropna()
         row[f"{m}개월승률"] = round((s.gt(0).mean()*100),1) if len(s) else None
         row[f"{m}개월평균(%)"] = round(s.mean(),2) if len(s) else None
+        row[f"{m}개월중앙값(%)"] = round(s.median(),2) if len(s) else None
     row["+10%도달률"] = round(bt["+10%도달"].mean()*100,1)
     row["+20%도달률"] = round(bt["+20%도달"].mean()*100,1)
     row["평균최대하락(%)"] = round(pd.to_numeric(bt["최대하락률(%)"],errors="coerce").mean(),2)
@@ -193,6 +197,8 @@ def render_monthly_ma5_tab():
     limit = c1.number_input("검사 종목 수", 50, 1000, 300, 50, key="kr_ma5_limit")
     only_new = c2.checkbox("신규돌파만 표시", value=False, key="kr_ma5_only_new")
     st.caption(f"종목목록: {source} · 전체 {len(universe):,}개 중 상위 {min(int(limit), len(universe)):,}개 검사")
+    if len(universe) < 100:
+        st.warning("KRX 전체 종목목록을 가져오지 못해 제한된 후보군만 검사합니다. 이 결과를 전체시장 결과로 해석하지 마세요.")
     if st.button("🔎 5개월선 돌파 종목 찾기", type="primary", use_container_width=True, key="kr_ma5_scan"):
         rows = []
         bar = st.progress(0)
@@ -220,3 +226,4 @@ def render_monthly_ma5_tab():
     else:
         st.info("버튼을 눌러 월봉 5개월선 돌파 종목을 검사하세요.")
     _render_backtest(universe)
+
