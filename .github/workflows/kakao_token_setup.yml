@@ -1,0 +1,73 @@
+name: Kakao Token Setup
+
+on:
+  workflow_dispatch:
+    inputs:
+      authorization_code:
+        description: '카카오 로그인 후 주소창의 code= 뒤 인가 코드'
+        required: true
+        type: string
+      redirect_uri:
+        description: '카카오에 등록한 Redirect URI'
+        required: true
+        default: 'https://eggpapa-hy-dynamic12-usa-app-s7ppvp.streamlit.app'
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  setup:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Exchange authorization code and securely store refresh token
+        shell: bash
+        env:
+          AUTH_CODE: ${{ inputs.authorization_code }}
+          REDIRECT_URI: ${{ inputs.redirect_uri }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+        run: |
+          set -euo pipefail
+          RESPONSE=$(curl -sS -X POST 'https://kauth.kakao.com/oauth/token' \
+            -H 'Content-Type: application/x-www-form-urlencoded;charset=utf-8' \
+            --data-urlencode 'grant_type=authorization_code' \
+            --data-urlencode "client_id=${KAKAO_REST_API_KEY}" \
+            --data-urlencode "redirect_uri=${REDIRECT_URI}" \
+            --data-urlencode "code=${AUTH_CODE}" \
+            --data-urlencode "client_secret=${KAKAO_CLIENT_SECRET}")
+
+          export RESPONSE
+          python - <<'PY'
+          import json, os, sys
+          p = json.loads(os.environ['RESPONSE'])
+          if 'access_token' not in p or 'refresh_token' not in p:
+              safe = {k:v for k,v in p.items() if k not in ('access_token','refresh_token','id_token')}
+              print('Kakao token exchange failed:', safe)
+              sys.exit(1)
+          print('::add-mask::' + p['access_token'])
+          print('::add-mask::' + p['refresh_token'])
+          open('/tmp/kakao_refresh_token.txt','w',encoding='utf-8').write(p['refresh_token'])
+          print('Kakao authorization code exchange succeeded.')
+          PY
+
+          openssl enc -aes-256-cbc -salt -pbkdf2 \
+            -in /tmp/kakao_refresh_token.txt \
+            -out .kakao_refresh_token.enc \
+            -pass env:KAKAO_CLIENT_SECRET
+          rm -f /tmp/kakao_refresh_token.txt
+
+      - name: Save encrypted refresh token
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .kakao_refresh_token.enc
+          git diff --cached --quiet || git commit -m 'Refresh encrypted Kakao token'
+          git push
+
+      - name: Done
+        run: echo 'Kakao refresh token setup completed. Now run SK Hynix Kakao Price Alert with send_test_message=true.'
