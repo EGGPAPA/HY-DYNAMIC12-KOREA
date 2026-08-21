@@ -89,7 +89,6 @@ def _get_universe():
             return pd.DataFrame(rows, columns=["종목코드", "종목명", "시장"]), f"KRX 전체 종목목록 · {date}"
     except Exception:
         pass
-
     p = Path("korea_universe.csv")
     if p.exists():
         try:
@@ -101,16 +100,85 @@ def _get_universe():
                 return df, "korea_universe.csv"
         except Exception:
             pass
-
-    fallback = [
-        ("005930","삼성전자","KOSPI"),("000660","SK하이닉스","KOSPI"),("035420","NAVER","KOSPI"),
-        ("035720","카카오","KOSPI"),("005380","현대차","KOSPI"),("000270","기아","KOSPI"),
-        ("207940","삼성바이오로직스","KOSPI"),("068270","셀트리온","KOSPI"),("373220","LG에너지솔루션","KOSPI"),
-        ("012450","한화에어로스페이스","KOSPI"),("042660","한화오션","KOSPI"),("105560","KB금융","KOSPI"),
-        ("055550","신한지주","KOSPI"),("086790","하나금융지주","KOSPI"),("316140","우리금융지주","KOSPI"),
-        ("028260","삼성물산","KOSPI"),("247540","에코프로비엠","KOSDAQ"),("086520","에코프로","KOSDAQ"),
-        ("196170","알테오젠","KOSDAQ"),("028300","HLB","KOSDAQ"),("058470","리노공업","KOSDAQ")]
+    fallback = [("005930","삼성전자","KOSPI"),("000660","SK하이닉스","KOSPI"),("035420","NAVER","KOSPI"),("035720","카카오","KOSPI"),("005380","현대차","KOSPI"),("000270","기아","KOSPI"),("207940","삼성바이오로직스","KOSPI"),("068270","셀트리온","KOSPI"),("373220","LG에너지솔루션","KOSPI"),("012450","한화에어로스페이스","KOSPI"),("042660","한화오션","KOSPI"),("105560","KB금융","KOSPI"),("055550","신한지주","KOSPI"),("086790","하나금융지주","KOSPI"),("316140","우리금융지주","KOSPI"),("028260","삼성물산","KOSPI"),("247540","에코프로비엠","KOSDAQ"),("086520","에코프로","KOSDAQ"),("196170","알테오젠","KOSDAQ"),("028300","HLB","KOSDAQ"),("058470","리노공업","KOSDAQ")]
     return pd.DataFrame(fallback, columns=["종목코드", "종목명", "시장"]), "기본 후보군 fallback"
+
+
+def _forward_return(c, i, months):
+    j = i + months
+    if j >= len(c) or not c.iloc[i]:
+        return None
+    return (float(c.iloc[j]) / float(c.iloc[i]) - 1) * 100
+
+
+def _backtest_one(code, name, market, rising_only=False):
+    h = _monthly(code, market)
+    if h is None or len(h) < 10:
+        return []
+    c = pd.to_numeric(h["Close"], errors="coerce")
+    ma = c.rolling(5).mean()
+    out = []
+    for i in range(5, len(c)):
+        vals = [c.iloc[i-1], ma.iloc[i-1], c.iloc[i], ma.iloc[i]]
+        if any(pd.isna(x) for x in vals):
+            continue
+        breakout = c.iloc[i-1] <= ma.iloc[i-1] and c.iloc[i] > ma.iloc[i]
+        slope = (ma.iloc[i] / ma.iloc[i-1] - 1) * 100 if ma.iloc[i-1] else 0
+        if not breakout or (rising_only and slope <= 0):
+            continue
+        entry = float(c.iloc[i])
+        future = c.iloc[i+1:min(i+13, len(c))]
+        max_ret = ((float(future.max()) / entry - 1) * 100) if not future.empty else None
+        min_ret = ((float(future.min()) / entry - 1) * 100) if not future.empty else None
+        out.append({"종목코드":str(code).zfill(6),"종목명":name,"시장":market,"돌파월":str(c.index[i])[:7],"매수가":round(entry),"5개월선":round(float(ma.iloc[i])),"기울기(%)":round(float(slope),2),"1개월수익률(%)":_forward_return(c,i,1),"3개월수익률(%)":_forward_return(c,i,3),"6개월수익률(%)":_forward_return(c,i,6),"12개월수익률(%)":_forward_return(c,i,12),"최고수익률(%)":max_ret,"최대하락률(%)":min_ret,"+10%도달":max_ret is not None and max_ret >= 10,"+20%도달":max_ret is not None and max_ret >= 20})
+    return out
+
+
+def _summary(bt, label):
+    if bt.empty:
+        return {"전략":label,"신호수":0}
+    row = {"전략":label,"신호수":len(bt)}
+    for m in (1,3,6,12):
+        col=f"{m}개월수익률(%)"
+        s=pd.to_numeric(bt[col],errors="coerce").dropna()
+        row[f"{m}개월승률"] = round((s.gt(0).mean()*100),1) if len(s) else None
+        row[f"{m}개월평균(%)"] = round(s.mean(),2) if len(s) else None
+    row["+10%도달률"] = round(bt["+10%도달"].mean()*100,1)
+    row["+20%도달률"] = round(bt["+20%도달"].mean()*100,1)
+    row["평균최대하락(%)"] = round(pd.to_numeric(bt["최대하락률(%)"],errors="coerce").mean(),2)
+    return row
+
+
+def _render_backtest(universe):
+    st.divider()
+    st.subheader("📊 월봉 5개월선 · 지난 3년 백테스트")
+    st.caption("과거 각 월말에 5개월선을 아래에서 위로 돌파한 신호를 찾아 이후 1·3·6·12개월 성과를 측정합니다. 현재 상장종목 기준이라 생존편향 가능성이 있습니다.")
+    bt_limit = st.number_input("백테스트 종목 수", 20, 1000, min(300, max(20, len(universe))), 20, key="kr_ma5_bt_limit")
+    if st.button("▶ 지난 3년 백테스트 실행", type="primary", use_container_width=True, key="kr_ma5_bt_run"):
+        simple, rising = [], []
+        work = universe.head(min(int(bt_limit), len(universe)))
+        bar = st.progress(0)
+        for n, (_, r) in enumerate(work.iterrows(), 1):
+            simple.extend(_backtest_one(r["종목코드"], r["종목명"], r["시장"], False))
+            rising.extend(_backtest_one(r["종목코드"], r["종목명"], r["시장"], True))
+            bar.progress(n/max(len(work),1))
+        bar.empty()
+        st.session_state["kr_ma5_bt_simple"] = simple
+        st.session_state["kr_ma5_bt_rising"] = rising
+    simple = pd.DataFrame(st.session_state.get("kr_ma5_bt_simple", []))
+    rising = pd.DataFrame(st.session_state.get("kr_ma5_bt_rising", []))
+    if not simple.empty or not rising.empty:
+        summary = pd.DataFrame([_summary(simple,"단순 5개월선 돌파"), _summary(rising,"돌파 + 5개월선 상승")])
+        st.markdown("#### 전략 성과 비교")
+        st.dataframe(summary, use_container_width=True, hide_index=True)
+        detail = rising if not rising.empty else simple
+        st.markdown("#### 종목별 과거 돌파 기록")
+        show = detail.copy()
+        for col in ["1개월수익률(%)","3개월수익률(%)","6개월수익률(%)","12개월수익률(%)","최고수익률(%)","최대하락률(%)"]:
+            if col in show: show[col] = pd.to_numeric(show[col], errors="coerce").round(2)
+        cfg={"매수가":st.column_config.NumberColumn("매수가",format="%d원"),"5개월선":st.column_config.NumberColumn("5개월선",format="%d원")}
+        st.dataframe(show, use_container_width=True, hide_index=True, column_config=cfg)
+        st.info("해석: 승률만 보지 말고 3·6·12개월 평균수익률, +10/+20% 도달률, 최대하락을 함께 비교하세요. 상승 중인 5개월선 조건이 단순 돌파보다 개선되는지가 핵심입니다.")
 
 
 def render_monthly_ma5_tab():
@@ -151,3 +219,4 @@ def render_monthly_ma5_tab():
         st.warning("월봉 신호는 월말 종가로 확정됩니다. 손절·목표 가격은 기계적 참고선이며 실적·뉴스·시장 상황도 함께 확인하세요.")
     else:
         st.info("버튼을 눌러 월봉 5개월선 돌파 종목을 검사하세요.")
+    _render_backtest(universe)
