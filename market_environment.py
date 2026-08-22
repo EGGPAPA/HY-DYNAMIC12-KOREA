@@ -142,10 +142,22 @@ def _latest_price_date(frame):
         return "기준일 확인 불가"
 
 
-def _metric_delta(change20):
+def _compact_indicator_card(icon, label, value, frame, change20):
+    date = _latest_price_date(frame)
     if change20 is None or pd.isna(change20):
-        return None
-    return f"20일 {change20:+.1f}%"
+        delta = "20일 변동 확인 불가"
+        delta_class = "neutral"
+    else:
+        delta = f"20일 {change20:+.1f}%"
+        # 환율·금리·유가는 하락할수록 국내 증시 부담이 완화되는 방향입니다.
+        delta_class = "good" if change20 < 0 else "bad" if change20 > 0 else "neutral"
+    return f"""
+        <div class="market-indicator-card">
+            <div class="market-indicator-title">{icon} {label}</div>
+            <div class="market-indicator-value">{value}</div>
+            <div class="market-indicator-meta">{date} · <span class="{delta_class}">{delta}</span></div>
+        </div>
+    """
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -707,41 +719,50 @@ def render_market_environment(market_is_open=False):
     top4.metric("평가 신뢰도", f"{confidence}/7", "수집된 평가 항목")
     st.info(summary)
 
-    usd_col, rate_col, oil_col = st.columns(3)
-    usd_col.metric(
-        f"💱 원/달러 환율 · {_latest_price_date(usdkrw_frame)}",
-        f"{usdkrw:,.2f}원" if usdkrw is not None else "데이터 없음",
-        _metric_delta(usd20),
+    indicator_cards = "".join([
+        _compact_indicator_card(
+            "💱", "원/달러", f"{usdkrw:,.2f}원" if usdkrw is not None else "데이터 없음",
+            usdkrw_frame, usd20,
+        ),
+        _compact_indicator_card(
+            "🏛️", "미국 10년물", f"{us10y:.2f}%" if us10y is not None else "데이터 없음",
+            us10y_frame, us10y20,
+        ),
+        _compact_indicator_card(
+            "🛢️", "WTI 유가", f"${wti:,.2f}" if wti is not None else "데이터 없음",
+            wti_frame, wti20,
+        ),
+    ])
+    st.markdown(
+        f"""
+        <style>
+        .market-indicator-grid {{
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: .65rem;
+            margin: .25rem 0 .35rem;
+        }}
+        .market-indicator-card {{
+            border: 1px solid rgba(148, 163, 184, .28);
+            border-radius: .65rem;
+            padding: .55rem .8rem;
+            background: rgba(30, 41, 59, .58);
+        }}
+        .market-indicator-title {{ color: #cbd5e1; font-size: .78rem; font-weight: 700; }}
+        .market-indicator-value {{ color: #f8fafc; font-size: 1.35rem; font-weight: 700; line-height: 1.3; }}
+        .market-indicator-meta {{ color: #94a3b8; font-size: .68rem; white-space: nowrap; }}
+        .market-indicator-meta .good {{ color: #34d399; }}
+        .market-indicator-meta .bad {{ color: #fb7185; }}
+        .market-indicator-meta .neutral {{ color: #94a3b8; }}
+        @media (max-width: 700px) {{
+            .market-indicator-grid {{ grid-template-columns: 1fr; }}
+        }}
+        </style>
+        <div class="market-indicator-grid">{indicator_cards}</div>
+        """,
+        unsafe_allow_html=True,
     )
-    rate_col.metric(
-        f"🏛️ 미국 10년물 · {_latest_price_date(us10y_frame)}",
-        f"{us10y:.2f}%" if us10y is not None else "데이터 없음",
-        _metric_delta(us10y20),
-        delta_color="inverse",
-    )
-    oil_col.metric(
-        f"🛢️ WTI 국제유가 · {_latest_price_date(wti_frame)}",
-        f"${wti:,.2f}" if wti is not None else "데이터 없음",
-        _metric_delta(wti20),
-    )
-    st.caption("환율·금리·유가는 Yahoo Finance 최근 종가 기준이며 장중 시세와 차이가 날 수 있습니다.")
-
-    st.markdown("### 항목별 시장 평가")
-    evaluation_frame = pd.DataFrame([
-        {"평가 항목": name, "점수": round(item_score), "판정": _grade(item_score), "판단 근거": detail}
-        for name, item_score, detail, _ in evaluations
-    ]).sort_values("점수", ascending=False)
-    st.dataframe(
-        evaluation_frame,
-        use_container_width=True,
-        hide_index=True,
-        column_config={"점수": st.column_config.ProgressColumn("점수", min_value=0, max_value=100, format="%d")},
-    )
-    missing = 7 - confidence
-    if missing:
-        st.caption(f"현재 {missing}개 평가 항목은 원천 데이터 지연으로 제외했습니다. 없는 값을 0점으로 처리하지 않습니다.")
-    if breadth and breadth.get("source"):
-        st.caption(f"시장 확산: {breadth['source']} · 기준일 {breadth.get('date', '확인 불가')}")
+    st.caption("Yahoo Finance 최근 종가 기준 · 장중 시세와 차이가 날 수 있습니다.")
 
     if not sectors.empty:
         st.markdown("### 주도·부진 업종 평가")
