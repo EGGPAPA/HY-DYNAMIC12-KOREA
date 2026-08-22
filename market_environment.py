@@ -3,7 +3,6 @@ import os
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
-from textwrap import dedent
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -143,22 +142,14 @@ def _latest_price_date(frame):
         return "기준일 확인 불가"
 
 
-def _compact_indicator_card(icon, label, value, frame, change20):
+def _compact_indicator_text(icon, label, value, frame, change20):
     date = _latest_price_date(frame)
     if change20 is None or pd.isna(change20):
         delta = "20일 변동 확인 불가"
-        delta_class = "neutral"
     else:
-        delta = f"20일 {change20:+.1f}%"
-        # 환율·금리·유가는 하락할수록 국내 증시 부담이 완화되는 방향입니다.
-        delta_class = "good" if change20 < 0 else "bad" if change20 > 0 else "neutral"
-    return f"""
-        <div class="market-indicator-card">
-            <div class="market-indicator-title">{icon} {label}</div>
-            <div class="market-indicator-value">{value}</div>
-            <div class="market-indicator-meta">{date} · <span class="{delta_class}">{delta}</span></div>
-        </div>
-    """
+        direction = "▼" if change20 < 0 else "▲" if change20 > 0 else "―"
+        delta = f"20일 {direction} {abs(change20):.1f}%"
+    return f"{icon} **{label} {value}**  \n{date} · {delta}"
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -720,49 +711,14 @@ def render_market_environment(market_is_open=False):
     top4.metric("평가 신뢰도", f"{confidence}/7", "수집된 평가 항목")
     st.info(summary)
 
-    indicator_cards = "".join([
-        _compact_indicator_card(
-            "💱", "원/달러", f"{usdkrw:,.2f}원" if usdkrw is not None else "데이터 없음",
-            usdkrw_frame, usd20,
-        ),
-        _compact_indicator_card(
-            "🏛️", "미국 10년물", f"{us10y:.2f}%" if us10y is not None else "데이터 없음",
-            us10y_frame, us10y20,
-        ),
-        _compact_indicator_card(
-            "🛢️", "WTI 유가", f"${wti:,.2f}" if wti is not None else "데이터 없음",
-            wti_frame, wti20,
-        ),
-    ])
-    st.markdown(
-        dedent(f"""
-        <style>
-        .market-indicator-grid {{
-            display: grid;
-            grid-template-columns: repeat(3, minmax(0, 1fr));
-            gap: .65rem;
-            margin: .25rem 0 .35rem;
-        }}
-        .market-indicator-card {{
-            border: 1px solid rgba(148, 163, 184, .28);
-            border-radius: .65rem;
-            padding: .55rem .8rem;
-            background: rgba(30, 41, 59, .58);
-        }}
-        .market-indicator-title {{ color: #cbd5e1; font-size: .78rem; font-weight: 700; }}
-        .market-indicator-value {{ color: #f8fafc; font-size: 1.35rem; font-weight: 700; line-height: 1.3; }}
-        .market-indicator-meta {{ color: #94a3b8; font-size: .68rem; white-space: nowrap; }}
-        .market-indicator-meta .good {{ color: #34d399; }}
-        .market-indicator-meta .bad {{ color: #fb7185; }}
-        .market-indicator-meta .neutral {{ color: #94a3b8; }}
-        @media (max-width: 700px) {{
-            .market-indicator-grid {{ grid-template-columns: 1fr; }}
-        }}
-        </style>
-        <div class="market-indicator-grid">{indicator_cards}</div>
-        """),
-        unsafe_allow_html=True,
-    )
+    indicator_columns = st.columns(3)
+    indicator_items = [
+        ("💱", "원/달러", f"{usdkrw:,.2f}원" if usdkrw is not None else "데이터 없음", usdkrw_frame, usd20),
+        ("🏛️", "미국 10년물", f"{us10y:.2f}%" if us10y is not None else "데이터 없음", us10y_frame, us10y20),
+        ("🛢️", "WTI 유가", f"${wti:,.2f}" if wti is not None else "데이터 없음", wti_frame, wti20),
+    ]
+    for column, item in zip(indicator_columns, indicator_items):
+        column.markdown(_compact_indicator_text(*item))
     st.caption("Yahoo Finance 최근 종가 기준 · 장중 시세와 차이가 날 수 있습니다.")
 
     if not sectors.empty:
