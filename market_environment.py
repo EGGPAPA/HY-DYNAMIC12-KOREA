@@ -3,6 +3,7 @@ import os
 import xml.etree.ElementTree as ET
 from datetime import datetime, timedelta
 from pathlib import Path
+from textwrap import dedent
 from zoneinfo import ZoneInfo
 
 import numpy as np
@@ -734,7 +735,7 @@ def render_market_environment(market_is_open=False):
         ),
     ])
     st.markdown(
-        f"""
+        dedent(f"""
         <style>
         .market-indicator-grid {{
             display: grid;
@@ -759,7 +760,7 @@ def render_market_environment(market_is_open=False):
         }}
         </style>
         <div class="market-indicator-grid">{indicator_cards}</div>
-        """,
+        """),
         unsafe_allow_html=True,
     )
     st.caption("Yahoo Finance 최근 종가 기준 · 장중 시세와 차이가 날 수 있습니다.")
