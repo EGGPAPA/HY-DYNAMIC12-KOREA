@@ -10,6 +10,7 @@ import pandas as pd
 import streamlit as st
 import yfinance as yf
 import requests
+from market_risk_summary import render_global_risk_summary
 
 try:
     from pykrx import stock
@@ -700,7 +701,7 @@ def render_market_environment(market_is_open=False):
     kospi, kospi20, kospi_frame = _last_close("^KS11", "1y")
     kosdaq, kosdaq20, _ = _last_close("^KQ11", "3mo")
     usdkrw, usd20, usdkrw_frame = _last_close("KRW=X", "3mo")
-    vix, vix20, _ = _last_close("^VIX", "3mo")
+    vix, vix20, vix_frame = _last_close("^VIX", "3mo")
     us10y, us10y20, us10y_frame = _last_close("^TNX", "3mo")
     wti, wti20, wti_frame = _last_close("CL=F", "3mo")
 
@@ -718,14 +719,11 @@ def render_market_environment(market_is_open=False):
     top4.metric("평가 신뢰도", f"{confidence}/7", "수집된 평가 항목")
     st.info(summary)
 
-    indicator_columns = st.columns(3)
-    indicator_items = [
-        ("💱", "원/달러", f"{usdkrw:,.2f}원" if usdkrw is not None else "데이터 없음", usdkrw_frame, usd20),
-        ("🏛️", "미국 10년물", f"{us10y:.2f}%" if us10y is not None else "데이터 없음", us10y_frame, us10y20),
-        ("🛢️", "WTI 유가", f"${wti:,.2f}" if wti is not None else "데이터 없음", wti_frame, wti20),
-    ]
-    for column, item in zip(indicator_columns, indicator_items):
-        column.markdown(_compact_indicator_text(*item))
+    render_global_risk_summary(
+        usdkrw, usd20, us10y, us10y20, wti, wti20, vix, vix20,
+        _compact_indicator_text,
+        (usdkrw_frame, us10y_frame, wti_frame, vix_frame),
+    )
     st.caption("Yahoo Finance 최근 종가 기준 · 장중 시세와 차이가 날 수 있습니다.")
 
     if not sectors.empty:
