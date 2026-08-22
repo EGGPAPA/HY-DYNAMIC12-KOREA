@@ -145,17 +145,13 @@ def _latest_price_date(frame):
 def _compact_indicator_text(icon, label, value, frame, change20):
     date = _latest_price_date(frame)
     if change20 is None or pd.isna(change20):
-        delta = "20일 변동 확인 불가"
-        color = "#94a3b8"
+        delta = ":gray[20일 변동 확인 불가]"
     else:
         direction = "▼" if change20 < 0 else "▲" if change20 > 0 else "―"
-        delta = f"20일 {direction} {abs(change20):.1f}%"
         # 한국 주식시장 표기 관례: 상승 빨강, 하락 파랑
-        color = "#f04452" if change20 > 0 else "#3182f6" if change20 < 0 else "#94a3b8"
-    return (
-        f"{icon} **{label} {value}**  \n"
-        f"{date} · <span style='color:{color}; font-weight:700'>{delta}</span>"
-    )
+        color = "red" if change20 > 0 else "blue" if change20 < 0 else "gray"
+        delta = f":{color}[20일 {direction} {abs(change20):.1f}%]"
+    return f"{icon} **{label} {value}**  \n{date} · {delta}"
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -724,7 +720,7 @@ def render_market_environment(market_is_open=False):
         ("🛢️", "WTI 유가", f"${wti:,.2f}" if wti is not None else "데이터 없음", wti_frame, wti20),
     ]
     for column, item in zip(indicator_columns, indicator_items):
-        column.markdown(_compact_indicator_text(*item), unsafe_allow_html=True)
+        column.markdown(_compact_indicator_text(*item))
     st.caption("Yahoo Finance 최근 종가 기준 · 장중 시세와 차이가 날 수 있습니다.")
 
     if not sectors.empty:
