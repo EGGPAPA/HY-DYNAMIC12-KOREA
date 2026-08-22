@@ -132,6 +132,22 @@ def _last_close(symbol, period="3mo"):
     return float(close.iloc[-1]), change20, frame
 
 
+def _latest_price_date(frame):
+    """가격 데이터의 최신 기준일을 YYYY.MM.DD 형식으로 반환합니다."""
+    if frame is None or frame.empty:
+        return "기준일 확인 불가"
+    try:
+        return pd.Timestamp(frame.index[-1]).strftime("%Y.%m.%d")
+    except Exception:
+        return "기준일 확인 불가"
+
+
+def _metric_delta(change20):
+    if change20 is None or pd.isna(change20):
+        return None
+    return f"20일 {change20:+.1f}%"
+
+
 @st.cache_data(ttl=1800, show_spinner=False)
 def _market_breadth():
     if stock is None:
@@ -672,9 +688,10 @@ def render_market_environment(market_is_open=False):
     flow = _investor_flow()
     kospi, kospi20, kospi_frame = _last_close("^KS11", "1y")
     kosdaq, kosdaq20, _ = _last_close("^KQ11", "3mo")
-    usdkrw, usd20, _ = _last_close("KRW=X", "3mo")
+    usdkrw, usd20, usdkrw_frame = _last_close("KRW=X", "3mo")
     vix, vix20, _ = _last_close("^VIX", "3mo")
-    us10y, us10y20, _ = _last_close("^TNX", "3mo")
+    us10y, us10y20, us10y_frame = _last_close("^TNX", "3mo")
+    wti, wti20, wti_frame = _last_close("CL=F", "3mo")
 
     sectors = _sector_strength()
     evaluations = _evaluations(
@@ -689,6 +706,25 @@ def render_market_environment(market_is_open=False):
     top3.metric("오늘의 대응", action)
     top4.metric("평가 신뢰도", f"{confidence}/7", "수집된 평가 항목")
     st.info(summary)
+
+    usd_col, rate_col, oil_col = st.columns(3)
+    usd_col.metric(
+        f"💱 원/달러 환율 · {_latest_price_date(usdkrw_frame)}",
+        f"{usdkrw:,.2f}원" if usdkrw is not None else "데이터 없음",
+        _metric_delta(usd20),
+    )
+    rate_col.metric(
+        f"🏛️ 미국 10년물 · {_latest_price_date(us10y_frame)}",
+        f"{us10y:.2f}%" if us10y is not None else "데이터 없음",
+        _metric_delta(us10y20),
+        delta_color="inverse",
+    )
+    oil_col.metric(
+        f"🛢️ WTI 국제유가 · {_latest_price_date(wti_frame)}",
+        f"${wti:,.2f}" if wti is not None else "데이터 없음",
+        _metric_delta(wti20),
+    )
+    st.caption("환율·금리·유가는 Yahoo Finance 최근 종가 기준이며 장중 시세와 차이가 날 수 있습니다.")
 
     st.markdown("### 항목별 시장 평가")
     evaluation_frame = pd.DataFrame([
