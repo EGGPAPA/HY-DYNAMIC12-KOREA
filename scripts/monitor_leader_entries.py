@@ -77,6 +77,8 @@ def analyze(symbol: str, name: str, sector: str) -> dict | None:
         }
         strong = price > ma20 > ma60 and ret20 >= 5
         ready = strong and all(conditions.values())
+        condition_count = sum(conditions.values())
+        missing_conditions = [label for label, passed in conditions.items() if not passed]
         return {
             "symbol": symbol, "code": symbol.split(".")[0], "name": name,
             "sector": sector, "price": price, "ma20": ma20, "ma60": ma60,
@@ -86,6 +88,8 @@ def analyze(symbol: str, name: str, sector: str) -> dict | None:
             "leader_start": leader_start, "leader_days": leader_days,
             "score": max(0, min(100, 50 + ret20 * 1.2 + ret60 * .35 + min(volume_ratio, 2) * 7)),
             "strong": strong, "ready": ready, "conditions": conditions,
+            "condition_count": condition_count,
+            "missing_conditions": missing_conditions,
         }
     except Exception as exc:
         print(f"WARN {symbol}: {type(exc).__name__}", file=sys.stderr)
@@ -126,16 +130,18 @@ def access_token() -> str | None:
 
 
 def message(rows: list[dict], now: datetime) -> str:
-    lines = ["[HY DYNAMIC12 자동감시]", "🚨 1차 분할매수 조건 신규충족", now.strftime("%Y-%m-%d %H:%M KST")]
+    lines = ["[HY DYNAMIC12 자동감시]", "시장환경 조건 단계 상승", now.strftime("%Y-%m-%d %H:%M KST")]
     for row in rows:
         lines.extend([
             "", f"{row['name']} ({row['sector']})",
+            f"신호 {row['signal']} / 조건 {row['condition_count']}/4",
+            f"부족 조건 {', '.join(row['missing_conditions']) or '없음'}",
             f"최초 포착 {row['leader_start']} / 주도 지속 {row['leader_days']}거래일",
             f"현재가 {row['price']:,.0f}원 / 1차 관찰가 {row['first_watch']:,.0f}원",
             f"20일선 대비 {row['gap20']:+.1f}% / 거래량 {row['volume_ratio']:.2f}배",
             f"추세 무효선 {row['invalidation']:,.0f}원",
         ])
-    lines.append("\n조건 확인 알림이며 실제 주문은 직접 판단하세요.")
+    lines.append("\n앱에서 TOP12 판정과 교차 확인하세요. 자동 주문 또는 투자 권고가 아닙니다.")
     return "\n".join(lines)
 
 
@@ -187,25 +193,41 @@ def main() -> int:
             key=lambda row: (row["ready"], row["score"]), reverse=True,
         )
         representatives.extend(members[:3])
-    ready = [row for row in representatives if row["ready"]]
+    signals = []
+    for row in representatives:
+        if row["ready"]:
+            row["signal"] = "🚨 시장환경 4/4 충족"
+            row["signal_level"] = 2
+            signals.append(row)
+        elif row["strong"] and row["condition_count"] >= 3:
+            row["signal"] = "🔵 시장환경 3/4 준비"
+            row["signal_level"] = 1
+            signals.append(row)
     state = load_state()
     today = now.strftime("%Y-%m-%d")
-    sent_today = set(state.get("sent", {}).get(today, []))
-    newly_ready = [row for row in ready if row["code"] not in sent_today]
+    daily_levels = state.get("market_levels", {}).get(today, {})
+    upgraded = [
+        row for row in signals
+        if row["signal_level"] > int(daily_levels.get(row["code"], 0))
+    ]
     print(
         f"Scanned {len(rows)} stocks; leading sectors={len(leading_sectors)}; "
-        f"representatives={len(representatives)}; ready={len(ready)}; new={len(newly_ready)}"
+        f"representatives={len(representatives)}; signals={len(signals)}; upgraded={len(upgraded)}"
     )
-    if not newly_ready:
+    if not upgraded:
         return 0
-    send_kakao(message(newly_ready, now))
-    sent_today.update(row["code"] for row in newly_ready)
-    state = {"sent": {today: sorted(sent_today)}, "updated_at": now.isoformat()}
+    send_kakao(message(upgraded, now))
+    market_levels = state.setdefault("market_levels", {})
+    today_levels = market_levels.setdefault(today, {})
+    for row in upgraded:
+        today_levels[row["code"]] = row["signal_level"]
+    state["updated_at"] = now.isoformat()
     save_state(state)
-    print("Kakao alert sent for: " + ", ".join(row["name"] for row in newly_ready))
+    print("Kakao alert sent for: " + ", ".join(row["name"] for row in upgraded))
     return 0
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
 

@@ -676,16 +676,21 @@ def _save_alert_state(state):
 
 
 def _leader_alert_message(ready):
-    lines = ["[HY DYNAMIC12 주도주 알림]", "🚨 1차 분할매수 조건 충족"]
+    lines = ["[HY DYNAMIC12 종합 신호 알림]", "TOP12 + 시장환경 단계 변경"]
     for _, row in ready.iterrows():
+        volume_ratio = row.get("거래량 배수")
+        volume_text = f"{float(volume_ratio):.2f}배" if pd.notna(volume_ratio) else "확인 불가"
         lines.extend([
             "",
             f"{row['종목']} ({row['업종']})",
+            f"종합 신호 {row.get('종합 신호', '🚨 조건 충족')}",
+            f"TOP12 {row.get('TOP12 판정', '-')} / 시장조건 {row.get('충족 수', '-')}",
+            f"부족 조건 {row.get('부족 조건', '없음')}",
             f"현재가 {row['현재가(원)']:,.0f}원 / 1차 관찰가 {row['1차 관찰가(원)']:,.0f}원",
-            f"20일선 대비 {row['20일선 대비(%)']:+.1f}% / 거래량 {row['거래량 배수']:.2f}배",
+            f"20일선 대비 {row['20일선 대비(%)']:+.1f}% / 거래량 {volume_text}",
             f"추세 무효선 {row['추세 무효선(원)']:,.0f}원 / {row.get('관심 등급', '')}",
         ])
-    lines.append("\n관찰가 부근 지지 확인용 신호이며 실제 주문은 직접 판단하세요.")
+    lines.append("\n조건 단계 알림이며 자동 주문 또는 투자 권고가 아닙니다.")
     return "\n".join(lines)
 
 
@@ -777,6 +782,21 @@ def render_market_environment(market_is_open=False):
 
             strong = candidates[candidates["종목 추세"] == "🟢 강한 상승"].copy()
             if not strong.empty:
+                condition_fields = {
+                    "_조건가격": "관찰가 ±2%",
+                    "_조건20일선": "20일선 위",
+                    "_조건거래량": "거래량 ≥0.7배",
+                    "_조건추세": "무효선 위",
+                }
+                strong["충족 수"] = strong[list(condition_fields)].sum(axis=1).astype(int).map(
+                    lambda count: f"{count}/4"
+                )
+                strong["부족 조건"] = strong.apply(
+                    lambda row: ", ".join(
+                        label for field, label in condition_fields.items() if not bool(row[field])
+                    ) or "없음",
+                    axis=1,
+                )
                 top_rows = st.session_state.get("kr_rows", [])
                 top_map = {
                     str(row.get("_종목코드", "")).zfill(6): row
@@ -786,22 +806,45 @@ def render_market_environment(market_is_open=False):
 
                 def top12_link(row):
                     if not top_rows:
-                        return "분석 전", "-", "🔎 관심 등록 전", "전체시장 분석을 실행하면 TOP12와 자동 비교"
+                        return "분석 전", "-", "🔎 TOP12 분석 필요", "전체시장 분석을 실행하면 종합 신호를 계산"
                     matched = top_map.get(str(row["종목코드"]).zfill(6))
                     if matched:
                         decision = str(matched.get("판정", "TOP12"))
-                        if decision.startswith("🟢") or decision.startswith("🟡"):
-                            interest = "⭐ 최우선 관심"
-                            reason = "강한 상승 + TOP12 정량평가 동시 충족"
+                        candidate = decision.startswith(("🟢", "🟡"))
+                        active = decision.startswith("🟢")
+                        not_overheated = str(matched.get("과열", "정상")) != "과열"
+                        condition_count = int(str(row["충족 수"]).split("/")[0])
+                        if active and bool(row["_진입조건충족"]) and not_overheated:
+                            signal = "🟢 최우선 검토"
+                            reason = "TOP12 적극매수 + 시장환경 4/4 + 비과열"
+                        elif candidate and condition_count >= 3 and not_overheated:
+                            signal = "🔵 매수 준비"
+                            reason = "TOP12 매수후보 이상 + 시장환경 3/4 이상 + 비과열"
+                        elif bool(row["_진입조건충족"]):
+                            signal = "🟡 기술신호만·관찰"
+                            reason = "시장환경은 충족했지만 TOP12 적극매수 조건 미충족"
                         else:
-                            interest = "👀 교차검증 관심"
-                            reason = "강한 상승이며 TOP12 포함, 판정 조건 추가 확인"
-                        return "🏆 포함", decision, interest, reason
-                    return "미포함", "-", "👀 모멘텀 관심", "가격 추세는 강하지만 TOP12 수급·펀더멘털 조건 미충족"
+                            signal = "⚪ 대기"
+                            reason = "TOP12 또는 시장환경 조건 추가 확인 필요"
+                        return "🏆 포함", decision, signal, reason
+                    signal = "🟡 기술신호만·관찰" if bool(row["_진입조건충족"]) else "⚪ 대기"
+                    return "미포함", "-", signal, "가격 추세는 강하지만 TOP12 수급·펀더멘털 조건 미충족"
 
                 links = strong.apply(top12_link, axis=1, result_type="expand")
-                links.columns = ["TOP12", "TOP12 판정", "관심 등급", "관심 이유"]
+                links.columns = ["TOP12", "TOP12 판정", "종합 신호", "종합 근거"]
                 strong = pd.concat([strong.reset_index(drop=True), links.reset_index(drop=True)], axis=1)
+                signal_counts = strong["종합 신호"].value_counts()
+                signal_summary = " · ".join(
+                    f"{label} {int(signal_counts.get(label, 0))}개"
+                    for label in ["🟢 최우선 검토", "🔵 매수 준비", "🟡 기술신호만·관찰"]
+                    if int(signal_counts.get(label, 0)) > 0
+                )
+                if int(signal_counts.get("🟢 최우선 검토", 0)) > 0:
+                    st.success("종합 우선순위 · " + signal_summary)
+                elif signal_summary:
+                    st.info("종합 우선순위 · " + signal_summary)
+                elif top_rows:
+                    st.warning("현재 종합 매수 신호는 없습니다. 조건 단계가 올라오면 이 위치에 표시됩니다.")
                 st.markdown("### 🟢 강한 상승 종목 모아보기")
                 st.caption("강한 상승은 가격·업종 모멘텀 평가이며 TOP12는 수급·유동성·펀더멘털까지 보는 별도 평가입니다. 두 조건이 겹치면 관심 우선순위를 높입니다.")
                 timing_counts = strong["매수시기"].value_counts()
@@ -809,11 +852,11 @@ def render_market_environment(market_is_open=False):
                 st.info("매수시기 요약 · " + timing_text)
                 st.dataframe(
                     strong[[
-                        "관심 등급", "종목", "업종", "TOP12", "TOP12 판정",
+                        "종합 신호", "종목", "업종", "TOP12", "TOP12 판정", "충족 수", "부족 조건",
                         "매수시기", "현재가(원)", "1차 관찰가(원)", "2차 관찰가(원)",
                         "추세 무효선(원)", "20일 수익률(%)", "60일 수익률(%)",
                         "20일선 대비(%)", "거래량 배수", "종합 주도점수",
-                        "종합 평가", "매수시기 근거", "관심 이유",
+                        "종합 평가", "매수시기 근거", "종합 근거",
                     ]],
                     use_container_width=True,
                     hide_index=True,
@@ -827,7 +870,11 @@ def render_market_environment(market_is_open=False):
                         ),
                     },
                 )
-                ready = strong[strong["_진입조건충족"]].copy()
+                signal_rows = strong[
+                    strong["종합 신호"].isin([
+                        "🟢 최우선 검토", "🔵 매수 준비", "🟡 기술신호만·관찰"
+                    ])
+                ].copy()
                 st.markdown("#### 매수조건 확인")
                 condition_view = strong[["종목", "현재가(원)", "1차 관찰가(원)"]].copy()
                 condition_view["관찰가 ±2%"] = strong["_조건가격"].map(lambda value: "✅" if value else "대기")
@@ -848,40 +895,53 @@ def render_market_environment(market_is_open=False):
                 st.markdown("#### 카카오 1차 매수조건 알림")
                 k1, k2, k3 = st.columns([1, 1, 1.4])
                 k1.metric("카카오 연결", "✅ 준비됨" if _kakao_ready() else "⚠️ 설정 필요")
-                k2.metric("현재 조건 충족", f"{len(ready)}종목")
+                k2.metric("현재 종합 신호", f"{len(signal_rows)}종목")
                 auto_alert = k3.toggle(
                     "조건 신규충족 시 자동알림", value=False,
                     disabled=not _kakao_ready(), key="leader_kakao_auto",
                 )
                 if st.button(
-                    "📨 현재 충족 종목 카카오 알림 보내기",
-                    disabled=not _kakao_ready() or ready.empty,
+                    "📨 현재 종합 신호 카카오 알림 보내기",
+                    disabled=not _kakao_ready() or signal_rows.empty,
                     use_container_width=True,
                     key="leader_kakao_manual",
                 ):
-                    ok, message = _send_kakao(_leader_alert_message(ready))
+                    ok, message = _send_kakao(_leader_alert_message(signal_rows))
                     st.success(message) if ok else st.error(message)
 
-                if auto_alert and _kakao_ready() and not ready.empty:
+                if auto_alert and _kakao_ready() and not signal_rows.empty:
                     state = _load_alert_state()
-                    signature = datetime.now(SEOUL).strftime("%Y-%m-%d") + ":" + ",".join(
-                        sorted(ready["종목코드"].astype(str))
-                    )
-                    if state.get("last_signature") != signature:
-                        ok, message = _send_kakao(_leader_alert_message(ready))
+                    today = datetime.now(SEOUL).strftime("%Y-%m-%d")
+                    level_map = {
+                        "🟢 최우선 검토": 3,
+                        "🔵 매수 준비": 2,
+                        "🟡 기술신호만·관찰": 1,
+                    }
+                    daily_levels = state.get("composite_levels", {}).get(today, {})
+                    upgraded = signal_rows[
+                        signal_rows.apply(
+                            lambda row: level_map.get(row["종합 신호"], 0)
+                            > int(daily_levels.get(str(row["종목코드"]), 0)),
+                            axis=1,
+                        )
+                    ].copy()
+                    if not upgraded.empty:
+                        ok, message = _send_kakao(_leader_alert_message(upgraded))
                         if ok:
-                            _save_alert_state({
-                                "last_signature": signature,
-                                "sent_at": datetime.now(SEOUL).isoformat(),
-                            })
-                            st.success("새로운 1차 분할매수 충족 신호를 카카오로 보냈습니다.")
+                            composite_levels = state.setdefault("composite_levels", {})
+                            today_levels = composite_levels.setdefault(today, {})
+                            for _, row in upgraded.iterrows():
+                                today_levels[str(row["종목코드"])] = level_map[row["종합 신호"]]
+                            state["updated_at"] = datetime.now(SEOUL).isoformat()
+                            _save_alert_state(state)
+                            st.success("새 종합 신호 또는 단계 상승을 카카오로 보냈습니다.")
                         else:
                             st.warning(message)
                 st.caption("자동알림은 앱이 실행되어 데이터를 다시 계산할 때 작동합니다. 장중 상시감시는 별도 스케줄러가 필요합니다.")
                 if not top_rows:
                     st.info("현재는 강한 상승 종목만 표시했습니다. ‘전체시장 분석’을 실행하면 이 표에 TOP12 포함 여부와 최우선 관심 종목이 자동 표시됩니다.")
                 else:
-                    priority_count = int(strong["관심 등급"].eq("⭐ 최우선 관심").sum())
+                    priority_count = int(strong["종합 신호"].eq("🟢 최우선 검토").sum())
                     if priority_count:
                         st.success(f"강한 상승과 TOP12를 동시에 충족한 최우선 관심 종목이 {priority_count}개 있습니다.")
                     else:
