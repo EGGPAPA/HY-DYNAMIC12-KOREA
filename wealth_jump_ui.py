@@ -18,6 +18,15 @@ def _clip(x, lo=0.0, hi=100.0):
     return max(lo, min(hi, float(x)))
 
 
+def _won(value):
+    if value is None or pd.isna(value):
+        return "-"
+    try:
+        return f"{int(round(float(value))):,}원"
+    except Exception:
+        return str(value)
+
+
 def _weekday(date_obj):
     d = date_obj
     while d.weekday() >= 5:
@@ -242,9 +251,9 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
             "종목": r.get("종목명"),
             "실행": r.get("실행"),
             "진입비중": r.get("권장진입"),
-            "현재가": r.get("현재가"),
-            "1차매수가": r.get("1차 매수가"),
-            "2차매수가": r.get("2차 매수가"),
+            "현재가": _won(r.get("현재가")),
+            "1차매수가": _won(r.get("1차 매수가")),
+            "2차매수가": _won(r.get("2차 매수가")),
             "Conviction": r.get("Conviction"),
             "수급": r.get("수급점수"),
             "시총M": r.get("시총모멘텀"),
