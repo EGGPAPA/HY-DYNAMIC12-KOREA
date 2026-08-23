@@ -12,6 +12,7 @@ from korea_holdings_ui import render_holdings_tab
 from monthly_ma5_ui import render_monthly_ma5_tab
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 from market_environment import render_market_environment
+from wealth_jump_ui import render_wealth_jump_tab
 
 try:
     from pykrx import stock
@@ -399,9 +400,9 @@ inject_theme()
 
 st.title("🇰🇷 HY DYNAMIC12 · 한국주식 실전선별")
 st.caption("개별주식 후보를 찾는 화면입니다. ETF 매수·보유·매도 판단은 왼쪽 '실전운용'에서 별도로 관리합니다.")
-st.info("① 시장 데이터 확인 → ② 전체시장 자동분석 → ③ TOP12 검토 → ④ 매수 후 보유종목 기록")
+st.info("① 시장 데이터 확인 → ② 전체시장 자동분석 → ③ TOP12 검토 → ④ 부의 점프 검토 → ⑤ 매수 후 보유종목 기록")
 
-tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🔥 5개월선 돌파", "📈 전략검증", "💼 보유종목"])
+tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 5개월선 돌파", "📈 전략검증", "💼 보유종목"])
 
 with tabs[0]:
     render_market_environment(market_is_open=market_open())
@@ -496,14 +497,20 @@ with tabs[2]:
             ]), use_container_width=True, hide_index=True)
 
 with tabs[3]:
-    render_monthly_ma5_tab()
+    render_wealth_jump_tab(
+        st.session_state.get("kr_rows", []),
+        regime=st.session_state.get("kr_regime", "중립장"),
+        analysis_at=st.session_state.get("analysis_at", "확인 불가"),
+    )
 
 with tabs[4]:
+    render_monthly_ma5_tab()
+
+with tabs[5]:
     universe, _ = get_full_universe()
     render_individual_stock_ma5_backtest(universe)
 
-with tabs[5]:
+with tabs[6]:
     render_holdings_tab()
 
-st.caption("역할 분리: 실전운용=ETF 매매 판단 · app=개별주식 TOP12 선별 · 보유종목=실제 체결/평균단가/수익률 · 전략검증=백테스트/OOS")
-
+st.caption("역할 분리: 실전운용=ETF 매매 판단 · TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 보유종목=실제 체결/평균단가/수익률 · 전략검증=백테스트/OOS")
