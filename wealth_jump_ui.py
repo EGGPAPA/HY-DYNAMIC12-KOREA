@@ -138,6 +138,36 @@ def jump_grade(score, cap_score, flow_real, overheat, regime):
     return "⚪ 대기"
 
 
+def action_decision(r, regime):
+    """Translate scores into a simple execution-oriented label without placing orders."""
+    score = float(r.get("Conviction", 0) or 0)
+    cap = float(r.get("시총모멘텀", 50) or 50)
+    flow = float(r.get("수급점수", 50) or 50)
+    tech = float(r.get("기술점수", 50) or 50)
+    overheat = r.get("과열") == "과열"
+    flow_real = bool(r.get("수급실데이터"))
+    d4 = r.get("4주순위변화")
+    d4_num = 0.0 if pd.isna(d4) else float(d4)
+
+    if not flow_real:
+        return "⏳ 대기", "0%", "수급 데이터 확인 전 신규진입 보류"
+    if regime == "약세장":
+        if score < 60 or flow < 40 or d4_num <= -5:
+            return "🔴 매도검토", "0%", "약세장 + 종목 신호 악화"
+        return "⏳ 대기", "0%", "약세장에서는 신규진입보다 방어 우선"
+    if overheat:
+        return "⏳ 대기", "0%", "과열 구간 추격매수 금지"
+    if score >= 85 and cap >= 65 and flow >= 60 and tech >= 70:
+        return "🚀 1차매수", "30%", "S급 조건 충족 · 1차 분할진입"
+    if score >= 78 and cap >= 55 and flow >= 55 and tech >= 65:
+        return "🚀 1차매수", "20%", "A급 상단 · 소규모 1차 진입"
+    if score >= 72 and flow >= 50 and tech >= 60:
+        return "⏳ 대기", "0%", "후보는 유지하되 신호 강화 대기"
+    if score < 60 or flow < 40 or d4_num <= -5:
+        return "⚠️ 비중축소", "-25%", "Conviction·수급·시총 모멘텀 약화"
+    return "⏳ 대기", "0%", "조건 불충분"
+
+
 def _reason_lines(r):
     reasons = []
     d4 = r.get("4주순위변화")
@@ -186,12 +216,12 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
         x["시총모멘텀"] = cap_score
         x["Conviction"] = wealth_jump_score(x, cap_score)
         x["점프등급"] = jump_grade(
-            x["Conviction"],
-            cap_score,
-            bool(x.get("수급실데이터")),
-            x.get("과열", "정상"),
-            regime,
+            x["Conviction"], cap_score, bool(x.get("수급실데이터")), x.get("과열", "정상"), regime
         )
+        action, allocation, action_reason = action_decision(x, regime)
+        x["실행"] = action
+        x["권장진입"] = allocation
+        x["실행근거"] = action_reason
         jump_rows.append(x)
 
     jump_rows = sorted(jump_rows, key=lambda x: x["Conviction"], reverse=True)
@@ -199,9 +229,36 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
 
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("시장상태", regime)
-    c2.metric("S급 후보", sum(str(r["점프등급"]).startswith("🔥") for r in top))
-    c3.metric("A급 이상", sum(str(r["점프등급"]).startswith(("🔥", "🟢")) for r in top))
+    c2.metric("🚀 1차매수", sum(r["실행"].startswith("🚀") for r in top))
+    c3.metric("🔥 S급", sum(str(r["점프등급"]).startswith("🔥") for r in top))
     c4.metric("분석시각", analysis_at or "확인 불가")
+
+    st.markdown("## ⚡ 오늘의 실행판")
+    st.caption("이 표만 먼저 보세요. 매수는 반드시 분할진입 기준이며 자동 주문은 실행하지 않습니다.")
+    action_display = []
+    for i, r in enumerate(top, 1):
+        action_display.append({
+            "순위": i,
+            "종목": r.get("종목명"),
+            "실행": r.get("실행"),
+            "진입비중": r.get("권장진입"),
+            "현재가": r.get("현재가"),
+            "1차매수가": r.get("1차 매수가"),
+            "2차매수가": r.get("2차 매수가"),
+            "Conviction": r.get("Conviction"),
+            "수급": r.get("수급점수"),
+            "시총M": r.get("시총모멘텀"),
+            "과열": r.get("과열"),
+            "한줄판단": r.get("실행근거"),
+        })
+    st.dataframe(pd.DataFrame(action_display), use_container_width=True, hide_index=True)
+
+    buy_now = [r for r in top if r["실행"].startswith("🚀")]
+    if buy_now:
+        names = ", ".join(r["종목명"] for r in buy_now[:3])
+        st.success(f"오늘 1차매수 후보: {names} · 표의 1차매수가 부근에서만 분할진입")
+    else:
+        st.info("오늘은 1차매수 조건을 모두 충족한 종목이 없습니다. 억지로 매수하지 않습니다.")
 
     st.markdown("### TOP10 Conviction")
     display = []
@@ -241,11 +298,12 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     selected_row = next(r for r in top if r["종목명"] == selected)
 
     a, b, c, d = st.columns(4)
-    a.metric("Conviction", f"{selected_row['Conviction']:.1f}")
-    b.metric("등급", selected_row["점프등급"])
-    c.metric("시총 모멘텀", f"{selected_row['시총모멘텀']:.1f}")
-    d.metric("기존 HY 점수", f"{float(selected_row.get('종합점수', 0)):.1f}")
+    a.metric("실행", selected_row["실행"])
+    b.metric("Conviction", f"{selected_row['Conviction']:.1f}")
+    c.metric("진입비중", selected_row["권장진입"])
+    d.metric("시총 모멘텀", f"{selected_row['시총모멘텀']:.1f}")
 
+    st.info(selected_row["실행근거"])
     st.markdown("**정량 매수근거 3가지**")
     for reason in _reason_lines(selected_row):
         st.write(f"- {reason}")
@@ -266,4 +324,4 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     else:
         st.success("현재 정량 위험경고 없음")
 
-    st.caption("이 탭은 자동 매수 지시가 아니라 집중 연구 후보를 선별하는 보조 도구입니다. 실제 매수 전 기업·산업의 정성적 투자근거를 별도로 확인하세요.")
+    st.caption("실행판은 정량 신호를 행동으로 단순화한 보조 도구입니다. 자동 주문을 실행하지 않으며 기업·산업의 정성적 확인은 별도로 필요합니다.")
