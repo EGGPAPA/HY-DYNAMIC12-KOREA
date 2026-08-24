@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 import pandas as pd
 import requests
 
+from naver_fallback_html import get_flow_map_html, get_market_cap_ranking_html
+
 SEOUL = ZoneInfo("Asia/Seoul")
 BASE = "https://m.stock.naver.com"
 HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://m.stock.naver.com/"}
@@ -47,30 +49,35 @@ def _code_from(d):
 
 
 def get_market_cap_ranking(page_size=1000):
+    """Try Naver mobile API first; if blocked, fall back to classic Finance HTML."""
     try:
-        data = _get_json("/api/domestic/market/stock/default", {"tradeType": "KRX", "marketType": "ALL", "orderType": "marketSum", "startIdx": 0, "pageSize": page_size})
+        data = _get_json(
+            "/api/domestic/market/stock/default",
+            {"tradeType": "KRX", "marketType": "ALL", "orderType": "marketSum", "startIdx": 0, "pageSize": page_size},
+        )
+        rows, seen = [], set()
+        for d in _walk(data):
+            code = _code_from(d)
+            if not code or code in seen:
+                continue
+            cap = None
+            for k, v in d.items():
+                lk = str(k).lower()
+                if any(t in lk for t in ("marketsum", "marketvalue", "marketcap", "capitalization")):
+                    cap = _num(v)
+                    if cap is not None:
+                        break
+            if cap is not None:
+                seen.add(code)
+                rows.append((code, cap))
+        if rows:
+            df = pd.DataFrame(rows, columns=["종목코드", "시가총액"]).sort_values("시가총액", ascending=False).reset_index(drop=True)
+            df["현재순위"] = range(1, len(df) + 1)
+            return df, datetime.now(SEOUL).strftime("%Y%m%d")
     except Exception:
-        return pd.DataFrame(), None
-    rows, seen = [], set()
-    for d in _walk(data):
-        code = _code_from(d)
-        if not code or code in seen:
-            continue
-        cap = None
-        for k, v in d.items():
-            lk = str(k).lower()
-            if any(t in lk for t in ("marketsum", "marketvalue", "marketcap", "capitalization")):
-                cap = _num(v)
-                if cap is not None:
-                    break
-        if cap is not None:
-            seen.add(code)
-            rows.append((code, cap))
-    if not rows:
-        return pd.DataFrame(), None
-    df = pd.DataFrame(rows, columns=["종목코드", "시가총액"]).sort_values("시가총액", ascending=False).reset_index(drop=True)
-    df["현재순위"] = range(1, len(df) + 1)
-    return df, datetime.now(SEOUL).strftime("%Y%m%d")
+        pass
+
+    return get_market_cap_ranking_html()
 
 
 def _find_investor_value(d, kind):
@@ -93,20 +100,24 @@ def _find_investor_value(d, kind):
 def get_stock_flow(code):
     try:
         data = _get_json(f"/api/domestic/detail/{code}/trend", {"tradeType": "KRX", "startIdx": 0, "pageSize": 5})
+        for d in _walk(data):
+            f = _find_investor_value(d, "foreign")
+            i = _find_investor_value(d, "institution")
+            if f is not None or i is not None:
+                return {"외국인순매수": float(f or 0), "기관순매수": float(i or 0)}
     except Exception:
         return None
-    for d in _walk(data):
-        f = _find_investor_value(d, "foreign")
-        i = _find_investor_value(d, "institution")
-        if f is not None or i is not None:
-            return {"외국인순매수": float(f or 0), "기관순매수": float(i or 0)}
     return None
 
 
 def get_flow_map(codes):
+    """Try Naver mobile API; if it yields no usable rows, use classic Finance HTML."""
     out = {}
     for code in codes:
-        row = get_stock_flow(str(code).zfill(6))
+        code = str(code).zfill(6)
+        row = get_stock_flow(code)
         if row:
-            out[str(code).zfill(6)] = row
-    return out, datetime.now(SEOUL).strftime("%Y%m%d") if out else None
+            out[code] = row
+    if out:
+        return out, datetime.now(SEOUL).strftime("%Y%m%d")
+    return get_flow_map_html(codes)
