@@ -4,3 +4,4 @@ numpy>=2.0
 yfinance>=0.2.40
 requests>=2.31
 pykrx==1.2.8
+lxml>=5.0
