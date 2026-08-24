@@ -18,6 +18,30 @@ def _monthly(code, market):
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=1800, show_spinner=False)
+def _monthly_batch(symbols):
+    if not symbols:
+        return pd.DataFrame()
+    try:
+        return yf.download(list(symbols), period="3y", interval="1mo", auto_adjust=True, group_by="ticker", threads=True, progress=False)
+    except Exception:
+        return pd.DataFrame()
+
+
+def _batch_history(batch, symbol):
+    if batch is None or batch.empty:
+        return pd.DataFrame()
+    try:
+        if isinstance(batch.columns, pd.MultiIndex):
+            if symbol in batch.columns.get_level_values(0):
+                return batch[symbol].dropna(how="all")
+            if symbol in batch.columns.get_level_values(1):
+                return batch.xs(symbol, axis=1, level=1).dropna(how="all")
+        return batch.dropna(how="all")
+    except Exception:
+        return pd.DataFrame()
+
+
 def _signal(h):
     if h is None or len(h) < 8:
         return None
@@ -72,8 +96,20 @@ def scan_monthly_ma5(universe, limit=300, only_new=False, progress=None):
     """Run the MA5 scan without rendering UI so other workflows can reuse it."""
     rows = []
     work = universe.head(min(int(limit), len(universe)))
+    histories = {}
+    chunk_size = 100
+    for start in range(0, len(work), chunk_size):
+        part = work.iloc[start:start + chunk_size]
+        symbols = tuple(_symbol(r["종목코드"], r["시장"]) for _, r in part.iterrows())
+        batch = _monthly_batch(symbols)
+        for symbol in symbols:
+            histories[symbol] = _batch_history(batch, symbol)
     for n, (_, r) in enumerate(work.iterrows(), 1):
-        sig = _signal(_monthly(r["종목코드"], r["시장"]))
+        symbol = _symbol(r["종목코드"], r["시장"])
+        history = histories.get(symbol)
+        if history is None or history.empty:
+            history = _monthly(r["종목코드"], r["시장"])
+        sig = _signal(history)
         if sig:
             label, score, px, ma, gap, slope, vr = sig
             if not only_new or "신규돌파" in label:
@@ -232,4 +268,5 @@ def render_monthly_ma5_tab():
     else:
         st.info("버튼을 눌러 월봉 5개월선 돌파 종목을 검사하세요.")
     _render_backtest(universe)
+
 
