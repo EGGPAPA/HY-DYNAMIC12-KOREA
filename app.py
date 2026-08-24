@@ -9,7 +9,7 @@ import streamlit as st
 from theme_styles import inject_theme
 import yfinance as yf
 from korea_holdings_ui import render_holdings_tab
-from monthly_ma5_ui import render_monthly_ma5_tab, scan_monthly_ma5
+from monthly_ma5_ui import render_monthly_ma5_tab, scan_monthly_ma5, _monthly_batch
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 from market_environment import render_market_environment
 from wealth_jump_ui import render_wealth_jump_tab
@@ -325,6 +325,7 @@ def enrich_screen_with_fallback_flow(screen):
     return work, True, f"NAVER 투자자동향 보완 · {len(flow_map)}/{n}개 · {flow_date or '-'}"
 
 
+@st.cache_data(ttl=86400, show_spinner=False)
 def fundamental_score(code, market):
     score = 50.
     try:
@@ -343,8 +344,8 @@ def fundamental_score(code, market):
     return clip(score, 0, 100)
 
 
-def deep_analyze(screen):
-    candidates = screen.head(max(DEEP_CANDIDATE_COUNT, FINAL_TOP_N * 4)).copy()
+def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
+    candidates = screen.head(max(int(candidate_count), FINAL_TOP_N * 4)).copy()
     symbols = [yf_symbol(r["종목코드"], r["시장"]) for _, r in candidates.iterrows()]
     batch = download_chunk(tuple(symbols), "6mo")
     rows = []
@@ -443,7 +444,7 @@ def apply_relative(rows, regime):
     return rows, floor, active_pct
 
 
-def run_market_analysis(universe, uni_source, progress=None):
+def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEEP_CANDIDATE_COUNT):
     """Shared market/TOP12 analysis used by both update buttons."""
     flow_map, flow_auto_ok, flow_msg = get_auto_flow()
     screen = build_market_screen(universe, flow_map, progress)
@@ -456,14 +457,14 @@ def run_market_analysis(universe, uni_source, progress=None):
             flow_msg = fallback_msg
         else:
             flow_msg = f"{flow_msg} · {fallback_msg}"
-    rows = deep_analyze(screen)
+    rows = deep_analyze(screen, candidate_count)
     regime = kospi_regime()
     rows, floor, active_pct = apply_relative(rows, regime)
     if not rows:
         raise RuntimeError("정밀분석 결과가 없습니다.")
     st.session_state.update({
         "eligible_count": len(screen),
-        "candidate_count": min(DEEP_CANDIDATE_COUNT, len(screen)),
+        "candidate_count": min(max(int(candidate_count), FINAL_TOP_N * 4), len(screen)),
         "flow_auto_ok": flow_auto_ok,
         "flow_msg": flow_msg,
         "analysis_at": datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST"),
@@ -516,24 +517,90 @@ def run_full_update(status):
     return completed_at, regime
 
 
+def run_fast_update(status):
+    """Refresh the latest known candidates instead of scanning the whole market."""
+    status.write("⏳ ① 최신 가격데이터 갱신 중...")
+    download_chunk.clear()
+    get_single_history.clear()
+    yf_history.clear()
+    _monthly_batch.clear()
+    _auto_price.clear()
+
+    full_universe, uni_source = get_full_universe()
+    previous_rows = st.session_state.get("kr_rows", [])
+    if previous_rows:
+        candidate_codes = {str(r.get("_종목코드", "")).zfill(6) for r in previous_rows[:60]}
+        universe = full_universe[full_universe["종목코드"].astype(str).str.zfill(6).isin(candidate_codes)].copy()
+        source = f"기존 상위후보 {len(universe)}개 · {uni_source}"
+    else:
+        universe = full_universe
+        source = uni_source
+        status.write("ℹ️ 저장된 후보가 없어 이번에는 전체시장 1차 스캔을 실행합니다.")
+    if universe.empty:
+        raise RuntimeError("빠른 업데이트 대상 종목이 없습니다.")
+    status.write(f"✅ ① 최신 가격데이터 갱신 준비 · {len(universe):,}개")
+
+    status.write("⏳ ② 전체시장 후보 갱신 중...")
+    rows, regime, _, _ = run_market_analysis(universe, source, candidate_count=60)
+    status.write(f"✅ ② 후보 분석 완료 · {len(rows)}개")
+    status.write(f"✅ ③ TOP12 갱신 완료 · {min(FINAL_TOP_N, len(rows))}개")
+
+    status.write("⏳ ④ 부의 점프 갱신 중...")
+    get_market_cap_data()
+    get_flow_data(rows)
+    st.session_state["wealth_jump_at"] = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
+    status.write("✅ ④ 부의 점프 갱신 완료")
+
+    status.write("⏳ ⑤ 5개월선 핵심후보 분석 중...")
+    row_codes = [str(r.get("_종목코드", "")).zfill(6) for r in rows[:60]]
+    order = {code: i for i, code in enumerate(row_codes)}
+    ma5_universe = full_universe[full_universe["종목코드"].astype(str).str.zfill(6).isin(order)].copy()
+    ma5_universe["_빠른순서"] = ma5_universe["종목코드"].astype(str).str.zfill(6).map(order)
+    ma5_universe = ma5_universe.sort_values("_빠른순서").drop(columns="_빠른순서")
+    st.session_state["kr_ma5_rows"] = scan_monthly_ma5(ma5_universe, len(ma5_universe), bool(st.session_state.get("kr_ma5_only_new", False)))
+    status.write(f"✅ ⑤ 5개월선 분석 완료 · {len(st.session_state['kr_ma5_rows'])}개")
+
+    status.write("⏳ ⑥ 연금저축 현재가 갱신 중...")
+    pension, _ = _load_pension()
+    st.session_state["pension_prices"] = {str(t).strip(): _auto_price(str(t).strip()) for t in (pension.get("korea_ticker"), pension.get("sp_ticker")) if t}
+    completed_at = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
+    st.session_state["full_update_at"] = completed_at
+    st.session_state["full_update_mode"] = "빠른 업데이트"
+    status.write("✅ ⑥ 연금저축 현재가 갱신 완료")
+    return completed_at, regime
+
+
 inject_theme()
 
 st.title("🇰🇷 HY DYNAMIC12 · 한국주식 실전선별")
 st.caption("개별주식 후보를 찾는 화면입니다. ETF 매수·보유·매도 판단은 왼쪽 '실전운용'에서 별도로 관리합니다.")
 st.info("① 시장 데이터 확인 → ② 전체시장 자동분석 → ③ TOP12 검토 → ④ 부의 점프 검토 → ⑤ 매수 후 보유종목 기록")
 
-if st.button("🚀 HY 전체 업데이트", type="primary", use_container_width=True, key="hy_full_update"):
-    status = st.status("HY 전체 업데이트 실행 중", expanded=True)
+quick_col, full_col = st.columns([2, 1])
+if quick_col.button("⚡ 빠른 업데이트", type="primary", use_container_width=True, key="hy_fast_update"):
+    status = st.status("HY 빠른 업데이트 실행 중", expanded=True)
+    try:
+        completed_at, regime = run_fast_update(status)
+        status.update(label=f"⚡ 빠른 업데이트 완료 · {completed_at}", state="complete", expanded=True)
+        st.success(f"빠른 업데이트가 완료되었습니다. 시장상태: {regime}")
+    except Exception as e:
+        status.update(label="빠른 업데이트 중 오류가 발생했습니다.", state="error", expanded=True)
+        st.error(str(e))
+
+if full_col.button("🚀 정밀 전체 업데이트", use_container_width=True, key="hy_full_update"):
+    status = st.status("HY 정밀 전체 업데이트 실행 중", expanded=True)
     try:
         completed_at, regime = run_full_update(status)
-        status.update(label=f"🎉 HY 전체 업데이트 완료 · {completed_at}", state="complete", expanded=True)
-        st.success(f"전체 업데이트가 완료되었습니다. 시장상태: {regime}")
+        st.session_state["full_update_mode"] = "정밀 전체 업데이트"
+        status.update(label=f"🎉 정밀 전체 업데이트 완료 · {completed_at}", state="complete", expanded=True)
+        st.success(f"정밀 전체 업데이트가 완료되었습니다. 시장상태: {regime}")
     except Exception as e:
         status.update(label="전체 업데이트 중 오류가 발생했습니다.", state="error", expanded=True)
         st.error(str(e))
 
 if st.session_state.get("full_update_at"):
-    st.caption(f"마지막 전체 업데이트: **{st.session_state['full_update_at']}**")
+    st.caption(f"마지막 업데이트: **{st.session_state['full_update_at']}** · {st.session_state.get('full_update_mode', '전체 업데이트')}")
+st.caption("평소에는 빠른 업데이트를 사용하고, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 실행하세요.")
 
 tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 5개월선 돌파", "📈 전략검증", "💼 보유종목"])
 
@@ -626,3 +693,4 @@ with tabs[6]:
     render_holdings_tab()
 
 st.caption("역할 분리: 실전운용=ETF 매매 판단 · TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 보유종목=실제 체결/평균단가/수익률 · 전략검증=백테스트/OOS")
+
