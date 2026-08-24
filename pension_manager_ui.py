@@ -76,7 +76,9 @@ def render_pension_manager_tab():
             st.error("현재가 자동조회 실패"); sp_price = st.number_input("S&P500 ETF 수동 현재가", min_value=0, step=100, value=0, format="%d")
     with c3:
         st.markdown("**안전자산 / 신호**")
-        safe_now = st.number_input("채권·현금성 평가액", min_value=0, step=1000, value=0, format="%d")
+        safe_text = st.text_input("채권·현금성 평가액", value="0원", help="예: 128,532원")
+        safe_digits = "".join(ch for ch in safe_text if ch.isdigit())
+        safe_now = int(safe_digits) if safe_digits else 0
         st.caption(f"입력금액: **{_won(safe_now)}**")
         korea_signal = st.selectbox("KOREA TOP10 MA5 참고신호", ["🟢 MA5 위 · 상승", "🟡 MA5 위 · 횡보", "🟠 MA5 부근", "🔴 MA5 1개월 이탈", "🔴 2개월 이탈 · MA5 하락", "🚀 MA5 재돌파"])
         if st.button("🔄 현재가 다시 조회", use_container_width=True):
