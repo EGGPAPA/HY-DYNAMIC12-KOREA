@@ -131,15 +131,16 @@ def _summary(events):
         x=events[events["기준"]==th] if not events.empty else pd.DataFrame();r={"기준점수":th,"진입기준":f"{th}점+ · 2/3 이상","신호수":len(x)}
         for m in (3,6,12):
             s=_num(x[f"{m}개월"]) if not x.empty else pd.Series(dtype=float);r[f"{m}개월승률"]=(s.gt(0).mean()*100) if len(s) else None;r[f"{m}개월평균"]=s.mean() if len(s) else None
-        mx=_num(x["12개월최고"]) if not x.empty else pd.Series(dtype=float);dd=_num(x["12개월최대하락"]) if not x.empty else pd.Series(dtype=float);r["+10%도달률"]=(mx.ge(10).mean()*100) if len(mx) else None;r["+20%도달률"]=(mx.ge(20).mean()*100) if len(mx) else None;r["평균최대하락"]=dd.mean() if len(dd) else None;rows.append(r)
+        annual=_num(x["12개월"]) if not x.empty else pd.Series(dtype=float);r["12개월중앙값"]=annual.median() if len(annual) else None;r["12개월최악"]=annual.min() if len(annual) else None;r["12개월최고수익"]=annual.max() if len(annual) else None;r["손실확률"]=(annual.lt(0).mean()*100) if len(annual) else None
+        mx=_num(x["12개월최고"]) if not x.empty else pd.Series(dtype=float);dd=_num(x["12개월최대하락"]) if not x.empty else pd.Series(dtype=float);r["+10%도달률"]=(mx.ge(10).mean()*100) if len(mx) else None;r["+20%도달률"]=(mx.ge(20).mean()*100) if len(mx) else None;r["+30%도달률"]=(mx.ge(30).mean()*100) if len(mx) else None;r["평균최대하락"]=dd.mean() if len(dd) else None;rows.append(r)
     return pd.DataFrame(rows)
 
 
 def _recommend(summary):
     if summary is None or summary.empty:return None
     s=summary.copy();maxsig=max(float(s["신호수"].max()),1)
-    for col in ["6개월승률","12개월승률","12개월평균","+20%도달률","평균최대하락"]:s[col]=pd.to_numeric(s[col],errors="coerce")
-    s["균형점수"]=(s["신호수"]/maxsig*15+s["6개월승률"].fillna(0)/100*20+s["12개월승률"].fillna(0)/100*25+((s["12개월평균"].fillna(-20)+20).clip(0,50)/50)*20+((s["+20%도달률"].fillna(0))/100)*10+((s["평균최대하락"].fillna(-30)+30).clip(0,30)/30)*10)
+    for col in ["6개월승률","12개월승률","12개월중앙값","+20%도달률","평균최대하락"]:s[col]=pd.to_numeric(s[col],errors="coerce")
+    s["균형점수"]=(s["신호수"]/maxsig*15+s["6개월승률"].fillna(0)/100*20+s["12개월승률"].fillna(0)/100*25+((s["12개월중앙값"].fillna(-20)+20).clip(0,50)/50)*20+((s["+20%도달률"].fillna(0))/100)*10+((s["평균최대하락"].fillna(-30)+30).clip(0,30)/30)*10)
     valid=s[s["신호수"]>=max(10,maxsig*.12)]
     if valid.empty:valid=s[s["신호수"]>0]
     if valid.empty:return None
@@ -170,7 +171,9 @@ def render_integrated_decision(rows,jump_rows,regime="중립장",universe=None):
             r1,r2,r3,r4=st.columns(4);r1.metric("추천",f"{int(rec['기준점수'])}점+");r2.metric("신호수",f"{int(rec['신호수'])}회");r3.metric("12개월 승률",f"{rec['12개월승률']:.1f}%" if pd.notna(rec['12개월승률']) else "-");r4.metric("평균 MDD",f"{rec['평균최대하락']:+.1f}%" if pd.notna(rec['평균최대하락']) else "-")
             st.success(f"현재 백테스트에서는 **{int(rec['기준점수'])}점 이상 + 2/3 포착**이 매수기회·승률·수익률·하락폭의 균형이 가장 좋습니다. 이 값은 백테스트를 다시 실행하면 자동 재계산됩니다.")
         disp=summary.copy()
-        for col in ["3개월승률","6개월승률","12개월승률","+10%도달률","+20%도달률"]:disp[col]=disp[col].map(lambda v:f"{v:.1f}%" if pd.notna(v) else "-")
-        for col in ["3개월평균","6개월평균","12개월평균","평균최대하락"]:disp[col]=disp[col].map(lambda v:f"{v:+.2f}%" if pd.notna(v) else "-")
-        st.markdown("#### 65·70·75·80점 비교");st.dataframe(disp.drop(columns=["기준점수"]),use_container_width=True,hide_index=True);st.caption("HY 추천은 최고 수익률 하나가 아니라 신호수, 6·12개월 승률, 12개월 평균수익, +20% 도달률, 평균 MDD를 함께 평가합니다.")
+        for col in ["3개월승률","6개월승률","12개월승률","손실확률","+10%도달률","+20%도달률","+30%도달률"]:disp[col]=disp[col].map(lambda v:f"{v:.1f}%" if pd.notna(v) else "-")
+        for col in ["3개월평균","6개월평균","12개월평균","12개월중앙값","12개월최악","12개월최고수익","평균최대하락"]:disp[col]=disp[col].map(lambda v:f"{v:+.2f}%" if pd.notna(v) else "-")
+        st.markdown("#### 65·70·75·80점 비교");st.dataframe(disp.drop(columns=["기준점수"]),use_container_width=True,hide_index=True);st.caption("HY 추천은 일부 급등 종목의 영향을 줄이기 위해 12개월 평균 대신 중앙값을 반영하고, 승률·+20% 도달률·평균 MDD를 함께 평가합니다.")
+        st.info("평균과 중앙값의 차이가 크면 일부 대박 종목이 평균을 끌어올렸을 가능성이 큽니다. 전형적인 결과는 중앙값에 더 가깝게 해석하세요.")
         with st.expander("과거 통합신호 상세"):st.dataframe(ev.sort_values(["기준","신호월"],ascending=[True,False]).head(300),use_container_width=True,hide_index=True)
+
