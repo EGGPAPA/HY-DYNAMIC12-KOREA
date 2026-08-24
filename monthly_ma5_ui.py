@@ -68,6 +68,22 @@ def _trade_plan(label, px, ma, gap, slope, vr):
     return action, reason, buy1, buy2, buy3, stop, buy1 * 1.10, buy1 * 1.20
 
 
+def scan_monthly_ma5(universe, limit=300, only_new=False, progress=None):
+    """Run the MA5 scan without rendering UI so other workflows can reuse it."""
+    rows = []
+    work = universe.head(min(int(limit), len(universe)))
+    for n, (_, r) in enumerate(work.iterrows(), 1):
+        sig = _signal(_monthly(r["종목코드"], r["시장"]))
+        if sig:
+            label, score, px, ma, gap, slope, vr = sig
+            if not only_new or "신규돌파" in label:
+                action, reason, b1, b2, b3, stop, t1, t2 = _trade_plan(label, px, ma, gap, slope, vr)
+                rows.append({"매매판정":action,"신호":label,"종목코드":str(r["종목코드"]).zfill(6),"종목명":r["종목명"],"시장":r["시장"],"현재가":round(px),"5개월선":round(ma),"이격률(%)":round(gap,2),"기울기(%)":round(slope,2),"월거래량배수":round(vr,2) if vr is not None else None,"1차매수가":round(b1),"2차매수가":round(b2),"3차매수가":round(b3),"손절기준":round(stop),"1차목표(+10%)":round(t1),"2차목표(+20%)":round(t2),"판정근거":reason,"돌파점수":score})
+        if progress is not None:
+            progress.progress(n / max(len(work), 1))
+    return sorted(rows, key=lambda x:(x["돌파점수"],x["기울기(%)"]), reverse=True)
+
+
 @st.cache_data(ttl=3600, show_spinner=False)
 def _get_universe():
     try:
@@ -200,18 +216,8 @@ def render_monthly_ma5_tab():
     if len(universe) < 100:
         st.warning("KRX 전체 종목목록을 가져오지 못해 제한된 후보군만 검사합니다. 이 결과를 전체시장 결과로 해석하지 마세요.")
     if st.button("🔎 5개월선 돌파 종목 찾기", type="primary", use_container_width=True, key="kr_ma5_scan"):
-        rows = []
         bar = st.progress(0)
-        work = universe.head(int(limit))
-        for n, (_, r) in enumerate(work.iterrows(), 1):
-            sig = _signal(_monthly(r["종목코드"], r["시장"]))
-            if sig:
-                label, score, px, ma, gap, slope, vr = sig
-                if not only_new or "신규돌파" in label:
-                    action, reason, b1, b2, b3, stop, t1, t2 = _trade_plan(label, px, ma, gap, slope, vr)
-                    rows.append({"매매판정":action,"신호":label,"종목코드":str(r["종목코드"]).zfill(6),"종목명":r["종목명"],"시장":r["시장"],"현재가":round(px),"5개월선":round(ma),"이격률(%)":round(gap,2),"기울기(%)":round(slope,2),"월거래량배수":round(vr,2) if vr is not None else None,"1차매수가":round(b1),"2차매수가":round(b2),"3차매수가":round(b3),"손절기준":round(stop),"1차목표(+10%)":round(t1),"2차목표(+20%)":round(t2),"판정근거":reason,"돌파점수":score})
-            bar.progress(n / max(len(work), 1))
-        st.session_state["kr_ma5_rows"] = sorted(rows, key=lambda x:(x["돌파점수"],x["기울기(%)"]), reverse=True)
+        st.session_state["kr_ma5_rows"] = scan_monthly_ma5(universe, limit, only_new, bar)
         bar.empty()
     rows = st.session_state.get("kr_ma5_rows", [])
     if rows:
