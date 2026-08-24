@@ -132,6 +132,10 @@ def _summary(events):
         for m in (3,6,12):
             s=_num(x[f"{m}개월"]) if not x.empty else pd.Series(dtype=float);r[f"{m}개월승률"]=(s.gt(0).mean()*100) if len(s) else None;r[f"{m}개월평균"]=s.mean() if len(s) else None
         annual=_num(x["12개월"]) if not x.empty else pd.Series(dtype=float);r["12개월중앙값"]=annual.median() if len(annual) else None;r["12개월최악"]=annual.min() if len(annual) else None;r["12개월최고수익"]=annual.max() if len(annual) else None;r["손실확률"]=(annual.lt(0).mean()*100) if len(annual) else None
+        clean=annual[annual.lt(500)];r["500%이상치수"]=int(annual.ge(500).sum()) if len(annual) else 0;r["500%제외평균"]=clean.mean() if len(clean) else None
+        if len(annual):
+            lo,hi=annual.quantile(.01),annual.quantile(.99);r["상하위1%제한평균"]=annual.clip(lower=lo,upper=hi).mean()
+        else:r["상하위1%제한평균"]=None
         mx=_num(x["12개월최고"]) if not x.empty else pd.Series(dtype=float);dd=_num(x["12개월최대하락"]) if not x.empty else pd.Series(dtype=float);r["+10%도달률"]=(mx.ge(10).mean()*100) if len(mx) else None;r["+20%도달률"]=(mx.ge(20).mean()*100) if len(mx) else None;r["+30%도달률"]=(mx.ge(30).mean()*100) if len(mx) else None;r["평균최대하락"]=dd.mean() if len(dd) else None;rows.append(r)
     return pd.DataFrame(rows)
 
@@ -172,8 +176,10 @@ def render_integrated_decision(rows,jump_rows,regime="중립장",universe=None):
             st.success(f"현재 백테스트에서는 **{int(rec['기준점수'])}점 이상 + 2/3 포착**이 매수기회·승률·수익률·하락폭의 균형이 가장 좋습니다. 이 값은 백테스트를 다시 실행하면 자동 재계산됩니다.")
         disp=summary.copy()
         for col in ["3개월승률","6개월승률","12개월승률","손실확률","+10%도달률","+20%도달률","+30%도달률"]:disp[col]=disp[col].map(lambda v:f"{v:.1f}%" if pd.notna(v) else "-")
-        for col in ["3개월평균","6개월평균","12개월평균","12개월중앙값","12개월최악","12개월최고수익","평균최대하락"]:disp[col]=disp[col].map(lambda v:f"{v:+.2f}%" if pd.notna(v) else "-")
+        for col in ["3개월평균","6개월평균","12개월평균","12개월중앙값","500%제외평균","상하위1%제한평균","12개월최악","12개월최고수익","평균최대하락"]:disp[col]=disp[col].map(lambda v:f"{v:+.2f}%" if pd.notna(v) else "-")
         st.markdown("#### 65·70·75·80점 비교");st.dataframe(disp.drop(columns=["기준점수"]),use_container_width=True,hide_index=True);st.caption("HY 추천은 일부 급등 종목의 영향을 줄이기 위해 12개월 평균 대신 중앙값을 반영하고, 승률·+20% 도달률·평균 MDD를 함께 평가합니다.")
         st.info("평균과 중앙값의 차이가 크면 일부 대박 종목이 평균을 끌어올렸을 가능성이 큽니다. 전형적인 결과는 중앙값에 더 가깝게 해석하세요.")
+        outliers=int(pd.to_numeric(summary["500%이상치수"],errors="coerce").fillna(0).max())
+        if outliers:st.warning(f"⚠️ 기준별로 최대 {outliers}개의 +500% 초과 수익률이 발견됐습니다. 액면분할·수정주가·특수 급등 여부를 확인하고, 원본 평균보다 500% 제외 평균과 상·하위 1% 제한 평균을 우선 보세요.")
         with st.expander("과거 통합신호 상세"):st.dataframe(ev.sort_values(["기준","신호월"],ascending=[True,False]).head(300),use_container_width=True,hide_index=True)
 
