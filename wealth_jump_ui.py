@@ -6,6 +6,7 @@ import streamlit as st
 
 from naver_fallback import get_flow_map as get_naver_flow_map
 from naver_fallback import get_market_cap_ranking as get_naver_cap_ranking
+from integrated_signal_ui import render_integrated_decision
 
 try:
     from pykrx import stock
@@ -281,6 +282,8 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
 
     jump_rows.sort(key=lambda r: (r.get("Conviction") is not None, float(r.get("Conviction") or r.get("종합점수", 0) or 0)), reverse=True)
     top = jump_rows[:10]
+
+    render_integrated_decision(rows, jump_rows, regime=regime)
 
     st.markdown("## ⚡ 오늘의 실행판")
     action_display = []
