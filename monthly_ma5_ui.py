@@ -23,7 +23,7 @@ def _monthly_batch(symbols):
     if not symbols:
         return pd.DataFrame()
     try:
-        return yf.download(list(symbols), period="3y", interval="1mo", auto_adjust=True, group_by="ticker", threads=True, progress=False)
+        return yf.download(list(symbols), period="3y", interval="1mo", auto_adjust=True, group_by="ticker", threads=8, progress=False)
     except Exception:
         return pd.DataFrame()
 

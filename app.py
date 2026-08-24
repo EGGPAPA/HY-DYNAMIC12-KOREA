@@ -33,9 +33,11 @@ UNIVERSE_FILE = Path("korea_universe.csv")
 FLOW_FILE = Path("investor_flow.csv")
 EXPORT_FILE = Path("export_history.csv")
 WATCHLIST_FILE = DATA_DIR / "korea_watchlist.json"
+ANALYSIS_FILE = DATA_DIR / "korea_analysis.json"
 FINAL_TOP_N = 12
 DEEP_CANDIDATE_COUNT = 120
 YF_CHUNK = 180
+YF_THREADS = 8
 MIN_PRICE = 1000
 MIN_AVG_VALUE = 2_000_000_000
 
@@ -56,6 +58,15 @@ FALLBACK_UNIVERSE = [
 
 def save_json(path, obj):
     path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def load_json(path, default):
+    try:
+        if path.exists():
+            return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        pass
+    return default
 
 
 def market_open():
@@ -213,7 +224,7 @@ def download_chunk(symbols, period="3mo"):
     if not symbols:
         return pd.DataFrame()
     try:
-        return yf.download(tickers=list(symbols), period=period, interval="1d", auto_adjust=True, group_by="ticker", threads=True, progress=False)
+        return yf.download(tickers=list(symbols), period=period, interval="1d", auto_adjust=True, group_by="ticker", threads=YF_THREADS, progress=False)
     except Exception:
         return pd.DataFrame()
 
@@ -474,6 +485,7 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
     })
     active_watch = [{"ticker": r["_종목코드"], "name": r["종목명"], "market": r["_시장"], "score": r["종합점수"], "relative_rank": r["상대순위"], "opinion": r["수급·질적 종합의견"]} for r in rows[:FINAL_TOP_N] if r["판정"].startswith("🟢 적극매수")]
     save_json(WATCHLIST_FILE, active_watch)
+    save_json(ANALYSIS_FILE, rows)
     return rows, regime, floor, active_pct
 
 
@@ -527,15 +539,14 @@ def run_fast_update(status):
     _auto_price.clear()
 
     full_universe, uni_source = get_full_universe()
-    previous_rows = st.session_state.get("kr_rows", [])
+    previous_rows = st.session_state.get("kr_rows", []) or load_json(ANALYSIS_FILE, [])
     if previous_rows:
+        st.session_state["kr_rows"] = previous_rows
         candidate_codes = {str(r.get("_종목코드", "")).zfill(6) for r in previous_rows[:60]}
         universe = full_universe[full_universe["종목코드"].astype(str).str.zfill(6).isin(candidate_codes)].copy()
         source = f"기존 상위후보 {len(universe)}개 · {uni_source}"
     else:
-        universe = full_universe
-        source = uni_source
-        status.write("ℹ️ 저장된 후보가 없어 이번에는 전체시장 1차 스캔을 실행합니다.")
+        raise RuntimeError("빠른 업데이트용 저장 후보가 없습니다. 먼저 🚀 정밀 전체 업데이트를 한 번 실행하세요.")
     if universe.empty:
         raise RuntimeError("빠른 업데이트 대상 종목이 없습니다.")
     status.write(f"✅ ① 최신 가격데이터 갱신 준비 · {len(universe):,}개")
