@@ -13,6 +13,7 @@ from monthly_ma5_ui import render_monthly_ma5_tab
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 from market_environment import render_market_environment
 from wealth_jump_ui import render_wealth_jump_tab
+from naver_fallback_html import get_full_universe_html, get_flow_map_html
 
 try:
     from pykrx import stock
@@ -113,6 +114,14 @@ def get_full_universe():
                 return pd.DataFrame(rows, columns=["종목코드", "종목명", "시장"]), f"KRX 전체 종목목록 · {date}"
         except Exception:
             rows = []
+
+    # Streamlit Cloud에서 KRX가 막힐 때 네이버 금융 HTML의 KOSPI/KOSDAQ 전체 목록 사용
+    try:
+        nv, nv_date = get_full_universe_html()
+        if nv is not None and not nv.empty and len(nv) >= 500:
+            return nv[["종목코드", "종목명", "시장"]].copy(), f"NAVER 전체 종목목록(대체) · {nv_date}"
+    except Exception:
+        pass
 
     merged, seen = [], set()
     fb = load_csv_universe()
@@ -278,6 +287,42 @@ def build_market_screen(universe, flow_map, progress=None):
     return df.sort_values("1차점수", ascending=False).reset_index(drop=True)
 
 
+def enrich_screen_with_fallback_flow(screen):
+    """KRX 전체 수급이 없으면 1차 상위 후보만 네이버 투자자동향으로 보완한다."""
+    if screen is None or screen.empty:
+        return screen, False, "수급 데이터 없음"
+
+    n = min(max(DEEP_CANDIDATE_COUNT, FINAL_TOP_N * 4), len(screen))
+    work = screen.copy()
+    codes = work.head(n)["종목코드"].astype(str).str.zfill(6).tolist()
+    try:
+        flow_map, flow_date = get_flow_map_html(codes)
+    except Exception:
+        flow_map, flow_date = {}, None
+
+    coverage = len(flow_map) / max(n, 1)
+    if not flow_map or coverage < 0.35:
+        return screen, False, f"NAVER 수급 보완 실패 · {len(flow_map)}/{n}개"
+
+    top_idx = work.index[:n]
+    for idx in top_idx:
+        code = str(work.at[idx, "종목코드"]).zfill(6)
+        fm = flow_map.get(code)
+        if not fm:
+            continue
+        work.at[idx, "외국인순매수"] = float(fm.get("외국인순매수", 0) or 0)
+        work.at[idx, "기관순매수"] = float(fm.get("기관순매수", 0) or 0)
+
+    subset = work.loc[top_idx].copy()
+    subset["외국인백분위"] = subset["외국인순매수"].rank(pct=True) * 100
+    subset["기관백분위"] = subset["기관순매수"].rank(pct=True) * 100
+    work.loc[top_idx, "외국인백분위"] = subset["외국인백분위"]
+    work.loc[top_idx, "기관백분위"] = subset["기관백분위"]
+
+    # 정밀분석 후보 순서는 1차 가격/거래량 선별 결과를 유지한다.
+    return work, True, f"NAVER 투자자동향 보완 · {len(flow_map)}/{n}개 · {flow_date or '-'}"
+
+
 def fundamental_score(code, market):
     score = 50.
     try:
@@ -409,17 +454,16 @@ with tabs[0]:
 
 with tabs[1]:
     st.subheader("🔎 KOSPI + KOSDAQ 전체시장 분석")
-    st.info("개별주식 후보 선별용입니다. KRX 종목목록·투자자수급과 yfinance 가격·거래량을 결합해 TOP12 후보를 찾습니다.")
+    st.info("개별주식 후보 선별용입니다. KRX를 우선 사용하고, KRX가 막히면 네이버 금융 전체 종목목록·투자자동향으로 보완합니다.")
     if st.button("① 전체시장 자동분석 실행", type="primary", use_container_width=True):
         universe, uni_source = get_full_universe()
         if universe.empty:
             st.error("KOSPI/KOSDAQ 종목목록을 가져오지 못했습니다.")
         else:
             if len(universe) < 100:
-                st.warning(f"전체시장 종목목록이 아니라 비상 후보군 {len(universe):,}개를 사용합니다. KRX 연결 상태를 확인하세요.")
+                st.warning(f"전체시장 종목목록이 아니라 비상 후보군 {len(universe):,}개를 사용합니다. 데이터 연결 상태를 확인하세요.")
             flow_map, flow_auto_ok, flow_msg = get_auto_flow()
             st.write(f"종목목록: **{len(universe):,}개** · {uni_source}")
-            st.write(f"수급: **{flow_msg}**")
             bar = st.progress(0)
             with st.spinner("전체시장 가격·거래량 1차 스크리닝 중..."):
                 screen = build_market_screen(universe, flow_map, bar)
@@ -427,6 +471,16 @@ with tabs[1]:
             if screen.empty:
                 st.error("가격/유동성 조건을 통과한 종목이 없습니다.")
             else:
+                if not flow_auto_ok:
+                    with st.spinner("KRX 수급 미수신 · 상위 후보 네이버 투자자동향 보완 중..."):
+                        screen, fallback_ok, fallback_msg = enrich_screen_with_fallback_flow(screen)
+                    if fallback_ok:
+                        flow_auto_ok = True
+                        flow_msg = fallback_msg
+                    else:
+                        flow_msg = f"{flow_msg} · {fallback_msg}"
+
+                st.write(f"수급: **{flow_msg}**")
                 st.session_state["eligible_count"] = len(screen)
                 st.session_state["candidate_count"] = min(DEEP_CANDIDATE_COUNT, len(screen))
                 st.session_state["flow_auto_ok"] = flow_auto_ok
@@ -451,7 +505,7 @@ with tabs[1]:
                 save_json(WATCHLIST_FILE, active_watch)
                 st.success(f"정밀분석 {len(rows)}개 완료 · {regime} · 적극매수 기준 {floor}점 + 상위 {active_pct}%")
                 if not flow_auto_ok:
-                    st.warning("KRX 자동수급이 확보되지 않아 적극매수 판정은 잠금 상태입니다. 실제 수급 확보 전에는 관찰/대기만 표시합니다.")
+                    st.warning("실제 투자자 수급이 확보되지 않아 적극매수 판정은 잠금 상태입니다. 실제 수급 확보 전에는 관찰/대기만 표시합니다.")
 
 with tabs[2]:
     st.subheader("🏆 TOP12 개별주식 후보")
