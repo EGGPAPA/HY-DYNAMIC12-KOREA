@@ -1,3 +1,4 @@
+import re
 from io import StringIO
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -27,12 +28,18 @@ def _clean_num(v):
         return None
 
 
+def _name_code_map(html):
+    pairs = re.findall(r'href="/item/main\.naver\?code=(\d{6})"[^>]*>([^<]+)</a>', html)
+    return {name.strip(): code for code, name in pairs if name.strip()}
+
+
 def get_market_cap_ranking_html(max_pages=40):
     rows = []
     try:
         for sosok, market in [(0, "KOSPI"), (1, "KOSDAQ")]:
             for page in range(1, max_pages + 1):
                 html = _get_html("https://finance.naver.com/sise/sise_market_sum.naver", {"sosok": sosok, "page": page})
+                code_map = _name_code_map(html)
                 tables = pd.read_html(StringIO(html))
                 picked = next((t for t in tables if "종목명" in [str(c) for c in t.columns] and "시가총액" in [str(c) for c in t.columns]), None)
                 if picked is None or picked.empty:
@@ -43,13 +50,14 @@ def get_market_cap_ranking_html(max_pages=40):
                 for _, r in t.iterrows():
                     name = str(r.get("종목명", "")).strip()
                     cap = _clean_num(r.get("시가총액"))
-                    if name and cap is not None:
-                        rows.append({"종목명": name, "시장": market, "시가총액": cap})
+                    code = code_map.get(name)
+                    if name and code and cap is not None:
+                        rows.append({"종목코드": code, "종목명": name, "시장": market, "시가총액": cap})
     except Exception:
         return pd.DataFrame(), None
     if not rows:
         return pd.DataFrame(), None
-    df = pd.DataFrame(rows).drop_duplicates(subset=["종목명", "시장"])
+    df = pd.DataFrame(rows).drop_duplicates(subset=["종목코드"])
     df = df.sort_values("시가총액", ascending=False).reset_index(drop=True)
     df["현재순위"] = range(1, len(df) + 1)
     return df, datetime.now(SEOUL).strftime("%Y%m%d")
