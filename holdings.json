@@ -34,5 +34,24 @@
       }
     ],
     "closed_at": "2026-08-24T03:28:11.212063+00:00"
+  },
+  {
+    "ticker": "000660",
+    "name": "SK하이닉스",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 1703261.0,
+    "quantity": 7.0,
+    "purchases": [
+      {
+        "price": 1703261.0,
+        "quantity": 7.0,
+        "executed_at": "2026-08-24T03:29:40.996871+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-08-24T03:29:40.996871+00:00"
   }
 ]
