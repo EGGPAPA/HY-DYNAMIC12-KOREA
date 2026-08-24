@@ -23,17 +23,5 @@
     "stop_loss_pct": 3,
     "enabled": true,
     "updated_at": "2026-08-18T00:03:55.225601+00:00"
-  },
-  {
-    "ticker": "292150",
-    "name": "타이거코리아탑10",
-    "market": "KOSPI",
-    "mode": "holding",
-    "status": "holding",
-    "average_price": 37245.0,
-    "quantity": 37.0,
-    "stop_loss_pct": 3,
-    "enabled": true,
-    "updated_at": "2026-08-19T21:56:14.833900+00:00"
   }
 ]
