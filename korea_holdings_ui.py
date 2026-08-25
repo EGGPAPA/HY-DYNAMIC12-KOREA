@@ -22,7 +22,7 @@ def secret_value(name,default=""):
     return os.getenv(name,default).strip()
 def github_pat():return secret_value("GITHUB_PAT")
 def headers():
-    h={"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28"}
+    h={"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","Cache-Control":"no-cache"}
     if github_pat():h["Authorization"]=f"Bearer {github_pat()}"
     return h
 def load_holdings():
@@ -83,6 +83,8 @@ def sell_guide(avg,current):
 
 def render_holdings_tab():
     st.subheader("💼 보유종목 관리");st.caption("일반계좌에 등록한 모든 보유종목을 선택해 평가하고 매수·매도를 기록합니다. 연금 ETF는 연금저축에서 별도 관리합니다.")
+    notice=st.session_state.pop("kr_holding_save_notice",None)
+    if notice:st.success(notice)
     try:rows,sha=load_holdings()
     except Exception as e:st.error(str(e));rows,sha=[],None
     active=[x for x in rows if str(x.get("status","holding")).lower()!="closed" and x.get("enabled",True)]
@@ -108,11 +110,26 @@ def render_holdings_tab():
     else:st.info("현재 등록된 보유종목이 없습니다.")
     with st.form("kr_hold_buy_form"):
         a,b,c=st.columns([1,2,1]);code=a.text_input("종목코드").strip();name=b.text_input("종목명").strip();market=c.selectbox("시장",["KOSPI","KOSDAQ"]);d,e=st.columns(2);price=d.number_input("실제 체결 매수가(원)",min_value=0.0,step=1000.0);qty=e.number_input("매수 수량",min_value=0.0,step=1.0);ok=st.form_submit_button("➕ 보유 등록 / 추가 매수",type="primary",use_container_width=True)
-    if ok and code and price>0 and qty>0:
-        rows,sha=load_holdings();idx,old=find_active(rows,code);now=datetime.now(timezone.utc).isoformat();trade={"price":price,"quantity":qty,"executed_at":now,"source":"추가매수" if old else "신규매수"}
-        if old is None:ps=[trade];nq,_,na=calc_position(ps);rows.append({"ticker":code.zfill(6),"name":name or code,"market":market,"status":"holding","average_price":na,"quantity":nq,"purchases":ps,"sales":[],"enabled":True,"updated_at":now})
-        else:ps=normalized_purchases(old)+[trade];nq,_,na=calc_position(ps);old.update({"name":name or old.get("name"),"market":market,"average_price":na,"quantity":nq,"purchases":ps,"updated_at":now});rows[idx]=old
-        save_holdings(rows,sha,f"Update Korea holding {code}");st.success("저장 완료");st.rerun()
+    if ok:
+        code="".join(ch for ch in code if ch.isdigit()).zfill(6)
+        missing=[]
+        if len(code)!=6 or code=="000000":missing.append("6자리 종목코드")
+        if price<=0:missing.append("실제 체결 매수가")
+        if qty<=0:missing.append("매수 수량")
+        if missing:
+            st.error("저장되지 않았습니다. " + ", ".join(missing) + "을(를) 확인하세요.")
+        else:
+            try:
+                rows,sha=load_holdings();idx,old=find_active(rows,code);now=datetime.now(timezone.utc).isoformat();trade={"price":float(price),"quantity":float(qty),"executed_at":now,"source":"추가매수" if old else "신규매수"}
+                if old is None:
+                    ps=[trade];nq,_,na=calc_position(ps);rows.append({"ticker":code,"name":name or code,"market":market,"status":"holding","average_price":na,"quantity":nq,"purchases":ps,"sales":[],"enabled":True,"updated_at":now})
+                else:
+                    ps=normalized_purchases(old)+[trade];nq,_,na=calc_position(ps);old.update({"name":name or old.get("name"),"market":market,"average_price":na,"quantity":nq,"purchases":ps,"updated_at":now});rows[idx]=old
+                save_holdings(rows,sha,f"Update Korea holding {code}")
+                st.session_state["kr_holding_save_notice"]=f"{name or code} ({code}) 저장 완료 · 평균매수가 {won(na)} · 총 {nq:g}주"
+                st.rerun()
+            except Exception as e:
+                st.error(f"보유종목 저장 실패: {e}")
     closed=[x for x in rows if str(x.get("status","")).lower()=="closed" or x.get("sales")]
     if closed:
         with st.expander("📕 매도완료 / 거래기록"):
