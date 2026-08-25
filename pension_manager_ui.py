@@ -115,6 +115,7 @@ def _holding(name, qty, avg, current, target):
     return {"자산":name,"보유수량":qty,"평균매수가":_won(avg),"현재가":_won(current),"매입금액":_won(cost),"평가금액":_won(value),"수익금":_won(profit),"수익률":f"{rate:+.2f}%","목표비중":f"{target:.0f}%","value":value}
 
 
+@st.fragment(run_every="10s")
 def render_pension_manager_tab():
     saved, saved_sha = _load_pension()
     st.subheader("🏦 연금저축 · 월간 실행판")

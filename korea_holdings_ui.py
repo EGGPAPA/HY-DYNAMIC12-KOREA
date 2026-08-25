@@ -81,8 +81,9 @@ def sell_guide(avg,current):
     else:state,act="🟢 보유 구간","보유 유지"
     return s,a,b,c,state,act
 
+@st.fragment(run_every="10s")
 def render_holdings_tab():
-    st.subheader("💼 보유종목 관리");st.caption("일반계좌에 등록한 모든 보유종목을 선택해 평가하고 매수·매도를 기록합니다. 연금 ETF는 연금저축에서 별도 관리합니다.")
+    st.subheader("💼 보유종목 관리");st.caption("일반계좌 보유종목의 현재가·평가손익을 10초마다 자동 갱신합니다. 연금 ETF는 연금저축에서 별도 관리합니다.")
     notice=st.session_state.pop("kr_holding_save_notice",None)
     if notice:st.success(notice)
     try:rows,sha=load_holdings()
