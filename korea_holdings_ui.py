@@ -14,6 +14,13 @@ REPO="EGGPAPA/HY-DYNAMIC12-KOREA";BRANCH="main";HOLDINGS_PATH="holdings.json";AP
 def won(v):
     try:return f"{int(round(float(v))):,}원"
     except:return "-"
+def profit_text_color(value):
+    try:
+        number=float(str(value).replace(",","").replace("원","").replace("%","").replace("+","").strip())
+    except:return ""
+    if number>0:return "color:#ff4b4b;font-weight:700"
+    if number<0:return "color:#4da3ff;font-weight:700"
+    return "color:#aab2bf"
 def secret_value(name,default=""):
     try:
         value=st.secrets.get(name,default)
@@ -166,7 +173,10 @@ def render_holdings_tab():
         view=[]
         for r in active:
             ps=normalized_purchases(r);q,cost,avg=calc_position(ps);p,src=get_current_price(str(r.get("ticker","")).zfill(6),r.get("market","KOSPI"));val=p*q if p else None;pnl=val-cost if val is not None else None;ret=pnl/cost*100 if pnl is not None and cost else None;s,a,b,d,state,act=sell_guide(avg,p);details.append((r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act));view.append({"종목코드":r.get("ticker"),"종목명":r.get("name"),"시장":r.get("market"),"평균매수가":won(avg),"수량":q,"현재가":won(p),"평가금액":won(val),"수익금":won(pnl),"수익률":f"{ret:+.2f}%" if ret is not None else "-","손절(-3%)":won(s),"1차(+15%)":won(a),"2차(+20%)":won(b),"3차(+25%)":won(d),"상태":state,"매도판단":act})
-        st.dataframe(pd.DataFrame(view),use_container_width=True,hide_index=True)
+        view_df=pd.DataFrame(view)
+        profit_cols=[col for col in ("수익금","수익률") if col in view_df.columns]
+        styled_view=view_df.style.map(profit_text_color,subset=profit_cols) if profit_cols else view_df
+        st.dataframe(styled_view,use_container_width=True,hide_index=True)
         labels=[f"{x[0].get('name')} ({str(x[0].get('ticker','')).zfill(6)})" for x in details];selected=st.selectbox("🔎 평가할 보유종목",labels);x=details[labels.index(selected)];r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act=x
         st.markdown(f"### 🧠 {r.get('name')} 종합판단");m1,m2,m3,m4=st.columns(4);m1.metric("현재가",won(p));m2.metric("평균매수가",won(avg));m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-");st.info(f"현재 판단: **{state} · {act}**");st.markdown("#### 🎯 실전 가격 가이드");g1,g2,g3,g4=st.columns(4);g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d));st.caption(f"시세 출처: {src} · 선택한 보유종목 기준 자동 평가")
         render_holding_assessment(r,p)
