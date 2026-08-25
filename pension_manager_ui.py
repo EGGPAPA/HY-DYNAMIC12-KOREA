@@ -20,6 +20,34 @@ def _won(x):
     except Exception: return "-"
 
 
+def _return_color(value):
+    text = str(value).strip().replace(",", "").replace("원", "").replace("%", "")
+    if text in {"", "-"}:
+        return "color: #a0a8b8; font-weight: 700"
+    try:
+        number = float(text)
+    except Exception:
+        return "color: #f0f2f6; font-weight: 700"
+    if number > 0:
+        return "color: #ff4b4b; font-weight: 800"
+    if number < 0:
+        return "color: #4da3ff; font-weight: 800"
+    return "color: #f0f2f6; font-weight: 700"
+
+
+def _colored_metric(slot, label, value, number):
+    color = "#ff4b4b" if number > 0 else ("#4da3ff" if number < 0 else "#f0f2f6")
+    slot.markdown(
+        f"""
+        <div style="border:1px solid #354052;border-radius:12px;padding:16px 18px;min-height:86px;background:#1d2735">
+          <div style="font-size:14px;font-weight:700;color:#f0f2f6;margin-bottom:8px">{label}</div>
+          <div style="font-size:29px;font-weight:800;color:{color};line-height:1.15">{value}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+
+
 def _secret(name, default=""):
     try:
         v = st.secrets.get(name, default)
@@ -134,8 +162,22 @@ def render_pension_manager_tab():
     for h in (sp,korea):
         row={k:v for k,v in h.items() if k!="value"};row["현재비중"]=f"{(h['value']/invested_total*100 if invested_total else 0):.1f}%";display_rows.append(row)
     display_rows.append({"자산":"채권·현금성","보유수량":"-","평균매수가":"-","현재가":"-","매입금액":"-","평가금액":_won(safe_now),"수익금":"-","수익률":"-","목표비중":"20%","현재비중":f"{(safe_now/invested_total*100 if invested_total else 0):.1f}%"})
-    st.markdown("### 💼 현재 연금 포트폴리오");st.dataframe(pd.DataFrame(display_rows),use_container_width=True,hide_index=True)
-    p1,p2,p3=st.columns(3);p1.metric("총 평가액",_won(invested_total));stock_profit=(korea["value"]-korea_qty*korea_avg)+(sp["value"]-sp_qty*sp_avg);p2.metric("주식 수익금",_won(stock_profit));stock_cost=korea_qty*korea_avg+sp_qty*sp_avg;p3.metric("주식 수익률",f"{(((korea['value']+sp['value'])/stock_cost-1)*100 if stock_cost else 0):+.2f}%")
+    st.markdown("### 💼 현재 연금 포트폴리오")
+    portfolio_table=pd.DataFrame(display_rows)
+    styled_portfolio=(
+        portfolio_table.style
+        .map(_return_color,subset=["수익금","수익률"])
+        .set_properties(**{"font-size":"15px","padding":"9px 10px"})
+        .hide(axis="index")
+    )
+    st.dataframe(styled_portfolio,use_container_width=True,hide_index=True)
+    p1,p2,p3=st.columns(3)
+    p1.metric("총 평가액",_won(invested_total))
+    stock_profit=(korea["value"]-korea_qty*korea_avg)+(sp["value"]-sp_qty*sp_avg)
+    stock_cost=korea_qty*korea_avg+sp_qty*sp_avg
+    stock_return=((korea["value"]+sp["value"])/stock_cost-1)*100 if stock_cost else 0
+    _colored_metric(p2,"주식 수익금",_won(stock_profit),stock_profit)
+    _colored_metric(p3,"주식 수익률",f"{stock_return:+.2f}%",stock_return)
     st.markdown("### 🎯 장기 목표비중");st.write("S&P500 **50%** · KOREA TOP10 **30%** · 채권·현금성 **20%**")
     target_values={"sp":(invested_total+monthly)*.50,"korea":(invested_total+monthly)*.30,"safe":(invested_total+monthly)*.20};gaps={"sp":max(0,target_values["sp"]-sp["value"]),"korea":max(0,target_values["korea"]-korea["value"]),"safe":max(0,target_values["safe"]-safe_now)};gap_sum=sum(gaps.values())
     if gap_sum>0:sp_buy=monthly*gaps["sp"]/gap_sum;korea_buy=monthly*gaps["korea"]/gap_sum;safe_buy=monthly-sp_buy-korea_buy
