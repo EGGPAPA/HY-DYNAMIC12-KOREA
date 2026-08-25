@@ -97,6 +97,13 @@ def _etf_score(name,leaders,px):
         ma=float(monthly.rolling(5).mean().iloc[-1]);ma_score=15 if px.iloc[-1]>=ma else 0
     return round(overlap+momentum+ma_score,1),matched,round(momentum,1),round(ma_score,1)
 
+def _score_band(score):
+    score=float(score)
+    if score>=50:return '🔴 강한 추천','#ff4b4b'
+    if score>=30:return '🟠 검토 후보','#ff9f43'
+    if score>=15:return '🟡 약한 후보','#ffd166'
+    return '🔵 추천 없음','#4da3ff'
+
 def render_leader_etf_rotation():
     st.divider();st.header('🏆 주도주 포함 ETF 동적 로테이션')
     st.caption('TOP12·부의 점프·5개월선 결과가 바뀌면 ETF 중복도도 다시 계산합니다. 10점 이상 우위가 2회 연속 확인될 때만 교체해 잦은 매매를 줄입니다.')
@@ -117,13 +124,17 @@ def render_leader_etf_rotation():
                 score,matched,momentum,ma_score=_etf_score(name,leaders,px)
                 rows.append({'ETF':name,'테마':info['theme'],'종합점수':score,'포함 주도주':', '.join(matched) or '-','3개월추세점수':momentum,'MA5점수':ma_score})
         result=pd.DataFrame(rows).sort_values(['종합점수','ETF'],ascending=[False,True]).reset_index(drop=True)
+        result.insert(3,'추천상태',result['종합점수'].map(lambda x:_score_band(x)[0]))
         st.session_state['leader_etf_result']=result
         best=result.iloc[0]['ETF'];current=st.session_state.get('leader_etf_current',etf)
         current_score=float(result.loc[result['ETF']==current,'종합점수'].iloc[0]) if current in set(result['ETF']) else 0
         gap=float(result.iloc[0]['종합점수'])-current_score
         pending=st.session_state.get('leader_etf_pending')
         count=int(st.session_state.get('leader_etf_pending_count',0))
-        if best==current:
+        best_score=float(result.iloc[0]['종합점수'])
+        if best_score<15:
+            verdict=f'🔵 추천 없음 · 최고 후보 {best} {best_score:.1f}점 · 기존 ETF 유지';pending=None;count=0
+        elif best==current:
             verdict='✅ 현재 ETF 유지';pending=None;count=0
         elif gap<10:
             verdict=f'🟡 유지 · 추천 우위가 {gap:.1f}점으로 교체 기준(10점) 미달';pending=None;count=0
@@ -134,8 +145,18 @@ def render_leader_etf_rotation():
         st.session_state['leader_etf_pending']=pending;st.session_state['leader_etf_pending_count']=count;st.session_state['leader_etf_verdict']=verdict
     result=st.session_state.get('leader_etf_result')
     if isinstance(result,pd.DataFrame) and not result.empty:
-        c1,c2,c3=st.columns(3);c1.metric('현재 기준 ETF',st.session_state.get('leader_etf_current',etf));c2.metric('추천 ETF',result.iloc[0]['ETF']);c3.metric('추천 점수',f"{result.iloc[0]['종합점수']:.1f}")
-        st.info(st.session_state.get('leader_etf_verdict','평가 버튼을 눌러 판정을 갱신하세요.'))
+        best_name=str(result.iloc[0]['ETF']);best_score=float(result.iloc[0]['종합점수']);band,color=_score_band(best_score)
+        shown_name=best_name if best_score>=15 else '추천 없음'
+        st.markdown(f"""
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:8px 0 14px">
+          <div style="padding:16px;border:1px solid #3b4658;border-radius:12px"><small>현재 기준 ETF</small><div style="font-size:1.45rem;font-weight:700">{st.session_state.get('leader_etf_current',etf)}</div></div>
+          <div style="padding:16px;border:2px solid {color};border-radius:12px;background:{color}18"><small>{band}</small><div style="font-size:1.45rem;font-weight:800;color:{color}">{shown_name}</div><div style="font-size:.85rem">최고 후보: {best_name}</div></div>
+          <div style="padding:16px;border:2px solid {color};border-radius:12px;background:{color}18"><small>추천 점수</small><div style="font-size:1.8rem;font-weight:800;color:{color}">{best_score:.1f}점</div></div>
+        </div>
+        <div style="font-size:.9rem;margin-bottom:10px">🔴 50점 이상 강한 추천 · 🟠 30~49점 검토 · 🟡 15~29점 약함 · 🔵 15점 미만 추천 없음</div>
+        """,unsafe_allow_html=True)
+        verdict=st.session_state.get('leader_etf_verdict','평가 버튼을 눌러 판정을 갱신하세요.')
+        st.markdown(f'<div style="padding:12px 14px;border-left:5px solid {color};background:{color}18;border-radius:7px;font-weight:700">{verdict}</div>',unsafe_allow_html=True)
         st.dataframe(result,use_container_width=True,hide_index=True)
         st.caption('구성종목 목록은 후보 탐색용 기준 목록입니다. 실제 매수 전 운용사 최신 PDF의 편입종목·비중을 확인하세요. 과거 백테스트에는 당시 구성종목만 사용해야 미래정보 편향을 피할 수 있습니다.')
 
