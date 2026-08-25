@@ -53,5 +53,24 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-08-24T03:29:40.996871+00:00"
+  },
+  {
+    "ticker": "073240",
+    "name": "금호타이어",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 6960.0,
+    "quantity": 400.0,
+    "purchases": [
+      {
+        "price": 6960.0,
+        "quantity": 400.0,
+        "executed_at": "2026-08-25T00:59:00.800685+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-08-25T00:59:00.800685+00:00"
   }
 ]
