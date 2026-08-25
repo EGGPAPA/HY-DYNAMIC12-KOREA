@@ -8,7 +8,6 @@ import pandas as pd
 import streamlit as st
 from theme_styles import inject_theme
 import yfinance as yf
-from korea_holdings_ui import render_holdings_tab
 from monthly_ma5_ui import render_monthly_ma5_tab, scan_monthly_ma5, _monthly_batch
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 from market_environment import render_market_environment
@@ -646,7 +645,7 @@ if st.session_state.get("full_update_at"):
     st.caption(f"마지막 업데이트: **{st.session_state['full_update_at']}** · {st.session_state.get('full_update_mode', '전체 업데이트')}")
 st.caption("평소에는 빠른 업데이트를 사용하고, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 실행하세요.")
 
-tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 5개월선 돌파", "📈 전략검증", "💼 보유종목"])
+tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 5개월선 돌파", "📈 전략검증"])
 
 with tabs[0]:
     render_market_environment(market_is_open=market_open())
@@ -743,8 +742,5 @@ with tabs[5]:
     universe, _ = get_full_universe()
     render_individual_stock_ma5_backtest(universe)
 
-with tabs[6]:
-    render_holdings_tab()
-
-st.caption("역할 분리: 실전운용=ETF 매매 판단 · TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 보유종목=실제 체결/평균단가/수익률 · 전략검증=백테스트/OOS")
+st.caption("역할 분리: TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 전략검증=백테스트/OOS · 실제 체결/평균단가/수익률은 사이드바의 보유종목 관리에서 확인")
 
