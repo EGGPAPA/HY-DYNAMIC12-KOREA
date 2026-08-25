@@ -4,6 +4,8 @@ import streamlit as st
 from theme_styles import inject_theme
 import yfinance as yf
 from itertools import product
+import json
+from pathlib import Path
 
 inject_theme()
 
@@ -14,7 +16,17 @@ c1,c2,c3=st.columns(3)
 with c1: start=st.date_input('시작일',pd.Timestamp('2023-08-19'))
 with c2: end=st.date_input('종료일',pd.Timestamp.today())
 with c3: initial=st.number_input('초기자금(원)',min_value=1_000_000,value=10_000_000,step=1_000_000)
-etf=st.selectbox('ETF',['TIGER 코리아TOP10','KODEX200'])
+ETF_CANDIDATES={
+    'TIGER 코리아TOP10':{'ticker':'292150.KS','theme':'대형주','holdings':['삼성전자','SK하이닉스','현대차','기아','NAVER','셀트리온','LG에너지솔루션','KB금융','신한지주','POSCO홀딩스']},
+    'KODEX200':{'ticker':'069500.KS','theme':'시장대표','holdings':['삼성전자','SK하이닉스','현대차','기아','셀트리온','KB금융','신한지주','POSCO홀딩스','삼성바이오로직스','LG에너지솔루션']},
+    'KODEX 반도체':{'ticker':'091160.KS','theme':'반도체','holdings':['SK하이닉스','삼성전자','한미반도체','리노공업','HPSP','이오테크닉스','DB하이텍']},
+    'KODEX 자동차':{'ticker':'091180.KS','theme':'자동차','holdings':['현대차','기아','현대모비스','한온시스템','금호타이어','HL만도','DN오토모티브']},
+    'TIGER 헬스케어':{'ticker':'143860.KS','theme':'헬스케어','holdings':['삼성바이오로직스','셀트리온','알테오젠','유한양행','리가켐바이오','한미약품']},
+    'TIGER 2차전지테마':{'ticker':'305540.KS','theme':'2차전지','holdings':['LG에너지솔루션','삼성SDI','포스코퓨처엠','에코프로비엠','엘앤에프','SK이노베이션']},
+    'KODEX K-방산':{'ticker':'449450.KS','theme':'방산','holdings':['한화에어로스페이스','현대로템','LIG넥스원','한국항공우주','한화시스템']},
+    'KODEX 조선TOP3플러스':{'ticker':'466920.KS','theme':'조선','holdings':['HD한국조선해양','HD현대중공업','한화오션','삼성중공업','HD현대미포']},
+}
+etf=st.selectbox('ETF',list(ETF_CANDIDATES))
 precise=st.checkbox('정밀 탐색',False)
 
 st.subheader('🎯 OOS 실전 목표')
@@ -35,6 +47,97 @@ PROFILES={'🚀 공격형':{'train_mdd':30,'selector':'max'},'⚖️ 균형형':
 if precise: st.warning('정밀 탐색은 후보가 많아 시간이 오래 걸립니다. 먼저 빠른 탐색으로 확인하세요.')
 else: st.info('⚡ 빠른 탐색은 기존 우수 설정 주변 압축 후보를 계산합니다.')
 st.info(f'방어형 학습 MDD 한도는 -{PROFILES["🛡️ 방어형"]["train_mdd"]}%로 적용합니다.')
+
+
+def _row_names(value):
+    names=[]
+    if isinstance(value,pd.DataFrame): value=value.to_dict('records')
+    if isinstance(value,dict): value=[value]
+    if not isinstance(value,(list,tuple)): return names
+    for row in value:
+        if isinstance(row,str): names.append(row.strip());continue
+        if not isinstance(row,dict): continue
+        for key in ('종목명','종목','name','ticker_name'):
+            name=str(row.get(key,'')).strip()
+            if name and name not in ('-', 'None', 'nan'): names.append(name);break
+    return names
+
+def _leader_signals():
+    sources={}
+    aliases={
+        'TOP12':('kr_rows','top12_rows','kr_top12','top12'),
+        '부의 점프':('wealth_jump_rows','kr_wealth_rows','wealth_rows','jump_rows'),
+        '5개월선':('kr_ma5_rows','ma5_rows','breakout_rows','kr_breakout_rows'),
+    }
+    for label,keys in aliases.items():
+        for key in keys:
+            names=_row_names(st.session_state.get(key))
+            if names:
+                sources[label]=names[:12];break
+    if not sources:
+        try:
+            raw=json.loads(Path('data/korea_analysis.json').read_text(encoding='utf-8'))
+            names=_row_names(raw.get('rows',raw) if isinstance(raw,dict) else raw)
+            if names:sources['최근 전체시장 분석']=names[:12]
+        except Exception:pass
+    return sources
+
+def _normal_name(name):
+    return str(name).upper().replace(' ','').replace('㈜','').replace('주식회사','')
+
+def _etf_score(name,leaders,px):
+    info=ETF_CANDIDATES[name];holding_norm={_normal_name(x) for x in info['holdings']}
+    matched=[x for x in leaders if _normal_name(x) in holding_norm]
+    overlap=60*len(set(map(_normal_name,matched)))/max(len(set(map(_normal_name,leaders))),1)
+    momentum=ma_score=0.
+    if len(px)>=65:
+        momentum=float(np.clip((px.iloc[-1]/px.iloc[-61]-1)*100,-10,20));momentum=(momentum+10)/30*15
+    monthly=_monthly_from_daily(px)
+    if len(monthly)>=5:
+        ma=float(monthly.rolling(5).mean().iloc[-1]);ma_score=15 if px.iloc[-1]>=ma else 0
+    return round(overlap+momentum+ma_score,1),matched,round(momentum,1),round(ma_score,1)
+
+def render_leader_etf_rotation():
+    st.divider();st.header('🏆 주도주 포함 ETF 동적 로테이션')
+    st.caption('TOP12·부의 점프·5개월선 결과가 바뀌면 ETF 중복도도 다시 계산합니다. 10점 이상 우위가 2회 연속 확인될 때만 교체해 잦은 매매를 줄입니다.')
+    sources=_leader_signals();detected=[]
+    for names in sources.values():detected.extend(names)
+    detected=list(dict.fromkeys(detected))
+    manual=st.text_input('추가/수정할 주도주 (쉼표 구분)',value='',placeholder='예: 알테오젠, HMM, 금호타이어')
+    leaders=list(dict.fromkeys(detected+[x.strip() for x in manual.split(',') if x.strip()]))
+    if sources:st.caption('자동 반영: '+' · '.join(f'{k} {len(v)}개' for k,v in sources.items()))
+    if not leaders:
+        st.info('먼저 전체 업데이트를 실행하거나 위 칸에 주도주를 입력하면 ETF 비교가 활성화됩니다.');return
+    st.write('평가 주도주: '+', '.join(leaders[:20]))
+    if st.button('🔄 주도주 ETF 다시 평가',use_container_width=True):
+        rows=[];eval_end=pd.Timestamp.today();eval_start=eval_end-pd.DateOffset(months=8)
+        with st.spinner('ETF 후보의 중복도와 가격 추세를 비교하는 중...'):
+            for name,info in ETF_CANDIDATES.items():
+                px=load_price(info['ticker'],eval_start.date(),eval_end.date())
+                score,matched,momentum,ma_score=_etf_score(name,leaders,px)
+                rows.append({'ETF':name,'테마':info['theme'],'종합점수':score,'포함 주도주':', '.join(matched) or '-','3개월추세점수':momentum,'MA5점수':ma_score})
+        result=pd.DataFrame(rows).sort_values(['종합점수','ETF'],ascending=[False,True]).reset_index(drop=True)
+        st.session_state['leader_etf_result']=result
+        best=result.iloc[0]['ETF'];current=st.session_state.get('leader_etf_current',etf)
+        current_score=float(result.loc[result['ETF']==current,'종합점수'].iloc[0]) if current in set(result['ETF']) else 0
+        gap=float(result.iloc[0]['종합점수'])-current_score
+        pending=st.session_state.get('leader_etf_pending')
+        count=int(st.session_state.get('leader_etf_pending_count',0))
+        if best==current:
+            verdict='✅ 현재 ETF 유지';pending=None;count=0
+        elif gap<10:
+            verdict=f'🟡 유지 · 추천 우위가 {gap:.1f}점으로 교체 기준(10점) 미달';pending=None;count=0
+        else:
+            count=count+1 if pending==best else 1;pending=best
+            verdict=f'🟠 {best} 교체 확인 {count}/2회' if count<2 else f'🔴 {best}로 교체 검토'
+            if count>=2:st.session_state['leader_etf_current']=best
+        st.session_state['leader_etf_pending']=pending;st.session_state['leader_etf_pending_count']=count;st.session_state['leader_etf_verdict']=verdict
+    result=st.session_state.get('leader_etf_result')
+    if isinstance(result,pd.DataFrame) and not result.empty:
+        c1,c2,c3=st.columns(3);c1.metric('현재 기준 ETF',st.session_state.get('leader_etf_current',etf));c2.metric('추천 ETF',result.iloc[0]['ETF']);c3.metric('추천 점수',f"{result.iloc[0]['종합점수']:.1f}")
+        st.info(st.session_state.get('leader_etf_verdict','평가 버튼을 눌러 판정을 갱신하세요.'))
+        st.dataframe(result,use_container_width=True,hide_index=True)
+        st.caption('구성종목 목록은 후보 탐색용 기준 목록입니다. 실제 매수 전 운용사 최신 PDF의 편입종목·비중을 확인하세요. 과거 백테스트에는 당시 구성종목만 사용해야 미래정보 편향을 피할 수 있습니다.')
 
 @st.cache_data(ttl=1800,show_spinner=False)
 def load_price(ticker,start,end):
@@ -214,7 +317,7 @@ def _ma5_summary(bt,label):
 def render_ma5_etf_backtest():
     st.divider();st.header('📈 ETF 월봉 5개월선 · 3년 백테스트')
     st.caption('선택 ETF를 최근 3년 월봉으로 검증합니다. 평균뿐 아니라 중앙값·최대하락·+10/+20% 도달률까지 함께 봅니다.')
-    ticker='292150.KS' if etf.startswith('TIGER') else '069500.KS';bt_end=pd.Timestamp(end);bt_start=bt_end-pd.DateOffset(years=3,months=6);px3=load_price(ticker,bt_start.date(),bt_end.date());monthly=_monthly_from_daily(px3)
+    ticker=ETF_CANDIDATES[etf]['ticker'];bt_end=pd.Timestamp(end);bt_start=bt_end-pd.DateOffset(years=3,months=6);px3=load_price(ticker,bt_start.date(),bt_end.date());monthly=_monthly_from_daily(px3)
     if len(monthly)<18:st.warning('3년 백테스트에 필요한 월봉 데이터가 부족합니다.');return
     simple=_ma5_bt_rows(monthly,False);rising=_ma5_bt_rows(monthly,True);summary=pd.DataFrame([_ma5_summary(simple,'단순 5개월선 돌파'),_ma5_summary(rising,'돌파 + 5개월선 상승')])
     st.subheader('전략 성과 비교');st.dataframe(summary,use_container_width=True,hide_index=True)
@@ -226,10 +329,11 @@ def render_ma5_etf_backtest():
         if pd.to_numeric(detail['12개월수익률(%)'],errors='coerce').dropna().abs().max()>300:st.warning('⚠️ 12개월 수익률 300% 초과 값이 있습니다. 액면분할·데이터 보정 여부를 반드시 재확인하세요.')
     st.info('핵심: 평균수익률이 한 종목/한 구간에 끌려가지 않는지 중앙값을 함께 확인하고, 상승 중인 5개월선 조건이 단순 돌파보다 실제로 개선되는지 비교하세요.')
 
+render_leader_etf_rotation()
 render_ma5_etf_backtest()
 
 if st.button('🚀 OOS + 안정성 + 실전 스트레스 검증 실행',type='primary',use_container_width=True):
-    ticker='292150.KS' if etf.startswith('TIGER') else '069500.KS';bar=st.progress(0,text='가격 데이터 불러오는 중...');status=st.empty();px=load_price(ticker,start,end)
+    ticker=ETF_CANDIDATES[etf]['ticker'];bar=st.progress(0,text='가격 데이터 불러오는 중...');status=st.empty();px=load_price(ticker,start,end)
     if len(px)<205:bar.empty();st.error('가격 데이터가 부족합니다.');st.stop()
     staged,bull=grids(precise);st.caption(f'탐색 후보: {len(staged)+len(bull):,}개');bh=initial*px/px.iloc[0];bh_ret,bh_cagr,bh_mdd=metrics(bh);status.info('전체기간 공통 후보 계산 중...');scan,ctx=scan_candidates(px,staged,bull,bar,'전체기간 공통 탐색');whole=[]
     for name,p in PROFILES.items():
