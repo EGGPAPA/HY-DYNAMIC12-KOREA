@@ -56,8 +56,24 @@ FALLBACK_UNIVERSE = [
 ]
 
 
+def _json_default(value):
+    """Convert pandas/NumPy scalar values produced by analysis into JSON primitives."""
+    if value is pd.NA:
+        return None
+    if isinstance(value, np.generic):
+        return value.item()
+    if isinstance(value, np.ndarray):
+        return value.tolist()
+    if isinstance(value, (pd.Timestamp, datetime)):
+        return value.isoformat()
+    raise TypeError(f"Object of type {type(value).__name__} is not JSON serializable")
+
+
 def save_json(path, obj):
-    path.write_text(json.dumps(obj, ensure_ascii=False, indent=2), encoding="utf-8")
+    path.write_text(
+        json.dumps(obj, ensure_ascii=False, indent=2, default=_json_default),
+        encoding="utf-8",
+    )
 
 
 def load_json(path, default):
