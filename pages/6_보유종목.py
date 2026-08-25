@@ -2,7 +2,6 @@ import pandas as pd
 import streamlit as st
 
 from korea_holdings_ui import render_holdings_tab
-from skhynix_assessment import render_skhynix_assessment
 
 st.set_page_config(page_title="HY DYNAMIC12 KOREA 보유종목", page_icon="💼", layout="wide")
 st.title("💼 한국 보유종목 관리")
@@ -48,5 +47,3 @@ def _formatted_dataframe(data=None, *args, **kwargs):
 st.dataframe = _formatted_dataframe
 render_holdings_tab()
 
-# SK하이닉스: 차트 + 반도체/HBM 환경 + AI 인프라 + 월가 P7 + 기업/실적 종합판단
-render_skhynix_assessment()

@@ -81,6 +81,77 @@ def sell_guide(avg,current):
     else:state,act="🟢 보유 구간","보유 유지"
     return s,a,b,c,state,act
 
+@st.cache_data(ttl=900,show_spinner=False)
+def get_holding_assessment(code,market):
+    symbol=yf_symbol(code,market)
+    try:
+        ticker=yf.Ticker(symbol)
+        hist=ticker.history(period="1y",interval="1d",auto_adjust=False)
+        close=pd.to_numeric(hist.get("Close"),errors="coerce").dropna()
+        if len(close)<160:
+            return None
+        price=float(close.iloc[-1])
+        ma20=float(close.tail(20).mean());ma40=float(close.tail(40).mean())
+        ma60=float(close.tail(60).mean());ma120=float(close.tail(120).mean());ma160=float(close.tail(160).mean())
+        ret20=(price/float(close.iloc[-21])-1)*100 if len(close)>21 else 0
+        technical=sum([
+            20 if price>ma20 else 0,
+            20 if ma20>ma60 else 0,
+            20 if price>ma120 else 0,
+            20 if ret20>0 else 0,
+            20 if price>ma160 else 0,
+        ])
+        fundamental=50.0;fundamental_note="기업지표 일부 미확인"
+        try:
+            info=ticker.info or {}
+            pe=info.get("trailingPE");pbr=info.get("priceToBook");roe=info.get("returnOnEquity");growth=info.get("earningsGrowth")
+            if isinstance(pe,(int,float)) and pe>0:fundamental+=10 if pe<=20 else (-6 if pe>=50 else 0)
+            if isinstance(pbr,(int,float)) and pbr>0:fundamental+=8 if pbr<=2 else (-5 if pbr>=6 else 0)
+            if isinstance(roe,(int,float)):fundamental+=max(-10,min(15,(roe*100-8)*.7))
+            if isinstance(growth,(int,float)):fundamental+=max(-10,min(15,growth*100*.35))
+            fundamental=max(0,min(100,fundamental));fundamental_note=f"PER {pe or '-'} · PBR {pbr or '-'} · ROE {roe if roe is not None else '-'}"
+        except Exception:
+            pass
+        total=technical*.65+fundamental*.35
+        return {"price":price,"ma20":ma20,"ma40":ma40,"ma60":ma60,"ma120":ma120,"ma160":ma160,
+                "ret20":ret20,"technical":technical,"fundamental":fundamental,"total":total,
+                "fundamental_note":fundamental_note}
+    except Exception:
+        return None
+
+
+def render_holding_assessment(row,current):
+    code=str(row.get("ticker","")).zfill(6);market=row.get("market","KOSPI");name=row.get("name") or code
+    st.markdown(f"### 🧠 {name} 상세 종합판단")
+    st.caption("선택한 보유종목의 차트·추세·모멘텀·기업지표를 공통 기준으로 계산합니다.")
+    a=get_holding_assessment(code,market)
+    if not a:
+        st.warning("상세 종합판단에 필요한 160일 이상 가격 데이터를 가져오지 못했습니다.")
+        return
+    price=float(current) if current is not None else a["price"]
+    gap40=(price/a["ma40"]-1)*100 if a["ma40"] else 0
+    risk=price<a["ma160"]*.97
+    if risk or a["total"]<45:hold="🔴 비중축소 검토";hold_note="160일선 위험구간 또는 종합점수 약화"
+    elif a["total"]>=70 and price>=a["ma60"]:hold="🟢 계속 보유";hold_note="중장기 추세와 종합점수가 양호"
+    else:hold="🟡 보유·점검";hold_note="보유는 유지하되 추세 회복 여부 확인"
+    if risk:buy="🔴 추가매수 중지"
+    elif 0<=gap40<=3 and a["total"]>=65:buy="🟢 1차 분할 검토"
+    elif gap40>7:buy="🟡 눌림 매수 대기"
+    elif gap40<0:buy="🟠 40일선 회복 대기"
+    else:buy="🟠 소량 접근"
+    c1,c2,c3=st.columns([1,1.4,1.4]);c1.metric("종합점수",f"{a['total']:.1f}점");c2.metric("① 보유 판단",hold);c3.metric("② 신규/추가매수",buy)
+    st.info(f"보유 근거: **{hold_note}** · 현재가의 40일선 갭 **{gap40:+.1f}%**")
+    first=min(price,a["ma40"]*1.01);second=min(first,a["ma60"]*.98);recovery=a["ma40"]*1.005;risk_line=a["ma160"]*.97
+    st.markdown("#### 🎯 선택 종목 실전 가격 가이드")
+    g1,g2,g3,g4=st.columns(4);g1.metric("1차 분할 참고",won(first));g2.metric("2차 분할 참고",won(second));g3.metric("추세회복 확인선",won(recovery));g4.metric("비중축소 경계선",won(risk_line))
+    factors=pd.DataFrame([
+        {"평가항목":"기술·추세","비중":"65%","점수":round(a["technical"],1)},
+        {"평가항목":"기업지표","비중":"35%","점수":round(a["fundamental"],1)},
+    ])
+    st.dataframe(factors,use_container_width=True,hide_index=True,column_config={"점수":st.column_config.ProgressColumn(min_value=0,max_value=100,format="%.1f")})
+    st.caption(f"현재가 {price:,.0f}원 · 20일선 {a['ma20']:,.0f}원 · 60일선 {a['ma60']:,.0f}원 · 160일선 {a['ma160']:,.0f}원 · 20일 수익률 {a['ret20']:+.1f}% · {a['fundamental_note']}")
+
+
 @st.fragment(run_every="10s")
 def render_holdings_tab():
     st.subheader("💼 보유종목 관리");st.caption("일반계좌 보유종목의 현재가·평가손익을 10초마다 자동 갱신합니다. 연금 ETF는 연금저축에서 별도 관리합니다.")
@@ -98,6 +169,7 @@ def render_holdings_tab():
         st.dataframe(pd.DataFrame(view),use_container_width=True,hide_index=True)
         labels=[f"{x[0].get('name')} ({str(x[0].get('ticker','')).zfill(6)})" for x in details];selected=st.selectbox("🔎 평가할 보유종목",labels);x=details[labels.index(selected)];r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act=x
         st.markdown(f"### 🧠 {r.get('name')} 종합판단");m1,m2,m3,m4=st.columns(4);m1.metric("현재가",won(p));m2.metric("평균매수가",won(avg));m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-");st.info(f"현재 판단: **{state} · {act}**");st.markdown("#### 🎯 실전 가격 가이드");g1,g2,g3,g4=st.columns(4);g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d));st.caption(f"시세 출처: {src} · 선택한 보유종목 기준 자동 평가")
+        render_holding_assessment(r,p)
         st.markdown("### 💸 매도 체결 등록")
         sell_labels=[f"{z[0].get('name')} ({str(z[0].get('ticker','')).zfill(6)})" for z in details]
         with st.form("kr_hold_sell_form"):
