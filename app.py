@@ -468,6 +468,23 @@ def apply_relative(rows, regime):
             r["수급대응"] = "대기"
         if r["과열"] == "과열" and r["판정"].startswith("🟢"):
             r["판정"] = "🟡 매수후보"
+
+        current = float(r.get("현재가", 0) or 0)
+        first_entry = float(r.get("1차 매수가", 0) or 0)
+        entry_gap = max((current / first_entry - 1) * 100, 0) if current > 0 and first_entry > 0 else 0
+        r["1차매수가 갭(%)"] = round(entry_gap, 1)
+        if entry_gap >= 12:
+            r["진입판정"] = "🔴 추격 금지"
+            if r["판정"].startswith("🟢"):
+                r["판정"] = "🔴 추격금지"
+        elif entry_gap >= 7:
+            r["진입판정"] = "🟡 눌림 대기"
+            if r["판정"].startswith("🟢"):
+                r["판정"] = "🟡 눌림대기"
+        elif entry_gap >= 3:
+            r["진입판정"] = "🟠 소량 접근"
+        else:
+            r["진입판정"] = "🟢 1차 매수 가능"
     return rows, floor, active_pct
 
 
@@ -661,6 +678,12 @@ with tabs[1]:
 
 with tabs[2]:
     st.subheader("🏆 TOP12 개별주식 후보")
+    st.info(
+        "1차 매수가 갭 기준 · 0~3%: 현재가 부근 1차 매수 가능 · "
+        "3~7%: 추격하지 않고 소량 접근 · 7~12%: 눌림 대기 · "
+        "12% 이상: 현재 매수 제외·추격 금지"
+    )
+    st.caption("갭(%) = (현재가 ÷ 1차 매수가 - 1) × 100")
     rows = st.session_state.get("kr_rows", [])
     if not rows:
         st.info("먼저 '전체시장 분석'에서 자동분석을 실행하세요.")
@@ -679,6 +702,8 @@ with tabs[2]:
                 "과열": r["과열"],
                 "판정": r["판정"],
                 "1차매수가(원)": r["1차 매수가"],
+                "갭(%)": r.get("1차매수가 갭(%)", 0),
+                "진입판정": r.get("진입판정", "확인 필요"),
                 "2차매수가(원)": r["2차 매수가"],
             }
             for i, r in enumerate(top, 1)
@@ -697,6 +722,8 @@ with tabs[2]:
                     "판정": r["판정"],
                     "종합점수": r["종합점수"],
                     "1차매수가": r["1차 매수가"],
+                    "갭(%)": r.get("1차매수가 갭(%)", 0),
+                    "진입판정": r.get("진입판정", "확인 필요"),
                     "2차매수가": r["2차 매수가"],
                 }
                 for r in active[:3]
