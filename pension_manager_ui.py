@@ -1,11 +1,13 @@
 import base64
 import json
 import os
+from datetime import datetime
 
 import pandas as pd
 import requests
 import streamlit as st
 import yfinance as yf
+from korea_live_price import get_live_price, price_source_label
 
 DEFAULT_KOREA_TICKER = "292150.KS"
 DEFAULT_SP_TICKER = "360750.KS"
@@ -92,19 +94,20 @@ def _save_pension(data, sha):
         raise RuntimeError(f"연금 보유정보 저장 실패: HTTP {r.status_code}")
 
 
-@st.cache_data(ttl=300, show_spinner=False)
+@st.cache_data(ttl=10, show_spinner=False)
 def _auto_price(ticker):
+    """Fetch a live KIS quote first, with Yahoo fast-info as fallback."""
     try:
-        hist = yf.download(ticker, period="7d", interval="1d", auto_adjust=False, progress=False, threads=False)
-        if hist is None or hist.empty: return None, None
-        close = hist["Close"]
-        if isinstance(close, pd.DataFrame): close = close.iloc[:,0]
-        close = pd.to_numeric(close, errors="coerce").dropna()
-        if close.empty: return None, None
-        price = float(close.iloc[-1]); asof = pd.Timestamp(close.index[-1]).strftime("%Y-%m-%d")
-        return (price, asof) if price > 0 else (None, None)
+        symbol = str(ticker).strip().upper()
+        code = symbol.split(".")[0]
+        market = "KOSDAQ" if symbol.endswith(".KQ") else "KOSPI"
+        price = get_live_price(code, market)
+        if price is not None and float(price) > 0:
+            asof = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            return float(price), asof
     except Exception:
-        return None, None
+        pass
+    return None, None
 
 
 def _holding(name, qty, avg, current, target):
@@ -132,7 +135,7 @@ def render_pension_manager_tab():
         korea_qty=st.number_input("KOREA TOP10 보유수량",min_value=0.0,step=1.0,value=float(saved.get("korea_qty",0)),key="pension_korea_qty")
         korea_avg=st.number_input("KOREA TOP10 평균매수가",min_value=0,step=100,value=int(saved.get("korea_avg",0)),format="%d",key="pension_korea_avg")
         if korea_auto is not None:
-            st.metric("자동 현재가",_won(korea_auto));st.caption(f"기준일 {korea_asof} · {korea_ticker}");korea_price=korea_auto
+            st.metric("자동 현재가",_won(korea_auto));st.caption(f"조회 {korea_asof} · {price_source_label()} · {korea_ticker}");korea_price=korea_auto
         else:
             st.error("현재가 자동조회 실패");korea_price=st.number_input("KOREA TOP10 수동 현재가",min_value=0,step=100,value=0,format="%d")
     with c2:
@@ -140,7 +143,7 @@ def render_pension_manager_tab():
         sp_qty=st.number_input("S&P500 ETF 보유수량",min_value=0.0,step=1.0,value=float(saved.get("sp_qty",0)),key="pension_sp_qty")
         sp_avg=st.number_input("S&P500 ETF 평균매수가",min_value=0,step=100,value=int(saved.get("sp_avg",0)),format="%d",key="pension_sp_avg")
         if sp_auto is not None:
-            st.metric("자동 현재가",_won(sp_auto));st.caption(f"기준일 {sp_asof} · {sp_ticker}");sp_price=sp_auto
+            st.metric("자동 현재가",_won(sp_auto));st.caption(f"조회 {sp_asof} · {price_source_label()} · {sp_ticker}");sp_price=sp_auto
         else:
             st.error("현재가 자동조회 실패");sp_price=st.number_input("S&P500 ETF 수동 현재가",min_value=0,step=100,value=0,format="%d")
     with c3:
@@ -149,7 +152,13 @@ def render_pension_manager_tab():
         safe_digits="".join(ch for ch in safe_text if ch.isdigit());safe_now=int(safe_digits) if safe_digits else 0
         st.caption(f"입력금액: **{_won(safe_now)}**")
         korea_signal=st.selectbox("KOREA TOP10 MA5 참고신호",["🟢 MA5 위 · 상승","🟡 MA5 위 · 횡보","🟠 MA5 부근","🔴 MA5 1개월 이탈","🔴 2개월 이탈 · MA5 하락","🚀 MA5 재돌파"])
-        if st.button("🔄 현재가 다시 조회",use_container_width=True): _auto_price.clear();st.rerun()
+        if st.button("🔄 현재가 다시 조회",use_container_width=True):
+            _auto_price.clear()
+            get_live_price.clear()
+            st.session_state["pension_price_refreshed_at"]=datetime.now().strftime("%H:%M:%S")
+            st.rerun()
+        if st.session_state.get("pension_price_refreshed_at"):
+            st.success(f"현재가 재조회 완료 · {st.session_state['pension_price_refreshed_at']}")
 
     save_data={"monthly":int(monthly),"korea_ticker":korea_ticker.strip(),"korea_qty":float(korea_qty),"korea_avg":int(korea_avg),"sp_ticker":sp_ticker.strip(),"sp_qty":float(sp_qty),"sp_avg":int(sp_avg),"safe_now":int(safe_now)}
     if st.button("💾 연금 보유정보 저장",type="primary",use_container_width=True):
