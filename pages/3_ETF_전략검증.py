@@ -139,8 +139,6 @@ def render_leader_etf_rotation():
         st.dataframe(result,use_container_width=True,hide_index=True)
         st.caption('구성종목 목록은 후보 탐색용 기준 목록입니다. 실제 매수 전 운용사 최신 PDF의 편입종목·비중을 확인하세요. 과거 백테스트에는 당시 구성종목만 사용해야 미래정보 편향을 피할 수 있습니다.')
 
-render_leader_etf_rotation()
-
 @st.cache_data(ttl=1800,show_spinner=False)
 def load_price(ticker,start,end):
     s,e=pd.Timestamp(start),pd.Timestamp(end)
@@ -331,6 +329,7 @@ def render_ma5_etf_backtest():
         if pd.to_numeric(detail['12개월수익률(%)'],errors='coerce').dropna().abs().max()>300:st.warning('⚠️ 12개월 수익률 300% 초과 값이 있습니다. 액면분할·데이터 보정 여부를 반드시 재확인하세요.')
     st.info('핵심: 평균수익률이 한 종목/한 구간에 끌려가지 않는지 중앙값을 함께 확인하고, 상승 중인 5개월선 조건이 단순 돌파보다 실제로 개선되는지 비교하세요.')
 
+render_leader_etf_rotation()
 render_ma5_etf_backtest()
 
 if st.button('🚀 OOS + 안정성 + 실전 스트레스 검증 실행',type='primary',use_container_width=True):
