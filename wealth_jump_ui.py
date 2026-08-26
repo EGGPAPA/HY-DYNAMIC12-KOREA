@@ -299,23 +299,21 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     else:
         st.info("오늘은 1차매수 조건을 모두 충족한 종목이 없습니다. 억지로 매수하지 않습니다.")
 
-    st.markdown("### TOP10 종합 확신도")
-    display = []
-    for i, r in enumerate(top, 1):
-        d4, d12 = r.get("4주순위변화"), r.get("12주순위변화")
-        display.append({"순위": i, "종목": r.get("종목명"), "Conviction": _score_text(r.get("Conviction")), "현재 시총순위": _rank_text(r.get("현재순위")), "4주 변화": "-" if d4 is None or pd.isna(d4) else f"{float(d4):+.0f}", "12주 변화": "-" if d12 is None or pd.isna(d12) else f"{float(d12):+.0f}", "시총모멘텀": _score_text(r.get("시총모멘텀")), "기술": _score_text(r.get("기술점수")), "펀더멘털": _score_text(r.get("펀더멘털")), "수급": _score_text(r.get("수급점수")), "과열": r.get("과열")})
-    st.dataframe(pd.DataFrame(display), use_container_width=True, hide_index=True)
-
-    st.markdown("### 📡 시총 레이더")
-    if not cap_ok:
-        st.info("시총 데이터가 없습니다.")
-    else:
-        names = {str(r.get("_종목코드", "")).zfill(6): r.get("종목명", "") for r in rows}
-        radar = cap_df.copy()
-        radar["종목명"] = radar["종목코드"].map(names)
-        radar = radar[radar["종목명"].notna()].head(12)
-        cols = [c for c in ["종목명", "현재순위", "4주순위변화", "12주순위변화", "시총모멘텀점수"] if c in radar.columns]
-        st.dataframe(radar[cols], use_container_width=True, hide_index=True)
+    with st.expander("📊 TOP10 종합 확신도·시총 레이더 상세 보기", expanded=False):
+        st.markdown("### TOP10 종합 확신도")
+        display = []
+        for i, r in enumerate(top, 1):
+            d4, d12 = r.get("4주순위변화"), r.get("12주순위변화")
+            display.append({"순위": i, "종목": r.get("종목명"), "종합 확신도": _score_text(r.get("Conviction")), "현재 시총순위": _rank_text(r.get("현재순위")), "4주 변화": "-" if d4 is None or pd.isna(d4) else f"{float(d4):+.0f}", "12주 변화": "-" if d12 is None or pd.isna(d12) else f"{float(d12):+.0f}", "시총모멘텀": _score_text(r.get("시총모멘텀")), "기술": _score_text(r.get("기술점수")), "펀더멘털": _score_text(r.get("펀더멘털")), "수급": _score_text(r.get("수급점수")), "과열": r.get("과열")})
+        st.dataframe(pd.DataFrame(display), use_container_width=True, hide_index=True)
+        st.markdown("### 📡 시총 레이더")
+        if not cap_ok:
+            st.info("시총 데이터가 없습니다.")
+        else:
+            names = {str(r.get("_종목코드", "")).zfill(6): r.get("종목명", "") for r in rows}
+            radar = cap_df.copy();radar["종목명"] = radar["종목코드"].map(names);radar = radar[radar["종목명"].notna()].head(12)
+            cols = [c for c in ["종목명", "현재순위", "4주순위변화", "12주순위변화", "시총모멘텀점수"] if c in radar.columns]
+            st.dataframe(radar[cols], use_container_width=True, hide_index=True)
 
     st.markdown("### 🔎 후보 상세")
     selected = st.selectbox("종목 선택", [r["종목명"] for r in top], key="wealth_jump_selected")
