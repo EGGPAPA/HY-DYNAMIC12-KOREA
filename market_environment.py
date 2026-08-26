@@ -654,14 +654,18 @@ def _customs_export_history(service_key):
 
         frame = pd.DataFrame(values).sort_index()
         if frame.empty or frame["export"].dropna().shape[0] < 24:
-            return pd.DataFrame()
+            empty = pd.DataFrame()
+            empty.attrs["api_error"] = f"정상 응답이나 전체 수출 월별 자료가 {frame['export'].dropna().shape[0]}개뿐입니다."
+            return empty
         for column in values:
             frame[f"{column}_yoy"] = frame[column].pct_change(12, fill_method=None) * 100
         result = frame[[column for column in EXPORT_LABELS if column in frame]].reset_index()
         result.attrs["source"] = "관세청 품목별 수출입실적(GW)"
         return result
-    except Exception:
-        return pd.DataFrame()
+    except Exception as exc:
+        empty = pd.DataFrame()
+        empty.attrs["api_error"] = str(exc)[:160] if isinstance(exc, ValueError) else type(exc).__name__
+        return empty
 
 
 def _csv_export_history():
@@ -686,11 +690,15 @@ def _csv_export_history():
 
 def _export_history():
     service_key = _export_secret()
+    api_error = "Streamlit Secrets에서 DATA_GO_KR_SERVICE_KEY를 찾지 못했습니다."
     if service_key:
         official = _customs_export_history(service_key)
         if not official.empty:
             return official
-    return _csv_export_history()
+        api_error = official.attrs.get("api_error", "관세청 API 응답에 자료가 없습니다.")
+    fallback = _csv_export_history()
+    fallback.attrs["api_error"] = api_error
+    return fallback
 
 
 def _export_card(exports):
@@ -722,7 +730,8 @@ def _render_export_details(exports, kospi_frame):
         st.caption("숫자보다 방향을 먼저 보세요. 수출이 좋아지고 관련 주도주도 상승하면 업종 흐름이 강해질 가능성이 높습니다.")
         source = exports.attrs.get("source", "데이터 없음") if not exports.empty else "데이터 없음"
         if source.startswith("저장 CSV"):
-            st.warning("관세청 API에서 충분한 자료를 받지 못해 저장된 일부 자료를 표시합니다. 인증키 승인·형식과 API 응답을 확인하세요.")
+            reason = exports.attrs.get("api_error", "원인 확인 필요")
+            st.warning(f"관세청 API에서 충분한 자료를 받지 못해 저장된 일부 자료를 표시합니다. 진단: {reason}")
         else:
             st.success(f"공식 데이터 연결됨 · {source} · 최근 5년 월별 자료")
 
