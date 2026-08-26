@@ -645,7 +645,7 @@ if st.session_state.get("full_update_at"):
     st.caption(f"마지막 업데이트: **{st.session_state['full_update_at']}** · {st.session_state.get('full_update_mode', '전체 업데이트')}")
 st.caption("평소에는 빠른 업데이트를 사용하고, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 실행하세요.")
 
-tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 5개월선 돌파", "📈 전략검증"])
+tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 현재 5개월선 돌파", "📈 과거 성과 검증"])
 
 with tabs[0]:
     render_market_environment(market_is_open=market_open())
@@ -710,23 +710,11 @@ with tabs[2]:
         st.dataframe(display, use_container_width=True, hide_index=True)
         st.caption("1차/2차 매수가는 20일선·60일선과 눌림목을 참고한 진입 가격대입니다. 고정 손절률·익절률은 이 화면에서 사용하지 않습니다.")
 
-        st.markdown("## 최종 3종목 후보")
         active = [r for r in top if str(r["판정"]).startswith("🟢 적극매수")]
-        if not active:
-            st.warning("현재 적극매수 종목이 없어 3종목을 억지로 선정하지 않습니다. 매수후보는 추적만 합니다.")
+        if active:
+            st.success("오늘 우선 검토: " + " · ".join(r["종목명"] for r in active[:3]))
         else:
-            st.dataframe(pd.DataFrame([
-                {
-                    "종목": r["종목명"],
-                    "판정": r["판정"],
-                    "종합점수": r["종합점수"],
-                    "1차매수가": r["1차 매수가"],
-                    "갭(%)": r.get("1차매수가 갭(%)", 0),
-                    "진입판정": r.get("진입판정", "확인 필요"),
-                    "2차매수가": r["2차 매수가"],
-                }
-                for r in active[:3]
-            ]), use_container_width=True, hide_index=True)
+            st.warning("현재 적극매수 종목이 없습니다. TOP12 후보는 추적만 하고 억지로 선정하지 않습니다.")
 
 with tabs[3]:
     render_wealth_jump_tab(
