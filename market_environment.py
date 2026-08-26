@@ -1245,27 +1245,24 @@ def render_market_environment(market_is_open=False):
                 },
             )
 
-            with st.expander("대표 종목 상세 평가 보기 · 추세순 정렬", expanded=True):
+            with st.expander("대표 종목 최종평가 보기 · 추세순 정렬", expanded=True):
                 detail_columns = [
-                    "업종", "업종내 순위", "종목", "종목코드", "현재가(원)",
-                    "최초 포착일", "주도 지속(거래일)",
-                    "매수시기", "1차 관찰가(원)", "2차 관찰가(원)", "추세 무효선(원)",
-                    "20일 수익률(%)", "60일 수익률(%)", "20일선 대비(%)",
-                    "거래량 배수", "종목 추세", "종합 주도점수", "종합 평가",
+                    "종목", "종합 평가", "종합 주도점수",
+                    "현재가(원)", "매수시기", "1차 관찰가(원)", "추세 무효선(원)",
+                    "20일 수익률(%)", "60일 수익률(%)", "거래량 배수", "종목 추세",
                 ]
                 st.dataframe(
                     candidates[detail_columns], use_container_width=True, hide_index=True,
                     column_config={
-                        "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "1차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "2차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "추세 무효선(원)": st.column_config.NumberColumn(format="%,d원"),
                         "종합 주도점수": st.column_config.ProgressColumn(
-                            "종합 주도점수", min_value=0, max_value=100, format="%d"
+                            "점수", min_value=0, max_value=100, format="%d"
                         ),
+                        "현재가(원)": st.column_config.NumberColumn("현재가", format="%,d원"),
+                        "1차 관찰가(원)": st.column_config.NumberColumn("1차 관찰가", format="%,d원"),
+                        "추세 무효선(원)": st.column_config.NumberColumn("무효선", format="%,d원"),
                     },
                 )
-                st.info("대표 종목은 업종 비교를 위한 관찰 후보입니다. 종목의 실적·공시·과열 여부를 확인한 뒤 TOP12 분석과 함께 사용하세요.")
+                st.info("종합평가를 먼저 보고 현재가·1차 관찰가·무효선을 확인하세요. 실제 매수는 TOP12 분석과 함께 사용하세요.")
 
             with st.expander("📈 업종 대표 종목 차트 상세 보기", expanded=False):
                 _render_leader_stock_chart(all_candidates)
