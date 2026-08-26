@@ -1258,10 +1258,10 @@ def render_market_environment(market_is_open=False):
                 def _score_color(value):
                     score = float(value)
                     if score >= 80:
-                        return "background-color: rgba(255, 77, 77, 0.20); color: #ff5b5b; font-weight: 700"
+                        return "color: #ff5b5b; font-weight: 700"
                     if score >= 70:
-                        return "background-color: rgba(255, 184, 77, 0.18); color: #ffb84d; font-weight: 700"
-                    return "background-color: rgba(74, 144, 245, 0.18); color: #5aa2ff; font-weight: 700"
+                        return "color: #ffb84d; font-weight: 700"
+                    return "color: #5aa2ff; font-weight: 700"
 
                 styled_detail = detail_view.style.map(
                     _score_color, subset=["종합 주도점수"]
