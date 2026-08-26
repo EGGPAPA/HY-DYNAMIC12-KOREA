@@ -114,9 +114,9 @@ def evaluate_global_risk(usdkrw, usd20, us10y, us10y20, wti, wti20, vix, vix20):
     return risk_score, level, action, reasons
 
 
-def render_global_risk_summary(usdkrw, usd20, us10y, us10y20, wti, wti20, vix, vix20, compact_text_func, frames):
+def render_global_risk_summary(usdkrw, usd20, us10y, us10y20, wti, wti20, vix, vix20, compact_text_func, frames, export_markdown=None):
     usd_frame, us10y_frame, wti_frame, vix_frame = frames
-    columns = st.columns(4)
+    columns = st.columns(5 if export_markdown else 4)
     items = [
         ("💱", "원/달러", f"{usdkrw:,.2f}원" if usdkrw is not None else "데이터 없음", usd_frame, usd20),
         ("🏛️", "미국 10년물", f"{us10y:.2f}%" if us10y is not None else "데이터 없음", us10y_frame, us10y20),
@@ -125,6 +125,8 @@ def render_global_risk_summary(usdkrw, usd20, us10y, us10y20, wti, wti20, vix, v
     ]
     for column, item in zip(columns, items):
         column.markdown(compact_text_func(*item))
+    if export_markdown:
+        columns[-1].markdown(export_markdown)
 
     risk_score, level, action, reasons = evaluate_global_risk(
         usdkrw, usd20, us10y, us10y20, wti, wti20, vix, vix20
