@@ -845,6 +845,25 @@ def render_market_environment(market_is_open=False):
     )
     st.caption("Yahoo Finance 최근 종가 기준 · 장중 시세와 차이가 날 수 있습니다.")
 
+    st.markdown("### KOSPI와 한국 수출")
+    exports = _export_history()
+    if not kospi_frame.empty:
+        k = pd.DataFrame({"KOSPI": kospi_frame["Close"]})
+        monthly = k.resample("ME").last()
+        monthly["KOSPI YoY"] = monthly["KOSPI"].pct_change(12) * 100
+        chart = monthly[["KOSPI YoY"]]
+        if not exports.empty:
+            e = exports.set_index("date")
+            columns = [c for c in ("export_yoy", "semi_yoy") if c in e.columns]
+            chart = chart.join(e[columns], how="outer").sort_index().rename(
+                columns={"export_yoy": "수출 YoY", "semi_yoy": "반도체 수출 YoY"}
+            )
+        st.line_chart(chart)
+        latest = pd.Timestamp(kospi_frame.index[-1]).strftime("%Y-%m-%d")
+        st.caption(f"가격: Yahoo Finance 조정주가 · 최근 가격 {latest} · 화면 갱신 {datetime.now(SEOUL):%Y-%m-%d %H:%M KST}")
+    else:
+        st.error("KOSPI 가격 데이터를 불러오지 못했습니다.")
+
     if not sectors.empty:
         st.markdown("### 주도·부진 업종 평가")
         candidates = _sector_stock_candidates()
@@ -1037,25 +1056,6 @@ def render_market_environment(market_is_open=False):
 
             with st.expander("📈 업종 대표 종목 차트 상세 보기", expanded=False):
                 _render_leader_stock_chart(all_candidates)
-
-    st.markdown("### KOSPI와 한국 수출")
-    exports = _export_history()
-    if not kospi_frame.empty:
-        k = pd.DataFrame({"KOSPI": kospi_frame["Close"]})
-        monthly = k.resample("ME").last()
-        monthly["KOSPI YoY"] = monthly["KOSPI"].pct_change(12) * 100
-        chart = monthly[["KOSPI YoY"]]
-        if not exports.empty:
-            e = exports.set_index("date")
-            columns = [c for c in ("export_yoy", "semi_yoy") if c in e.columns]
-            chart = chart.join(e[columns], how="outer").sort_index().rename(
-                columns={"export_yoy": "수출 YoY", "semi_yoy": "반도체 수출 YoY"}
-            )
-        st.line_chart(chart)
-        latest = pd.Timestamp(kospi_frame.index[-1]).strftime("%Y-%m-%d")
-        st.caption(f"가격: Yahoo Finance 조정주가 · 최근 가격 {latest} · 화면 갱신 {datetime.now(SEOUL):%Y-%m-%d %H:%M KST}")
-    else:
-        st.error("KOSPI 가격 데이터를 불러오지 못했습니다.")
 
     st.warning("종합평가는 추세·시장 확산·환율·VIX·금리·업종·수급을 가중평균한 보조지표입니다. 개별종목의 실적과 가격 추세를 대신하지 않습니다.")
 
