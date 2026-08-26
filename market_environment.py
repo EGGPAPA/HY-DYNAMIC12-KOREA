@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import altair as alt
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -748,7 +749,6 @@ def _render_export_details(exports, kospi_frame):
     card = _export_card(exports)
     state = card.split("**")[1].replace("한국 수출 · ", "") if "**" in card else "확인 필요"
     with st.expander(f"📦 수출동향 상세 보기 · {state}", expanded=False):
-        st.caption("숫자보다 방향을 먼저 보세요. 수출이 좋아지고 관련 주도주도 상승하면 업종 흐름이 강해질 가능성이 높습니다.")
         source = exports.attrs.get("source", "데이터 없음") if not exports.empty else "데이터 없음"
         if source.startswith("저장 CSV"):
             reason = exports.attrs.get("api_error", "원인 확인 필요")
@@ -760,7 +760,8 @@ def _render_export_details(exports, kospi_frame):
             "차트 기간", ["1년", "3년", "5년"], default="5년", key="export_chart_period"
         )
         years = {"1년": 1, "3년": 3, "5년": 5}.get(period_label, 5)
-        cutoff = pd.Timestamp.now().normalize() - pd.DateOffset(years=years)
+        range_end = pd.Timestamp.now().normalize()
+        cutoff = range_end - pd.DateOffset(years=years)
 
         chart = pd.DataFrame()
         if not kospi_frame.empty:
@@ -774,42 +775,48 @@ def _render_export_details(exports, kospi_frame):
                 columns={column: EXPORT_LABELS[column][0] + " YoY" for column in available}
             )
             chart = chart.join(export_chart, how="outer") if not chart.empty else export_chart
-        chart = chart.loc[chart.index >= cutoff] if not chart.empty else chart
-        if not chart.empty:
-            st.line_chart(chart.sort_index())
-        else:
-            st.info("표시할 수출 통계가 없습니다.")
 
-        rows = []
-        if not exports.empty:
-            for column, (label, leaders) in EXPORT_LABELS.items():
-                if column not in exports:
-                    continue
-                valid = exports.dropna(subset=[column])
-                if valid.empty:
-                    continue
-                latest = float(valid.iloc[-1][column])
-                previous = float(valid.iloc[-2][column]) if len(valid) > 1 else latest
-                if latest > 0 and latest >= previous:
-                    easy = "🟢 좋아지는 중"
-                    meaning = "수출 증가세가 유지되거나 개선"
-                elif latest > 0:
-                    easy = "🟡 증가세 둔화"
-                    meaning = "증가 중이지만 이전보다 속도가 둔화"
-                else:
-                    easy = "🔵 주의"
-                    meaning = "작년 같은 달보다 수출 감소"
-                rows.append({
-                    "분야": label,
-                    "쉬운 판정": easy,
-                    "작년 동월 대비": f"{latest:+.1f}%",
-                    "현재 의미": meaning,
-                    "관련 주도주": leaders,
-                })
-        if rows:
-            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        st.info("품목 수치는 관세청 HS 품목군을 합산한 업종 참고지표입니다. 관련 주도주는 기업별 직접 수출액이나 단독 매수 신호가 아닙니다.")
-        st.caption("실제 종목 매수는 TOP12·부의 점프·현재 5개월선 돌파·시장환경을 함께 확인하세요.")
+        if not chart.empty:
+            chart = chart.loc[(chart.index >= cutoff) & (chart.index <= range_end)].sort_index()
+            long_chart = (
+                chart.rename_axis("기준월").reset_index()
+                .melt("기준월", var_name="항목", value_name="전년동월대비")
+                .dropna(subset=["전년동월대비"])
+            )
+        else:
+            long_chart = pd.DataFrame()
+
+        if not long_chart.empty:
+            line = (
+                alt.Chart(long_chart)
+                .mark_line(strokeWidth=2)
+                .encode(
+                    x=alt.X(
+                        "기준월:T",
+                        title="기준월",
+                        axis=alt.Axis(format="%Y-%m", tickCount=12, labelAngle=-45),
+                        scale=alt.Scale(domain=[cutoff.to_pydatetime(), range_end.to_pydatetime()]),
+                    ),
+                    y=alt.Y("전년동월대비:Q", title="작년 동월 대비(%)"),
+                    color=alt.Color("항목:N", title="항목"),
+                    tooltip=[
+                        alt.Tooltip("기준월:T", title="기준월", format="%Y-%m"),
+                        alt.Tooltip("항목:N", title="항목"),
+                        alt.Tooltip("전년동월대비:Q", title="증감률", format="+.1f"),
+                    ],
+                )
+                .properties(height=430)
+                .interactive()
+            )
+            zero = alt.Chart(pd.DataFrame({"기준선": [0]})).mark_rule(
+                color="#888", strokeDash=[4, 4]
+            ).encode(y="기준선:Q")
+            st.altair_chart(line + zero, use_container_width=True)
+        else:
+            st.info("선택한 기간에 표시할 월별 수출 통계가 없습니다.")
+
+        st.caption("월 표시는 YYYY-MM 형식입니다. 수치는 관세청 HS 품목군의 전년 동월 대비 증감률이며 기업별 직접 수출액이 아닙니다.")
+        st.info("관련 종목 매수는 이 그래프만으로 결정하지 않고 TOP12·부의 점프·현재 5개월선 돌파·시장환경을 함께 확인하세요.")
 
 
 def _risk_summary(breadth, usd_change, vix, vix_change, kospi_change, kosdaq_change, flow):
