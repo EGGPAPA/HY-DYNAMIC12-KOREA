@@ -11,6 +11,7 @@ import streamlit as st
 import yfinance as yf
 import requests
 from market_risk_summary import render_global_risk_summary
+from korea_holdings_ui import get_kis_price, kis_ready
 
 try:
     from pykrx import stock
@@ -388,6 +389,12 @@ def _live_leader_prices(symbols):
     symbols=tuple(dict.fromkeys(str(x).strip() for x in symbols if str(x).strip()))
     if not symbols:return {}
     prices={}
+    if kis_ready():
+        for symbol in symbols:
+            try:
+                price=get_kis_price(symbol.split(".")[0])
+                if price is not None and float(price)>0:prices[symbol]=float(price)
+            except Exception:continue
     for period,interval in (("1d","1m"),("5d","1d")):
         missing=[x for x in symbols if x not in prices]
         if not missing:break
@@ -425,7 +432,7 @@ def _render_live_strong_tables(strong):
     )
     timing_counts=live["매수시기"].value_counts();timing_text=" · ".join(f"{name} {count}개" for name,count in timing_counts.items())
     st.info("실시간 매수시기 요약 · "+timing_text)
-    st.caption("현재가는 장중 1분 가격을 우선 사용하며 10초마다 확인합니다. 1분 가격이 없으면 최근 일봉 종가를 사용합니다.")
+    st.caption("현재가는 KIS 국내 현재가를 최우선으로 10초마다 확인합니다. KIS 조회가 실패하면 Yahoo 1분 가격·최근 일봉 순으로 보완합니다.")
     st.dataframe(live[["종합 신호","종목","업종","TOP12","TOP12 판정","충족 수","부족 조건","매수시기","현재가(원)","1차 관찰가(원)","2차 관찰가(원)","추세 무효선(원)","20일 수익률(%)","60일 수익률(%)","20일선 대비(%)","거래량 배수","종합 주도점수","종합 평가","매수시기 근거","종합 근거"]],use_container_width=True,hide_index=True,column_config={
         "현재가(원)":st.column_config.NumberColumn(format="%,d원"),"1차 관찰가(원)":st.column_config.NumberColumn(format="%,d원"),"2차 관찰가(원)":st.column_config.NumberColumn(format="%,d원"),"추세 무효선(원)":st.column_config.NumberColumn(format="%,d원"),"종합 주도점수":st.column_config.ProgressColumn("종합 주도점수",min_value=0,max_value=100,format="%d")})
     st.markdown("#### 매수조건 확인")
