@@ -576,18 +576,103 @@ def _render_leader_stock_chart(all_candidates):
     )
 
 
+EXPORT_LABELS = {
+    "export_yoy": ("전체 수출", "한국 수출시장 전체"),
+    "semi_yoy": ("반도체", "삼성전자 · SK하이닉스 · 한미반도체"),
+    "auto_yoy": ("자동차", "현대차 · 기아 · 현대모비스"),
+    "ship_yoy": ("선박", "HD현대중공업 · 한화오션"),
+    "bio_yoy": ("바이오·의약품", "삼성바이오로직스 · 셀트리온"),
+    "battery_yoy": ("2차전지", "LG에너지솔루션 · 삼성SDI"),
+}
+
+
 def _export_history():
     if not EXPORT_FILE.exists():
         return pd.DataFrame()
     try:
         frame = pd.read_csv(EXPORT_FILE)
         frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
-        for column in ("export_yoy", "semi_yoy"):
-            if column in frame:
-                frame[column] = pd.to_numeric(frame[column], errors="coerce")
+        for column in [name for name in frame.columns if name.endswith("_yoy")]:
+            frame[column] = pd.to_numeric(frame[column], errors="coerce")
         return frame.dropna(subset=["date"]).sort_values("date")
     except Exception:
         return pd.DataFrame()
+
+
+def _export_card(exports):
+    if exports.empty or "export_yoy" not in exports:
+        return "📦 **한국 수출 · 확인 필요**  \\n최신 통계 없음"
+    valid = exports.dropna(subset=["export_yoy"])
+    if valid.empty:
+        return "📦 **한국 수출 · 확인 필요**  \\n최신 통계 없음"
+    latest = valid.iloc[-1]
+    value = float(latest["export_yoy"])
+    previous = float(valid.iloc[-2]["export_yoy"]) if len(valid) > 1 else value
+    if value > 0 and value >= previous:
+        state, color = "🟢 좋아지는 중", "red"
+    elif value > 0:
+        state, color = "🟡 증가세 둔화", "orange"
+    else:
+        state, color = "🔵 주의", "blue"
+    direction = "증가" if value >= 0 else "감소"
+    return (
+        f"📦 **한국 수출 · {state}**  \\n"
+        f"{latest['date']:%Y.%m} · :{color}[작년 동월보다 {abs(value):.1f}% {direction}]"
+    )
+
+
+def _render_export_details(exports, kospi_frame):
+    card = _export_card(exports)
+    state = card.split("**")[1].replace("한국 수출 · ", "") if "**" in card else "확인 필요"
+    with st.expander(f"📦 수출동향 상세 보기 · {state}", expanded=False):
+        st.caption("숫자보다 방향을 먼저 보세요. 수출이 좋아지고 관련 주도주도 상승하면 업종 흐름이 강해질 가능성이 높습니다.")
+        chart = pd.DataFrame()
+        if not kospi_frame.empty:
+            monthly = pd.DataFrame({"KOSPI": kospi_frame["Close"]}).resample("ME").last()
+            monthly["KOSPI YoY"] = monthly["KOSPI"].pct_change(12) * 100
+            chart = monthly[["KOSPI YoY"]]
+        if not exports.empty:
+            export_chart = exports.set_index("date")
+            available = [column for column in EXPORT_LABELS if column in export_chart.columns]
+            export_chart = export_chart[available].rename(
+                columns={column: EXPORT_LABELS[column][0] + " YoY" for column in available}
+            )
+            chart = chart.join(export_chart, how="outer") if not chart.empty else export_chart
+        if not chart.empty:
+            st.line_chart(chart.sort_index())
+        else:
+            st.info("표시할 수출 통계가 없습니다.")
+
+        rows = []
+        if not exports.empty:
+            for column, (label, leaders) in EXPORT_LABELS.items():
+                if column not in exports:
+                    continue
+                valid = exports.dropna(subset=[column])
+                if valid.empty:
+                    continue
+                latest = float(valid.iloc[-1][column])
+                previous = float(valid.iloc[-2][column]) if len(valid) > 1 else latest
+                if latest > 0 and latest >= previous:
+                    easy = "🟢 좋아지는 중"
+                    meaning = "수출 증가세가 유지되거나 개선"
+                elif latest > 0:
+                    easy = "🟡 증가세 둔화"
+                    meaning = "증가 중이지만 이전보다 속도가 둔화"
+                else:
+                    easy = "🔵 주의"
+                    meaning = "작년 같은 달보다 수출 감소"
+                rows.append({
+                    "분야": label,
+                    "쉬운 판정": easy,
+                    "작년 동월 대비": f"{latest:+.1f}%",
+                    "현재 의미": meaning,
+                    "관련 주도주": leaders,
+                })
+        if rows:
+            st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
+        st.info("관련 주도주는 국가 품목별 수출통계와 연결한 참고 종목입니다. 기업별 직접 수출액이나 단독 매수 신호가 아닙니다.")
+        st.caption("실제 종목 매수는 TOP12·부의 점프·현재 5개월선 돌파·시장환경을 함께 확인하세요.")
 
 
 def _risk_summary(breadth, usd_change, vix, vix_change, kospi_change, kosdaq_change, flow):
@@ -838,31 +923,15 @@ def render_market_environment(market_is_open=False):
     top4.metric("평가 신뢰도", f"{confidence}/7", "수집된 평가 항목")
     st.info(summary)
 
+    exports = _export_history()
     render_global_risk_summary(
         usdkrw, usd20, us10y, us10y20, wti, wti20, vix, vix20,
         _compact_indicator_text,
         (usdkrw_frame, us10y_frame, wti_frame, vix_frame),
+        export_markdown=_export_card(exports),
     )
-    st.caption("Yahoo Finance 최근 종가 기준 · 장중 시세와 차이가 날 수 있습니다.")
-
-    st.markdown("### KOSPI와 한국 수출")
-    exports = _export_history()
-    if not kospi_frame.empty:
-        k = pd.DataFrame({"KOSPI": kospi_frame["Close"]})
-        monthly = k.resample("ME").last()
-        monthly["KOSPI YoY"] = monthly["KOSPI"].pct_change(12) * 100
-        chart = monthly[["KOSPI YoY"]]
-        if not exports.empty:
-            e = exports.set_index("date")
-            columns = [c for c in ("export_yoy", "semi_yoy") if c in e.columns]
-            chart = chart.join(e[columns], how="outer").sort_index().rename(
-                columns={"export_yoy": "수출 YoY", "semi_yoy": "반도체 수출 YoY"}
-            )
-        st.line_chart(chart)
-        latest = pd.Timestamp(kospi_frame.index[-1]).strftime("%Y-%m-%d")
-        st.caption(f"가격: Yahoo Finance 조정주가 · 최근 가격 {latest} · 화면 갱신 {datetime.now(SEOUL):%Y-%m-%d %H:%M KST}")
-    else:
-        st.error("KOSPI 가격 데이터를 불러오지 못했습니다.")
+    st.caption("시장가격은 Yahoo Finance 최근 종가 기준이며 장중 시세와 차이가 날 수 있습니다. 수출은 월별 통계 기준입니다.")
+    _render_export_details(exports, kospi_frame)
 
     if not sectors.empty:
         st.markdown("### 주도·부진 업종 평가")
