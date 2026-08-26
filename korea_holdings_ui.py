@@ -14,6 +14,9 @@ REPO="EGGPAPA/HY-DYNAMIC12-KOREA";BRANCH="main";HOLDINGS_PATH="holdings.json";AP
 def won(v):
     try:return f"{int(round(float(v))):,}원"
     except:return "-"
+def compact_quantity(v):
+    try:return f"{float(v):,.4f}".rstrip("0").rstrip(".")
+    except:return "-"
 def profit_text_color(value):
     try:
         number=float(str(value).replace(",","").replace("원","").replace("%","").replace("+","").strip())
@@ -172,7 +175,7 @@ def render_holdings_tab():
     if active:
         view=[]
         for r in active:
-            ps=normalized_purchases(r);q,cost,avg=calc_position(ps);p,src=get_current_price(str(r.get("ticker","")).zfill(6),r.get("market","KOSPI"));val=p*q if p else None;pnl=val-cost if val is not None else None;ret=pnl/cost*100 if pnl is not None and cost else None;s,a,b,d,state,act=sell_guide(avg,p);details.append((r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act));view.append({"종목코드":r.get("ticker"),"종목명":r.get("name"),"시장":r.get("market"),"평균매수가":won(avg),"수량":q,"현재가":won(p),"평가금액":won(val),"수익금":won(pnl),"수익률":f"{ret:+.2f}%" if ret is not None else "-","손절(-3%)":won(s),"1차(+15%)":won(a),"2차(+20%)":won(b),"3차(+25%)":won(d),"상태":state,"매도판단":act})
+            ps=normalized_purchases(r);q,cost,avg=calc_position(ps);p,src=get_current_price(str(r.get("ticker","")).zfill(6),r.get("market","KOSPI"));val=p*q if p else None;pnl=val-cost if val is not None else None;ret=pnl/cost*100 if pnl is not None and cost else None;s,a,b,d,state,act=sell_guide(avg,p);details.append((r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act));view.append({"종목코드":r.get("ticker"),"종목명":r.get("name"),"시장":r.get("market"),"평균매수가":won(avg),"수량":compact_quantity(q),"현재가":won(p),"평가금액":won(val),"수익금":won(pnl),"수익률":f"{ret:+.2f}%" if ret is not None else "-","손절(-3%)":won(s),"1차(+15%)":won(a),"2차(+20%)":won(b),"3차(+25%)":won(d),"상태":state,"매도판단":act})
         view_df=pd.DataFrame(view)
         profit_cols=[col for col in ("수익금","수익률") if col in view_df.columns]
         styled_view=view_df.style.map(profit_text_color,subset=profit_cols) if profit_cols else view_df
