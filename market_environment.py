@@ -592,8 +592,13 @@ def _export_history():
     try:
         frame = pd.read_csv(EXPORT_FILE)
         frame["date"] = pd.to_datetime(frame["date"], errors="coerce")
-        for column in [name for name in frame.columns if name.endswith("_yoy")]:
+        yoy_columns = [name for name in frame.columns if name.endswith("_yoy")]
+        for column in yoy_columns:
             frame[column] = pd.to_numeric(frame[column], errors="coerce")
+        if "note" in frame:
+            pending = frame["note"].astype(str).str.contains("원문 확인 후 입력", na=False)
+            detail_columns = [column for column in yoy_columns if column != "export_yoy"]
+            frame.loc[pending, detail_columns] = np.nan
         return frame.dropna(subset=["date"]).sort_values("date")
     except Exception:
         return pd.DataFrame()
