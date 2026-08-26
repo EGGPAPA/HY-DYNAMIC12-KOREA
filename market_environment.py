@@ -430,10 +430,16 @@ def _render_live_strong_tables(strong):
         ["🚨 1차 분할매수 조건 충족","⏸️ 과열·추격금지","🟡 눌림 대기","🔵 20일선 회복 확인"],
         default="⚪ 관망",
     )
-    timing_counts=live["매수시기"].value_counts();timing_text=" · ".join(f"{name} {count}개" for name,count in timing_counts.items())
-    st.info("실시간 매수시기 요약 · "+timing_text)
+    sector_grade=live.get("업종 평가",pd.Series("🔵 중립",index=live.index))
+    live["최종 매수판정"]=np.select(
+        [live["_진입조건충족"]&sector_grade.eq("🟢 강세"),live["_진입조건충족"]&sector_grade.eq("🔵 중립"),live["_진입조건충족"]],
+        ["🚨 최종 매수조건 충족","🟡 소액 1차 검토","🔵 기술조건만·업종 회복 대기"],
+        default="⏳ 대기",
+    )
+    timing_counts=live["최종 매수판정"].value_counts();timing_text=" · ".join(f"{name} {count}개" for name,count in timing_counts.items())
+    st.info("업종 반영 최종 요약 · "+timing_text)
     st.caption("현재가는 KIS 국내 현재가를 최우선으로 10초마다 확인합니다. KIS 조회가 실패하면 Yahoo 1분 가격·최근 일봉 순으로 보완합니다.")
-    st.dataframe(live[["종합 신호","종목","업종","TOP12","TOP12 판정","충족 수","부족 조건","매수시기","현재가(원)","1차 관찰가(원)","2차 관찰가(원)","추세 무효선(원)","20일 수익률(%)","60일 수익률(%)","20일선 대비(%)","거래량 배수","종합 주도점수","종합 평가","매수시기 근거","종합 근거"]],use_container_width=True,hide_index=True,column_config={
+    st.dataframe(live[["종합 신호","최종 매수판정","종목","업종","업종 평가","TOP12","TOP12 판정","충족 수","부족 조건","매수시기","현재가(원)","1차 관찰가(원)","2차 관찰가(원)","추세 무효선(원)","20일 수익률(%)","60일 수익률(%)","20일선 대비(%)","거래량 배수","종합 주도점수","종합 평가","매수시기 근거","종합 근거"]],use_container_width=True,hide_index=True,column_config={
         "현재가(원)":st.column_config.NumberColumn(format="%,d원"),"1차 관찰가(원)":st.column_config.NumberColumn(format="%,d원"),"2차 관찰가(원)":st.column_config.NumberColumn(format="%,d원"),"추세 무효선(원)":st.column_config.NumberColumn(format="%,d원"),"종합 주도점수":st.column_config.ProgressColumn("종합 주도점수",min_value=0,max_value=100,format="%d")})
     st.markdown("#### 매수조건 확인")
     condition_view=live[["종목","현재가(원)","1차 관찰가(원)"]].copy()
@@ -441,7 +447,7 @@ def _render_live_strong_tables(strong):
     condition_view["20일선 위"]=live["_조건20일선"].map(lambda v:"✅" if v else "대기")
     condition_view["거래량 ≥0.7배"]=live["_조건거래량"].map(lambda v:"✅" if v else "대기")
     condition_view["무효선 위"]=live["_조건추세"].map(lambda v:"✅" if v else "대기")
-    condition_view["최종 신호"]=live["_진입조건충족"].map(lambda v:"🚨 조건 충족" if v else "⏳ 대기")
+    condition_view["최종 신호"]=live["최종 매수판정"]
     st.dataframe(condition_view,use_container_width=True,hide_index=True,column_config={"현재가(원)":st.column_config.NumberColumn(format="%,d원"),"1차 관찰가(원)":st.column_config.NumberColumn(format="%,d원")})
 
 def _render_leader_stock_chart(all_candidates):
@@ -802,6 +808,9 @@ def render_market_environment(market_is_open=False):
             candidates["업종 강도점수"] = candidates["업종"].map(
                 lambda name: round(float(np.clip(50 + sector_returns.get(name, 0) * 4, 0, 100)))
             )
+            candidates["업종 평가"] = candidates["업종"].map(
+                lambda name: "🟢 강세" if sector_returns.get(name,0)>=3 else "🔵 중립" if sector_returns.get(name,0)>=-3 else "🟡 약세"
+            )
             candidates["종합 주도점수"] = (
                 candidates["종목 추세점수"] * .7 + candidates["업종 강도점수"] * .3
             ).round().astype(int)
@@ -911,7 +920,7 @@ def render_market_environment(market_is_open=False):
                 signal_rows = strong[
                     strong["종합 신호"].isin([
                         "🟢 최우선 검토", "🔵 매수 준비", "🟡 기술신호만·관찰"
-                    ])
+                    ]) & strong["업종 평가"].eq("🟢 강세")
                 ].copy()
 
                 st.markdown("#### 카카오 1차 매수조건 알림")
