@@ -22,6 +22,7 @@ except Exception:
 SEOUL = ZoneInfo("Asia/Seoul")
 EXPORT_FILE = Path("export_history.csv")
 LEADER_ALERT_STATE = Path("data/leader_alert_state.json")
+SECTOR_FLOW_STATE = Path("data/sector_flow_state.json")
 SECTOR_ETFS = {
     "반도체": "091160.KS",
     "자동차": "091180.KS",
@@ -282,12 +283,41 @@ def _investor_flow():
 
 @st.cache_data(ttl=3600, show_spinner=False)
 def _sector_strength():
-    rows = []
-    for name, ticker in SECTOR_ETFS.items():
-        _, change20, _ = _last_close(ticker, "3mo")
-        if change20 is not None:
-            rows.append({"업종": name, "20일 수익률(%)": round(change20, 2)})
-    return pd.DataFrame(rows).sort_values("20일 수익률(%)", ascending=False) if rows else pd.DataFrame()
+    rows=[]
+    for name,ticker in SECTOR_ETFS.items():
+        frame=_history(ticker,"6mo")
+        close=pd.to_numeric(frame.get("Close"),errors="coerce").dropna() if not frame.empty else pd.Series(dtype=float)
+        if len(close)<61:continue
+        price=float(close.iloc[-1]);ma20=float(close.tail(20).mean());ma60=float(close.tail(60).mean())
+        rows.append({"업종":name,"20일 수익률(%)":round((price/float(close.iloc[-21])-1)*100,2),"60일 수익률(%)":round((price/float(close.iloc[-61])-1)*100,2),"20·60일선":bool(price>ma20>ma60)})
+    return pd.DataFrame(rows).sort_values("20일 수익률(%)",ascending=False) if rows else pd.DataFrame()
+
+def _sector_flow_labels(sectors,breadth):
+    today=datetime.now(SEOUL).strftime("%Y-%m-%d")
+    try:state=json.loads(SECTOR_FLOW_STATE.read_text(encoding="utf-8"))
+    except Exception:state={}
+    labels={};scores={}
+    for _,row in sectors.iterrows():
+        name=str(row["업종"]);spread=float(breadth.get(name,50))
+        score=float(np.clip(50+float(row["20일 수익률(%)"])*1.2+float(row["60일 수익률(%)"])*.45+(10 if bool(row["20·60일선"]) else -5)+(spread-50)*.2,0,100))
+        target="주도" if score>=70 else "부진" if score<30 else "중립"
+        item=state.get(name,{})
+        confirmed=str(item.get("confirmed","중립"));pending=str(item.get("pending",""));count=int(item.get("count",0));last=str(item.get("last_date",""))
+        if target==confirmed:pending="";count=0
+        elif last!=today:
+            count=count+1 if pending==target else 1;pending=target
+            if count>=2:confirmed=target;pending="";count=0
+        item={"confirmed":confirmed,"pending":pending,"count":count,"last_date":today,"score":round(score,1)};state[name]=item;scores[name]=round(score,1)
+        if confirmed=="주도" and score>=55:label="🟢 주도업종"
+        elif confirmed=="부진" and score<45:label="🔴 부진업종"
+        elif score>=70:label="🟠 주도후보"
+        elif score<30:label="🟡 약화"
+        else:label="🔵 중립"
+        labels[name]=label
+    try:
+        SECTOR_FLOW_STATE.parent.mkdir(parents=True,exist_ok=True);SECTOR_FLOW_STATE.write_text(json.dumps(state,ensure_ascii=False,indent=2),encoding="utf-8")
+    except Exception:pass
+    return labels,scores
 
 
 @st.cache_data(ttl=1800, show_spinner=False)
@@ -432,7 +462,7 @@ def _render_live_strong_tables(strong):
     )
     sector_grade=live.get("업종 평가",pd.Series("🔵 중립",index=live.index))
     live["최종 매수판정"]=np.select(
-        [live["_진입조건충족"]&sector_grade.eq("🟢 강세"),live["_진입조건충족"]&sector_grade.eq("🔵 중립"),live["_진입조건충족"]],
+        [live["_진입조건충족"]&sector_grade.eq("🟢 주도업종"),live["_진입조건충족"]&sector_grade.eq("🔵 중립"),live["_진입조건충족"]],
         ["🚨 최종 매수조건 충족","🟡 소액 1차 검토","🔵 기술조건만·업종 회복 대기"],
         default="⏳ 대기",
     )
@@ -817,21 +847,19 @@ def render_market_environment(market_is_open=False):
 
     if not sectors.empty:
         st.markdown("### 주도·부진 업종 평가")
-        left, right = st.columns([1.6, 1])
-        left.bar_chart(sectors.set_index("업종"), horizontal=True)
-        sector_view = sectors.copy()
-        sector_view["평가"] = sector_view["20일 수익률(%)"].map(lambda value: "🟢 강세" if value >= 3 else "🔵 중립" if value >= -3 else "🟡 약세")
-        right.dataframe(sector_view, use_container_width=True, hide_index=True)
-
         candidates = _sector_stock_candidates()
+        breadth_map=candidates.groupby("업종")["_정배열"].mean().mul(100).to_dict() if not candidates.empty else {}
+        sector_labels,sector_scores=_sector_flow_labels(sectors,breadth_map)
+        sector_view=sectors.copy();sector_view["상승 확산(%)"]=sector_view["업종"].map(breadth_map).fillna(0).round(1);sector_view["중기점수"]=sector_view["업종"].map(sector_scores);sector_view["평가"]=sector_view["업종"].map(sector_labels)
+        left,right=st.columns([1.6,1]);left.bar_chart(sector_view.set_index("업종")[["20일 수익률(%)","60일 수익률(%)"]],horizontal=True);right.dataframe(sector_view,use_container_width=True,hide_index=True)
+        st.caption("매일 갱신하지만 20·60일 수익률, 이동평균 배열, 업종 내 상승 확산을 함께 봅니다. 주도·부진 확정은 거래일 기준 2회 연속 확인합니다.")
+
         if not candidates.empty:
             sector_returns = sectors.set_index("업종")["20일 수익률(%)"].to_dict()
             candidates["업종 강도점수"] = candidates["업종"].map(
                 lambda name: round(float(np.clip(50 + sector_returns.get(name, 0) * 4, 0, 100)))
             )
-            candidates["업종 평가"] = candidates["업종"].map(
-                lambda name: "🟢 강세" if sector_returns.get(name,0)>=3 else "🔵 중립" if sector_returns.get(name,0)>=-3 else "🟡 약세"
-            )
+            candidates["업종 평가"]=candidates["업종"].map(sector_labels).fillna("🔵 중립")
             candidates["종합 주도점수"] = (
                 candidates["종목 추세점수"] * .7 + candidates["업종 강도점수"] * .3
             ).round().astype(int)
