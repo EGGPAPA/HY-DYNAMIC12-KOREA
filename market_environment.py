@@ -1,6 +1,7 @@
 import json
 import os
 import xml.etree.ElementTree as ET
+from urllib.parse import unquote
 from datetime import datetime, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
@@ -596,7 +597,10 @@ CUSTOMS_API_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
 
 def _export_secret():
     try:
-        return str(st.secrets.get("DATA_GO_KR_SERVICE_KEY", "")).strip()
+        raw_key = str(st.secrets.get("DATA_GO_KR_SERVICE_KEY", "")).strip()
+        # 공공데이터포털은 Encoding/Decoding 키를 함께 제공합니다.
+        # requests의 params가 URL 인코딩을 처리하므로 Encoding 키는 먼저 한 번 복원합니다.
+        return unquote(raw_key)
     except Exception:
         return ""
 
