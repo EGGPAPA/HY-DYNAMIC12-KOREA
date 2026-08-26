@@ -773,7 +773,7 @@ def _leader_alert_message(ready):
         lines.extend([
             "",
             f"{row['종목']} ({row['업종']})",
-            f"종합 신호 {row.get('종합 신호', '🚨 조건 충족')}",
+            f"최종 신호 {row.get('최종 매수판정', row.get('종합 신호', '🚨 조건 충족'))}",
             f"TOP12 {row.get('TOP12 판정', '-')} / 시장조건 {row.get('충족 수', '-')}",
             f"부족 조건 {row.get('부족 조건', '없음')}",
             f"현재가 {row['현재가(원)']:,.0f}원 / 1차 관찰가 {row['1차 관찰가(원)']:,.0f}원",
