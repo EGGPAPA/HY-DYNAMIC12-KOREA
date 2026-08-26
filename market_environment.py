@@ -449,6 +449,27 @@ def _render_live_strong_tables(strong):
     condition_view["무효선 위"]=live["_조건추세"].map(lambda v:"✅" if v else "대기")
     condition_view["최종 신호"]=live["최종 매수판정"]
     st.dataframe(condition_view,use_container_width=True,hide_index=True,column_config={"현재가(원)":st.column_config.NumberColumn(format="%,d원"),"1차 관찰가(원)":st.column_config.NumberColumn(format="%,d원")})
+    ready=live[live["최종 매수판정"].eq("🚨 최종 매수조건 충족")].copy()
+    st.markdown("#### 카카오 최종 매수조건 알림")
+    k1,k2,k3=st.columns([1,1,1.4])
+    k1.metric("카카오 연결","✅ 준비됨" if _kakao_ready() else "⚠️ 설정 필요")
+    k2.metric("현재 최종 신호",f"{len(ready)}종목")
+    auto_alert=k3.toggle("조건 신규충족 시 자동알림",value=True,disabled=not _kakao_ready(),key="leader_kakao_auto")
+    if not auto_alert and _kakao_ready():st.caption("자동알림이 꺼져 있습니다. 앱을 초기화하면 기본 ON으로 시작합니다.")
+    if st.button("📨 현재 최종 신호 카카오 알림 보내기",disabled=not _kakao_ready() or ready.empty,use_container_width=True,key="leader_kakao_manual"):
+        ok,message=_send_kakao(_leader_alert_message(ready));st.success(message) if ok else st.error(message)
+    if auto_alert and _kakao_ready() and not ready.empty:
+        state=_load_alert_state();today=datetime.now(SEOUL).strftime("%Y-%m-%d")
+        sent=set(state.get("final_entry_alerts",{}).get(today,[]))
+        fresh=ready[~ready["종목코드"].astype(str).isin(sent)].copy()
+        if not fresh.empty:
+            ok,message=_send_kakao(_leader_alert_message(fresh))
+            if ok:
+                daily=state.setdefault("final_entry_alerts",{});daily[today]=sorted(sent|set(fresh["종목코드"].astype(str)))
+                state["updated_at"]=datetime.now(SEOUL).isoformat();_save_alert_state(state)
+                st.success("새 최종 매수조건 충족 종목을 카카오로 보냈습니다.")
+            else:st.warning(message)
+    st.caption("자동알림은 앱이 열려 있는 동안 10초 가격 갱신과 함께 작동하며, 같은 종목은 하루 한 번만 발송합니다.")
 
 def _render_leader_stock_chart(all_candidates):
     st.markdown("### 📈 업종 대표 종목 차트")
@@ -752,7 +773,7 @@ def _leader_alert_message(ready):
         lines.extend([
             "",
             f"{row['종목']} ({row['업종']})",
-            f"종합 신호 {row.get('종합 신호', '🚨 조건 충족')}",
+            f"최종 신호 {row.get('최종 매수판정', row.get('종합 신호', '🚨 조건 충족'))}",
             f"TOP12 {row.get('TOP12 판정', '-')} / 시장조건 {row.get('충족 수', '-')}",
             f"부족 조건 {row.get('부족 조건', '없음')}",
             f"현재가 {row['현재가(원)']:,.0f}원 / 1차 관찰가 {row['1차 관찰가(원)']:,.0f}원",
@@ -917,58 +938,6 @@ def render_market_environment(market_is_open=False):
                 st.markdown("### 🟢 강한 상승 종목 모아보기")
                 st.caption("강한 상승은 가격·업종 모멘텀 평가이며 TOP12는 수급·유동성·펀더멘털까지 보는 별도 평가입니다. 두 조건이 겹치면 관심 우선순위를 높입니다.")
                 _render_live_strong_tables(strong)
-                signal_rows = strong[
-                    strong["종합 신호"].isin([
-                        "🟢 최우선 검토", "🔵 매수 준비", "🟡 기술신호만·관찰"
-                    ]) & strong["업종 평가"].eq("🟢 강세")
-                ].copy()
-
-                st.markdown("#### 카카오 1차 매수조건 알림")
-                k1, k2, k3 = st.columns([1, 1, 1.4])
-                k1.metric("카카오 연결", "✅ 준비됨" if _kakao_ready() else "⚠️ 설정 필요")
-                k2.metric("현재 종합 신호", f"{len(signal_rows)}종목")
-                auto_alert = k3.toggle(
-                    "조건 신규충족 시 자동알림", value=False,
-                    disabled=not _kakao_ready(), key="leader_kakao_auto",
-                )
-                if st.button(
-                    "📨 현재 종합 신호 카카오 알림 보내기",
-                    disabled=not _kakao_ready() or signal_rows.empty,
-                    use_container_width=True,
-                    key="leader_kakao_manual",
-                ):
-                    ok, message = _send_kakao(_leader_alert_message(signal_rows))
-                    st.success(message) if ok else st.error(message)
-
-                if auto_alert and _kakao_ready() and not signal_rows.empty:
-                    state = _load_alert_state()
-                    today = datetime.now(SEOUL).strftime("%Y-%m-%d")
-                    level_map = {
-                        "🟢 최우선 검토": 3,
-                        "🔵 매수 준비": 2,
-                        "🟡 기술신호만·관찰": 1,
-                    }
-                    daily_levels = state.get("composite_levels", {}).get(today, {})
-                    upgraded = signal_rows[
-                        signal_rows.apply(
-                            lambda row: level_map.get(row["종합 신호"], 0)
-                            > int(daily_levels.get(str(row["종목코드"]), 0)),
-                            axis=1,
-                        )
-                    ].copy()
-                    if not upgraded.empty:
-                        ok, message = _send_kakao(_leader_alert_message(upgraded))
-                        if ok:
-                            composite_levels = state.setdefault("composite_levels", {})
-                            today_levels = composite_levels.setdefault(today, {})
-                            for _, row in upgraded.iterrows():
-                                today_levels[str(row["종목코드"])] = level_map[row["종합 신호"]]
-                            state["updated_at"] = datetime.now(SEOUL).isoformat()
-                            _save_alert_state(state)
-                            st.success("새 종합 신호 또는 단계 상승을 카카오로 보냈습니다.")
-                        else:
-                            st.warning(message)
-                st.caption("자동알림은 앱이 실행되어 데이터를 다시 계산할 때 작동합니다. 장중 상시감시는 별도 스케줄러가 필요합니다.")
                 if not top_rows:
                     st.info("현재는 강한 상승 종목만 표시했습니다. ‘전체시장 분석’을 실행하면 이 표에 TOP12 포함 여부와 최우선 관심 종목이 자동 표시됩니다.")
                 else:
