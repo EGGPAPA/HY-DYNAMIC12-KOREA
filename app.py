@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import numpy as np
 import pandas as pd
 import streamlit as st
+from nav_labels import inject_sidebar_labels
 from theme_styles import inject_theme
 import yfinance as yf
 from monthly_ma5_ui import render_monthly_ma5_tab, scan_monthly_ma5, _monthly_batch
@@ -614,6 +615,7 @@ def run_fast_update(status):
 
 
 inject_theme()
+inject_sidebar_labels()
 
 st.title("🇰🇷 HY DYNAMIC12 · 한국주식 실전선별")
 st.caption("개별주식 후보를 찾는 화면입니다. ETF 매수·보유·매도 판단은 왼쪽 '실전운용'에서 별도로 관리합니다.")
