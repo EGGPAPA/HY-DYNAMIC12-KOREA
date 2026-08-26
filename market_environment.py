@@ -1245,18 +1245,31 @@ def render_market_environment(market_is_open=False):
                 },
             )
 
-            with st.expander("대표 종목 최종평가 보기 · 추세순 정렬", expanded=True):
+            with st.expander("대표 종목 최종평가 보기 · 점수순 정렬", expanded=True):
                 detail_columns = [
                     "종목", "종합 평가", "종합 주도점수",
                     "현재가(원)", "매수시기", "1차 관찰가(원)", "추세 무효선(원)",
                     "20일 수익률(%)", "60일 수익률(%)", "거래량 배수", "종목 추세",
                 ]
+                detail_view = candidates[detail_columns].sort_values(
+                    "종합 주도점수", ascending=False
+                )
+
+                def _score_color(value):
+                    score = float(value)
+                    if score >= 80:
+                        return "background-color: rgba(255, 77, 77, 0.20); color: #ff5b5b; font-weight: 700"
+                    if score >= 70:
+                        return "background-color: rgba(255, 184, 77, 0.18); color: #ffb84d; font-weight: 700"
+                    return "background-color: rgba(74, 144, 245, 0.18); color: #5aa2ff; font-weight: 700"
+
+                styled_detail = detail_view.style.map(
+                    _score_color, subset=["종합 주도점수"]
+                )
                 st.dataframe(
-                    candidates[detail_columns], use_container_width=True, hide_index=True,
+                    styled_detail, use_container_width=True, hide_index=True,
                     column_config={
-                        "종합 주도점수": st.column_config.ProgressColumn(
-                            "점수", min_value=0, max_value=100, format="%d"
-                        ),
+                        "종합 주도점수": st.column_config.NumberColumn("점수", format="%d"),
                         "현재가(원)": st.column_config.NumberColumn("현재가", format="%,d원"),
                         "1차 관찰가(원)": st.column_config.NumberColumn("1차 관찰가", format="%,d원"),
                         "추세 무효선(원)": st.column_config.NumberColumn("무효선", format="%,d원"),
