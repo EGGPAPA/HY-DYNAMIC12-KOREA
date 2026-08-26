@@ -235,7 +235,7 @@ def action_decision(r, regime):
     if score >= 72 and flow >= 50 and tech >= 60:
         return "⏳ 대기", "0%", "후보 유지 · 신호 강화 대기"
     if score < 60 or flow < 40:
-        return "⚠️ 비중축소", "-25%", "Conviction 또는 수급 약화"
+        return "⚠️ 비중축소", "-25%", "종합 확신도 또는 수급 약화"
     return "⏳ 대기", "0%", "조건 불충분"
 
 
@@ -288,7 +288,7 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     st.markdown("## ⚡ 오늘의 실행판")
     action_display = []
     for i, r in enumerate(top, 1):
-        action_display.append({"순위": i, "종목": r.get("종목명"), "실행": r.get("실행"), "진입비중": r.get("권장진입"), "현재가": _won(r.get("현재가")), "1차매수가": _won(r.get("1차 매수가")), "2차매수가": _won(r.get("2차 매수가")), "Conviction": _score_text(r.get("Conviction")), "수급": _score_text(r.get("수급점수")), "시총M": _score_text(r.get("시총모멘텀")), "과열": r.get("과열"), "한줄판단": r.get("실행근거")})
+        action_display.append({"순위": i, "종목": r.get("종목명"), "실행": r.get("실행"), "진입비중": r.get("권장진입"), "현재가": _won(r.get("현재가")), "1차매수가": _won(r.get("1차 매수가")), "2차매수가": _won(r.get("2차 매수가")), "종합 확신도": _score_text(r.get("Conviction")), "수급": _score_text(r.get("수급점수")), "시총M": _score_text(r.get("시총모멘텀")), "과열": r.get("과열"), "한줄판단": r.get("실행근거")})
     st.dataframe(pd.DataFrame(action_display), use_container_width=True, hide_index=True)
 
     buy_now = [r for r in top if str(r.get("실행", "")).startswith("🚀")]
@@ -299,7 +299,7 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     else:
         st.info("오늘은 1차매수 조건을 모두 충족한 종목이 없습니다. 억지로 매수하지 않습니다.")
 
-    st.markdown("### TOP10 Conviction")
+    st.markdown("### TOP10 종합 확신도")
     display = []
     for i, r in enumerate(top, 1):
         d4, d12 = r.get("4주순위변화"), r.get("12주순위변화")
@@ -322,7 +322,7 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     r = next(x for x in top if x["종목명"] == selected)
     a, b, c, d = st.columns(4)
     a.metric("실행", r["실행"])
-    b.metric("Conviction", _score_text(r.get("Conviction")))
+    b.metric("종합 확신도", _score_text(r.get("Conviction")))
     c.metric("진입비중", r["권장진입"])
     d.metric("시총 모멘텀", _score_text(r.get("시총모멘텀")))
     st.info(r["실행근거"])
