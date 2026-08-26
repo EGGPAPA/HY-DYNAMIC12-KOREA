@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import streamlit as st
+from nav_labels import inject_sidebar_labels
 from theme_styles import inject_theme
 import yfinance as yf
 from itertools import product
@@ -8,6 +9,7 @@ import json
 from pathlib import Path
 
 inject_theme()
+inject_sidebar_labels()
 
 st.title('🧪 ETF 전략검증 · 3MODE OOS')
 st.caption('ETF 3MODE의 기간 안정성, 거래비용, 체결지연과 OOS 성과를 한 화면에서 검증합니다.')
