@@ -462,7 +462,7 @@ def _render_live_strong_tables(strong):
     )
     sector_grade=live.get("업종 평가",pd.Series("🔵 중립",index=live.index))
     live["최종 매수판정"]=np.select(
-        [live["_진입조건충족"]&sector_grade.eq("🟢 주도업종"),live["_진입조건충족"]&sector_grade.eq("🔵 중립"),live["_진입조건충족"]],
+        [live["_진입조건충족"]&sector_grade.eq("🟢 주도업종"),live["_진입조건충족"]&sector_grade.isin(["🟠 주도후보","🔵 중립"]),live["_진입조건충족"]],
         ["🚨 최종 매수조건 충족","🟡 소액 1차 검토","🔵 기술조건만·업종 회복 대기"],
         default="⏳ 대기",
     )
