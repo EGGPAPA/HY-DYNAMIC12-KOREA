@@ -1,6 +1,7 @@
 import json
 import os
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor
 from urllib.parse import unquote
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -623,34 +624,54 @@ def _customs_items(root):
 def _customs_export_history(service_key):
     end = datetime.now(SEOUL).date().replace(day=1) - timedelta(days=1)
     start = (pd.Timestamp(end).replace(day=1) - pd.DateOffset(years=6)).date()
-    base_params = {
-        "serviceKey": service_key,
-        "strtYymm": int(start.strftime("%Y%m")),
-        "endYymm": int(end.strftime("%Y%m")),
-    }
 
     def fetch(hs_code=None):
-        params = dict(base_params)
-        if hs_code:
-            params["hsSgn"] = hs_code
-        response = requests.get(CUSTOMS_API_URL, params=params, timeout=30)
-        response.raise_for_status()
-        root = ET.fromstring(response.content)
-        result_code = (root.findtext(".//resultCode") or "").strip()
-        if result_code and result_code not in {"00", "0"}:
-            raise ValueError(root.findtext(".//resultMsg") or f"관세청 API 오류 {result_code}")
-        rows = _customs_items(root)
+        rows = []
+        # 관세청 API는 시작·종료 조회기간을 1년 이내로 제한합니다.
+        for year in range(start.year, end.year + 1):
+            chunk_start = max(start, datetime(year, 1, 1).date())
+            chunk_end = min(end, datetime(year, 12, 1).date())
+            if chunk_start > chunk_end:
+                continue
+            params = {
+                "serviceKey": service_key,
+                "strtYymm": int(chunk_start.strftime("%Y%m")),
+                "endYymm": int(chunk_end.strftime("%Y%m")),
+            }
+            if hs_code:
+                params["hsSgn"] = hs_code
+            response = requests.get(CUSTOMS_API_URL, params=params, timeout=30)
+            response.raise_for_status()
+            root = ET.fromstring(response.content)
+            result_code = (root.findtext(".//resultCode") or "").strip()
+            if result_code and result_code not in {"00", "0"}:
+                raise ValueError(root.findtext(".//resultMsg") or f"관세청 API 오류 {result_code}")
+            rows.extend(_customs_items(root))
         if not rows:
             return pd.Series(dtype=float)
         frame = pd.DataFrame(rows, columns=["date", "value"])
         return frame.groupby("date")["value"].sum().sort_index()
 
     try:
-        values = {"export": fetch()}
+        jobs = [("export", None)]
         for group, codes in CUSTOMS_HS_GROUPS.items():
-            series = [fetch(code) for code in codes]
-            valid = [item for item in series if not item.empty]
-            values[group] = pd.concat(valid, axis=1).sum(axis=1, min_count=1) if valid else pd.Series(dtype=float)
+            jobs.extend((group, code) for code in codes)
+
+        grouped = {name: [] for name, _ in jobs}
+        # 품목 단위만 제한적으로 병렬화하고 각 품목의 연도 요청은 순차 처리합니다.
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            futures = [(name, pool.submit(fetch, code)) for name, code in jobs]
+            for name, future in futures:
+                series = future.result()
+                if not series.empty:
+                    grouped[name].append(series)
+
+        values = {}
+        for name, series_list in grouped.items():
+            values[name] = (
+                pd.concat(series_list, axis=1).sum(axis=1, min_count=1)
+                if series_list else pd.Series(dtype=float)
+            )
 
         frame = pd.DataFrame(values).sort_index()
         if frame.empty or frame["export"].dropna().shape[0] < 24:
