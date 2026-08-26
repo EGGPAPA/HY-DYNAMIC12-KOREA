@@ -374,13 +374,68 @@ def _sector_stock_candidates(cache_version="sector-leaders-v2"):
                 "1차 관찰가(원)": round(first_watch), "2차 관찰가(원)": round(second_watch),
                 "추세 무효선(원)": round(invalidation),
                 "최초 포착일": leader_start, "주도 지속(거래일)": leader_days,
-                "_진입조건충족": entry_ready, "_20일선": ma20,
+                "_진입조건충족": entry_ready, "_20일선": ma20, "_시세심볼": symbol,
                 "_정배열": bool(price > ma20 > ma60),
                 "_조건가격": near_first, "_조건20일선": above_ma20,
                 "_조건거래량": volume_ok, "_조건추세": trend_valid,
             })
     return pd.DataFrame(rows)
 
+
+
+@st.cache_data(ttl=10,show_spinner=False)
+def _live_leader_prices(symbols):
+    symbols=tuple(dict.fromkeys(str(x).strip() for x in symbols if str(x).strip()))
+    if not symbols:return {}
+    prices={}
+    for period,interval in (("1d","1m"),("5d","1d")):
+        missing=[x for x in symbols if x not in prices]
+        if not missing:break
+        try:
+            data=yf.download(missing,period=period,interval=interval,prepost=False,auto_adjust=True,progress=False,threads=True,group_by="ticker")
+            for symbol in missing:
+                try:
+                    frame=data[symbol] if isinstance(data.columns,pd.MultiIndex) else data
+                    close=pd.to_numeric(frame["Close"],errors="coerce").dropna()
+                    if not close.empty:prices[symbol]=float(close.iloc[-1])
+                except Exception:continue
+        except Exception:continue
+    return prices
+
+@st.fragment(run_every="10s")
+def _render_live_strong_tables(strong):
+    live=strong.copy()
+    prices=_live_leader_prices(tuple(live["_시세심볼"].tolist())) if "_시세심볼" in live else {}
+    if prices:
+        live["현재가(원)"]=[round(prices.get(str(symbol),old)) for symbol,old in zip(live["_시세심볼"],live["현재가(원)"])]
+    ma20=pd.to_numeric(live["_20일선"],errors="coerce")
+    current=pd.to_numeric(live["현재가(원)"],errors="coerce")
+    first=pd.to_numeric(live["1차 관찰가(원)"],errors="coerce")
+    invalid=pd.to_numeric(live["추세 무효선(원)"],errors="coerce")
+    gap=(current/ma20-1)*100
+    live["20일선 대비(%)"]=gap.round(2)
+    live["_조건가격"]=(current/first-1).abs()<=.02
+    live["_조건20일선"]=current>=ma20
+    live["_조건추세"]=current>invalid
+    live["_진입조건충족"]=live["_조건가격"]&live["_조건20일선"]&live["_조건거래량"]&live["_조건추세"]
+    live["매수시기"]=np.select(
+        [live["_진입조건충족"],gap>=12,gap>=6,(current<ma20)&live["_조건추세"]],
+        ["🚨 1차 분할매수 조건 충족","⏸️ 과열·추격금지","🟡 눌림 대기","🔵 20일선 회복 확인"],
+        default="⚪ 관망",
+    )
+    timing_counts=live["매수시기"].value_counts();timing_text=" · ".join(f"{name} {count}개" for name,count in timing_counts.items())
+    st.info("실시간 매수시기 요약 · "+timing_text)
+    st.caption("현재가는 장중 1분 가격을 우선 사용하며 10초마다 확인합니다. 1분 가격이 없으면 최근 일봉 종가를 사용합니다.")
+    st.dataframe(live[["종합 신호","종목","업종","TOP12","TOP12 판정","충족 수","부족 조건","매수시기","현재가(원)","1차 관찰가(원)","2차 관찰가(원)","추세 무효선(원)","20일 수익률(%)","60일 수익률(%)","20일선 대비(%)","거래량 배수","종합 주도점수","종합 평가","매수시기 근거","종합 근거"]],use_container_width=True,hide_index=True,column_config={
+        "현재가(원)":st.column_config.NumberColumn(format="%,d원"),"1차 관찰가(원)":st.column_config.NumberColumn(format="%,d원"),"2차 관찰가(원)":st.column_config.NumberColumn(format="%,d원"),"추세 무효선(원)":st.column_config.NumberColumn(format="%,d원"),"종합 주도점수":st.column_config.ProgressColumn("종합 주도점수",min_value=0,max_value=100,format="%d")})
+    st.markdown("#### 매수조건 확인")
+    condition_view=live[["종목","현재가(원)","1차 관찰가(원)"]].copy()
+    condition_view["관찰가 ±2%"]=live["_조건가격"].map(lambda v:"✅" if v else "대기")
+    condition_view["20일선 위"]=live["_조건20일선"].map(lambda v:"✅" if v else "대기")
+    condition_view["거래량 ≥0.7배"]=live["_조건거래량"].map(lambda v:"✅" if v else "대기")
+    condition_view["무효선 위"]=live["_조건추세"].map(lambda v:"✅" if v else "대기")
+    condition_view["최종 신호"]=live["_진입조건충족"].map(lambda v:"🚨 조건 충족" if v else "⏳ 대기")
+    st.dataframe(condition_view,use_container_width=True,hide_index=True,column_config={"현재가(원)":st.column_config.NumberColumn(format="%,d원"),"1차 관찰가(원)":st.column_config.NumberColumn(format="%,d원")})
 
 def _render_leader_stock_chart(all_candidates):
     st.markdown("### 📈 업종 대표 종목 차트")
@@ -845,50 +900,12 @@ def render_market_environment(market_is_open=False):
                     st.warning("현재 종합 매수 신호는 없습니다. 조건 단계가 올라오면 이 위치에 표시됩니다.")
                 st.markdown("### 🟢 강한 상승 종목 모아보기")
                 st.caption("강한 상승은 가격·업종 모멘텀 평가이며 TOP12는 수급·유동성·펀더멘털까지 보는 별도 평가입니다. 두 조건이 겹치면 관심 우선순위를 높입니다.")
-                timing_counts = strong["매수시기"].value_counts()
-                timing_text = " · ".join(f"{name} {count}개" for name, count in timing_counts.items())
-                st.info("매수시기 요약 · " + timing_text)
-                st.dataframe(
-                    strong[[
-                        "종합 신호", "종목", "업종", "TOP12", "TOP12 판정", "충족 수", "부족 조건",
-                        "매수시기", "현재가(원)", "1차 관찰가(원)", "2차 관찰가(원)",
-                        "추세 무효선(원)", "20일 수익률(%)", "60일 수익률(%)",
-                        "20일선 대비(%)", "거래량 배수", "종합 주도점수",
-                        "종합 평가", "매수시기 근거", "종합 근거",
-                    ]],
-                    use_container_width=True,
-                    hide_index=True,
-                    column_config={
-                        "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "1차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "2차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "추세 무효선(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "종합 주도점수": st.column_config.ProgressColumn(
-                            "종합 주도점수", min_value=0, max_value=100, format="%d"
-                        ),
-                    },
-                )
+                _render_live_strong_tables(strong)
                 signal_rows = strong[
                     strong["종합 신호"].isin([
                         "🟢 최우선 검토", "🔵 매수 준비", "🟡 기술신호만·관찰"
                     ])
                 ].copy()
-                st.markdown("#### 매수조건 확인")
-                condition_view = strong[["종목", "현재가(원)", "1차 관찰가(원)"]].copy()
-                condition_view["관찰가 ±2%"] = strong["_조건가격"].map(lambda value: "✅" if value else "대기")
-                condition_view["20일선 위"] = strong["_조건20일선"].map(lambda value: "✅" if value else "대기")
-                condition_view["거래량 ≥0.7배"] = strong["_조건거래량"].map(lambda value: "✅" if value else "대기")
-                condition_view["무효선 위"] = strong["_조건추세"].map(lambda value: "✅" if value else "대기")
-                condition_view["최종 신호"] = strong["_진입조건충족"].map(
-                    lambda value: "🚨 조건 충족" if value else "⏳ 대기"
-                )
-                st.dataframe(
-                    condition_view, use_container_width=True, hide_index=True,
-                    column_config={
-                        "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
-                        "1차 관찰가(원)": st.column_config.NumberColumn(format="%,d원"),
-                    },
-                )
 
                 st.markdown("#### 카카오 1차 매수조건 알림")
                 k1, k2, k3 = st.columns([1, 1, 1.4])
