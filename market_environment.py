@@ -1035,7 +1035,8 @@ def render_market_environment(market_is_open=False):
                 )
                 st.info("대표 종목은 업종 비교를 위한 관찰 후보입니다. 종목의 실적·공시·과열 여부를 확인한 뒤 TOP12 분석과 함께 사용하세요.")
 
-            _render_leader_stock_chart(all_candidates)
+            with st.expander("📈 업종 대표 종목 차트 상세 보기", expanded=False):
+                _render_leader_stock_chart(all_candidates)
 
     st.markdown("### KOSPI와 한국 수출")
     exports = _export_history()
