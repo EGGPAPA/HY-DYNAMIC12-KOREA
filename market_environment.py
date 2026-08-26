@@ -413,6 +413,7 @@ def _render_live_strong_tables(strong):
     first=pd.to_numeric(live["1차 관찰가(원)"],errors="coerce")
     invalid=pd.to_numeric(live["추세 무효선(원)"],errors="coerce")
     gap=(current/ma20-1)*100
+    live["20일선 대비(%)"]=gap.round(2)
     live["_조건가격"]=(current/first-1).abs()<=.02
     live["_조건20일선"]=current>=ma20
     live["_조건추세"]=current>invalid
