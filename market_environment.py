@@ -850,7 +850,7 @@ def render_market_environment(market_is_open=False):
         candidates = _sector_stock_candidates()
         breadth_map=candidates.groupby("업종")["_정배열"].mean().mul(100).to_dict() if not candidates.empty else {}
         sector_labels,sector_scores=_sector_flow_labels(sectors,breadth_map)
-        sector_view=sectors.copy();sector_view["상승 확산(%)"]=sector_view["업종"].map(breadth_map).fillna(0).round(1);sector_view["중기점수"]=sector_view["업종"].map(sector_scores);sector_view["평가"]=sector_view["업종"].map(sector_labels)
+        sector_view=sectors.copy();sector_view["상승 확산(%)"]=sector_view["업종"].map(breadth_map).fillna(0).round(1);sector_view["중기점수"]=sector_view["업종"].map(sector_scores);sector_view["평가"]=sector_view["업종"].map(sector_labels);sector_view=sector_view[["업종","평가","중기점수","20일 수익률(%)","60일 수익률(%)","20·60일선","상승 확산(%)"]]
         left,right=st.columns([1.6,1]);left.bar_chart(sector_view.set_index("업종")[["20일 수익률(%)","60일 수익률(%)"]],horizontal=True);right.dataframe(sector_view,use_container_width=True,hide_index=True)
         st.caption("매일 갱신하지만 20·60일 수익률, 이동평균 배열, 업종 내 상승 확산을 함께 봅니다. 주도·부진 확정은 거래일 기준 2회 연속 확인합니다.")
 
