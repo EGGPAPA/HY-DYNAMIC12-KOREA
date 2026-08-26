@@ -72,5 +72,24 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-08-25T00:59:00.800685+00:00"
+  },
+  {
+    "ticker": "196170",
+    "name": "알테오젠",
+    "market": "KOSDAQ",
+    "status": "holding",
+    "average_price": 304250.0,
+    "quantity": 10.0,
+    "purchases": [
+      {
+        "price": 304250.0,
+        "quantity": 10.0,
+        "executed_at": "2026-08-26T00:58:28.797119+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-08-26T00:58:28.797119+00:00"
   }
 ]
