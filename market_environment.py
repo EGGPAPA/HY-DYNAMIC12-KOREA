@@ -579,14 +579,88 @@ def _render_leader_stock_chart(all_candidates):
 EXPORT_LABELS = {
     "export_yoy": ("전체 수출", "한국 수출시장 전체"),
     "semi_yoy": ("반도체", "삼성전자 · SK하이닉스 · 한미반도체"),
-    "auto_yoy": ("자동차", "현대차 · 기아 · 현대모비스"),
+    "auto_yoy": ("자동차·부품", "현대차 · 기아 · 현대모비스"),
     "ship_yoy": ("선박", "HD현대중공업 · 한화오션"),
     "bio_yoy": ("바이오·의약품", "삼성바이오로직스 · 셀트리온"),
     "battery_yoy": ("2차전지", "LG에너지솔루션 · 삼성SDI"),
 }
+CUSTOMS_HS_GROUPS = {
+    "semi": ("8541", "8542"),
+    "auto": ("8703", "8708"),
+    "ship": ("8901",),
+    "bio": ("3002", "3004"),
+    "battery": ("8507",),
+}
+CUSTOMS_API_URL = "https://apis.data.go.kr/1220000/Itemtrade/getItemtradeList"
 
 
-def _export_history():
+def _export_secret():
+    try:
+        return str(st.secrets.get("DATA_GO_KR_SERVICE_KEY", "")).strip()
+    except Exception:
+        return ""
+
+
+def _customs_items(root):
+    items = []
+    for node in root.findall(".//item"):
+        year = (node.findtext("year") or "").strip()
+        value = pd.to_numeric(node.findtext("expDlr"), errors="coerce")
+        if not year or pd.isna(value):
+            continue
+        date = pd.to_datetime(year.replace(".", "") + "01", format="%Y%m%d", errors="coerce")
+        if pd.isna(date):
+            continue
+        items.append((date, float(value)))
+    return items
+
+
+@st.cache_data(ttl=21600, show_spinner=False)
+def _customs_export_history(service_key):
+    end = datetime.now(SEOUL).date().replace(day=1) - timedelta(days=1)
+    start = (pd.Timestamp(end).replace(day=1) - pd.DateOffset(years=6)).date()
+    base_params = {
+        "serviceKey": service_key,
+        "strtYymm": int(start.strftime("%Y%m")),
+        "endYymm": int(end.strftime("%Y%m")),
+    }
+
+    def fetch(hs_code=None):
+        params = dict(base_params)
+        if hs_code:
+            params["hsSgn"] = hs_code
+        response = requests.get(CUSTOMS_API_URL, params=params, timeout=30)
+        response.raise_for_status()
+        root = ET.fromstring(response.content)
+        result_code = (root.findtext(".//resultCode") or "").strip()
+        if result_code and result_code not in {"00", "0"}:
+            raise ValueError(root.findtext(".//resultMsg") or f"관세청 API 오류 {result_code}")
+        rows = _customs_items(root)
+        if not rows:
+            return pd.Series(dtype=float)
+        frame = pd.DataFrame(rows, columns=["date", "value"])
+        return frame.groupby("date")["value"].sum().sort_index()
+
+    try:
+        values = {"export": fetch()}
+        for group, codes in CUSTOMS_HS_GROUPS.items():
+            series = [fetch(code) for code in codes]
+            valid = [item for item in series if not item.empty]
+            values[group] = pd.concat(valid, axis=1).sum(axis=1, min_count=1) if valid else pd.Series(dtype=float)
+
+        frame = pd.DataFrame(values).sort_index()
+        if frame.empty or frame["export"].dropna().shape[0] < 24:
+            return pd.DataFrame()
+        for column in values:
+            frame[f"{column}_yoy"] = frame[column].pct_change(12, fill_method=None) * 100
+        result = frame[[column for column in EXPORT_LABELS if column in frame]].reset_index()
+        result.attrs["source"] = "관세청 품목별 수출입실적(GW)"
+        return result
+    except Exception:
+        return pd.DataFrame()
+
+
+def _csv_export_history():
     if not EXPORT_FILE.exists():
         return pd.DataFrame()
     try:
@@ -599,9 +673,20 @@ def _export_history():
             pending = frame["note"].astype(str).str.contains("원문 확인 후 입력", na=False)
             detail_columns = [column for column in yoy_columns if column != "export_yoy"]
             frame.loc[pending, detail_columns] = np.nan
-        return frame.dropna(subset=["date"]).sort_values("date")
+        result = frame.dropna(subset=["date"]).sort_values("date")
+        result.attrs["source"] = "저장 CSV(대체)"
+        return result
     except Exception:
         return pd.DataFrame()
+
+
+def _export_history():
+    service_key = _export_secret()
+    if service_key:
+        official = _customs_export_history(service_key)
+        if not official.empty:
+            return official
+    return _csv_export_history()
 
 
 def _export_card(exports):
@@ -631,6 +716,18 @@ def _render_export_details(exports, kospi_frame):
     state = card.split("**")[1].replace("한국 수출 · ", "") if "**" in card else "확인 필요"
     with st.expander(f"📦 수출동향 상세 보기 · {state}", expanded=False):
         st.caption("숫자보다 방향을 먼저 보세요. 수출이 좋아지고 관련 주도주도 상승하면 업종 흐름이 강해질 가능성이 높습니다.")
+        source = exports.attrs.get("source", "데이터 없음") if not exports.empty else "데이터 없음"
+        if source.startswith("저장 CSV"):
+            st.warning("관세청 API에서 충분한 자료를 받지 못해 저장된 일부 자료를 표시합니다. 인증키 승인·형식과 API 응답을 확인하세요.")
+        else:
+            st.success(f"공식 데이터 연결됨 · {source} · 최근 5년 월별 자료")
+
+        period_label = st.segmented_control(
+            "차트 기간", ["1년", "3년", "5년"], default="5년", key="export_chart_period"
+        )
+        years = {"1년": 1, "3년": 3, "5년": 5}.get(period_label, 5)
+        cutoff = pd.Timestamp.now().normalize() - pd.DateOffset(years=years)
+
         chart = pd.DataFrame()
         if not kospi_frame.empty:
             monthly = pd.DataFrame({"KOSPI": kospi_frame["Close"]}).resample("ME").last()
@@ -643,6 +740,7 @@ def _render_export_details(exports, kospi_frame):
                 columns={column: EXPORT_LABELS[column][0] + " YoY" for column in available}
             )
             chart = chart.join(export_chart, how="outer") if not chart.empty else export_chart
+        chart = chart.loc[chart.index >= cutoff] if not chart.empty else chart
         if not chart.empty:
             st.line_chart(chart.sort_index())
         else:
@@ -676,7 +774,7 @@ def _render_export_details(exports, kospi_frame):
                 })
         if rows:
             st.dataframe(pd.DataFrame(rows), use_container_width=True, hide_index=True)
-        st.info("관련 주도주는 국가 품목별 수출통계와 연결한 참고 종목입니다. 기업별 직접 수출액이나 단독 매수 신호가 아닙니다.")
+        st.info("품목 수치는 관세청 HS 품목군을 합산한 업종 참고지표입니다. 관련 주도주는 기업별 직접 수출액이나 단독 매수 신호가 아닙니다.")
         st.caption("실제 종목 매수는 TOP12·부의 점프·현재 5개월선 돌파·시장환경을 함께 확인하세요.")
 
 
@@ -907,7 +1005,7 @@ def _leader_alert_message(ready):
 def render_market_environment(market_is_open=False):
     breadth = _market_breadth()
     flow = _investor_flow()
-    kospi, kospi20, kospi_frame = _last_close("^KS11", "1y")
+    kospi, kospi20, kospi_frame = _last_close("^KS11", "5y")
     kosdaq, kosdaq20, _ = _last_close("^KQ11", "3mo")
     usdkrw, usd20, usdkrw_frame = _last_close("KRW=X", "3mo")
     vix, vix20, vix_frame = _last_close("^VIX", "3mo")
