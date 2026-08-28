@@ -284,6 +284,10 @@ def region_match_strength(address: str, news_text: str) -> int:
     return 0
 
 
+def _administrative_tokens(text: str) -> set[str]:
+    return set(re.findall(r"(?<![가-힣])([가-힣]{2,}(?:시|군|구|읍|면|동|리))(?![가-힣])", str(text or "")))
+
+
 def load_gpkg_attributes(uploaded_file, layer: str | None = None, row_limit: int | None = None) -> pd.DataFrame:
     """Compatibility helper for attribute-only matching."""
     raw = uploaded_bytes(uploaded_file)
@@ -414,17 +418,29 @@ def match_news_to_auctions(news: pd.DataFrame, auctions: pd.DataFrame) -> pd.Dat
     summary = news["summary"].fillna("") if "summary" in news.columns else pd.Series("", index=news.index)
     news_texts = (news["title"].fillna("") + " " + summary).astype(str)
     token_cache: dict[str, list[str]] = {}
+    # Invert exact administrative names once. This avoids 26,000 × N regex comparisons.
+    news_token_index: dict[str, set] = {}
+    for news_index, text in news_texts.items():
+        for token in _administrative_tokens(text):
+            news_token_index.setdefault(token, set()).add(news_index)
 
     for _, a in auctions.iterrows():
         address = str(a.get(addr_col, "") or "")
         tokens = token_cache.setdefault(address, extract_region_tokens(address))
         if not tokens:
             continue
-        matched_idx: list[tuple[object, int]] = []
-        for ni, txt in news_texts.items():
-            strength = region_match_strength(address, txt)
-            if strength:
-                matched_idx.append((ni, strength))
+        broad = [token for token in tokens if token.endswith(("시", "군", "구"))]
+        specific = [token for token in tokens if token.endswith(("읍", "면", "동", "리"))]
+        broad_news = set().union(*(news_token_index.get(token, set()) for token in broad)) if broad else set()
+        specific_news = set().union(*(news_token_index.get(token, set()) for token in specific)) if specific else set()
+        if broad and specific:
+            candidate_indexes = broad_news & specific_news
+            matched_idx = [(index, 20) for index in candidate_indexes]
+        elif len(broad) >= 2:
+            candidate_indexes = set.intersection(*(news_token_index.get(token, set()) for token in broad))
+            matched_idx = [(index, 10) for index in candidate_indexes]
+        else:
+            matched_idx = []
         for ni, specificity in matched_idx:
             n = news.loc[ni]
             auction_discount = 0
