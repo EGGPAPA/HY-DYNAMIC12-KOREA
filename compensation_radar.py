@@ -262,6 +262,28 @@ def extract_region_tokens(address: str) -> list[str]:
     return out
 
 
+def _exact_korean_token(token: str, text: str) -> bool:
+    """Match an administrative name as a word, never inside names such as 서리골."""
+    return bool(re.search(rf"(?<![가-힣]){re.escape(token)}(?![가-힣])", str(text or "")))
+
+
+def region_match_strength(address: str, news_text: str) -> int:
+    """Require a hierarchical region match to avoid cross-province false positives."""
+    tokens = extract_region_tokens(address)
+    broad = [token for token in tokens if token.endswith(("시", "군", "구"))]
+    specific = [token for token in tokens if token.endswith(("읍", "면", "동", "리"))]
+    broad_hits = [token for token in broad if _exact_korean_token(token, news_text)]
+    specific_hits = [token for token in specific if _exact_korean_token(token, news_text)]
+    # Normal addresses must agree at both municipality and neighborhood level.
+    if broad and specific:
+        return 20 if broad_hits and specific_hits else 0
+    # When the address lacks a neighborhood, demand two municipality tokens.
+    if len(broad) >= 2:
+        return 10 if len(broad_hits) >= 2 else 0
+    # A single city/county name alone is too ambiguous for investment matching.
+    return 0
+
+
 def load_gpkg_attributes(uploaded_file, layer: str | None = None, row_limit: int | None = None) -> pd.DataFrame:
     """Compatibility helper for attribute-only matching."""
     raw = uploaded_bytes(uploaded_file)
@@ -398,17 +420,13 @@ def match_news_to_auctions(news: pd.DataFrame, auctions: pd.DataFrame) -> pd.Dat
         tokens = token_cache.setdefault(address, extract_region_tokens(address))
         if not tokens:
             continue
-        specific = [t for t in tokens if t.endswith(("리", "동", "면", "읍"))]
-        broad = [t for t in tokens if t.endswith(("시", "군", "구"))]
-        matched_idx = []
+        matched_idx: list[tuple[object, int]] = []
         for ni, txt in news_texts.items():
-            if specific and any(t in txt for t in specific):
-                matched_idx.append(ni)
-            elif broad and sum(1 for t in broad if t in txt) >= min(2, len(broad)):
-                matched_idx.append(ni)
-        for ni in matched_idx:
+            strength = region_match_strength(address, txt)
+            if strength:
+                matched_idx.append((ni, strength))
+        for ni, specificity in matched_idx:
             n = news.loc[ni]
-            specificity = 20 if specific and any(t in news_texts.loc[ni] for t in specific) else 8
             auction_discount = 0
             try:
                 rate = float(a.get(rate_col, 100)) if rate_col else 100
@@ -416,7 +434,8 @@ def match_news_to_auctions(news: pd.DataFrame, auctions: pd.DataFrame) -> pd.Dat
             except Exception:
                 pass
             score = min(100, float(n.get("signal_score", 0)) * 0.72 + specificity + auction_discount)
-            grade = "S" if score >= 90 else "A" if score >= 80 else "B" if score >= 65 else "C"
+            # S is reserved for an official land-ledger PNU match, never news similarity.
+            grade = "A" if score >= 80 else "B" if score >= 65 else "C"
             news_rows.append({
                 "등급": grade,
                 "매칭점수": round(score, 1),
