@@ -1,5 +1,6 @@
 import pandas as pd
 import streamlit as st
+from pathlib import Path
 
 from compensation_radar import (
     GitHubStoreConfig,
@@ -13,6 +14,7 @@ from compensation_radar import (
     match_news_to_auctions,
     official_search_links,
     prepare_map_features,
+    read_auction_workbook,
     read_ledger_upload,
     read_gpkg_layer,
     uploaded_bytes,
@@ -28,6 +30,16 @@ def cached_layer_list(raw: bytes):
 @st.cache_data(show_spinner=False, max_entries=3)
 def cached_layer_read(raw: bytes, layer: str, row_limit: int | None):
     return read_gpkg_layer(raw, layer, row_limit)
+
+
+@st.cache_data(show_spinner=False, max_entries=3)
+def cached_auction_workbook(raw: bytes, filename: str):
+    return read_auction_workbook(raw, filename)
+
+
+@st.cache_data(show_spinner=False, max_entries=1)
+def cached_bundled_auctions(path: str, modified_at: float):
+    return read_auction_workbook(path)
 
 
 def first_existing(columns, candidates):
@@ -115,7 +127,60 @@ with right:
 
 st.divider()
 st.subheader("2. 이번 주 신규 경공매와 대조")
-st.caption("GPKG의 레이어와 폴리곤을 먼저 확인한 뒤, 같은 자료를 KEEP 뉴스와 대조합니다.")
+st.caption("V4 주간 경공매 엑셀을 바로 보거나, 새 엑셀·CSV·GPKG를 올려 KEEP 뉴스와 대조합니다.")
+
+st.markdown("#### V4 주간 경공매 자료")
+bundled_path = Path(__file__).resolve().parents[1] / "data" / "weekly_2026-08-22.xlsx"
+v4_upload = st.file_uploader(
+    "새 경공매 엑셀·CSV 업로드",
+    type=["xlsx", "xls", "csv"],
+    help="파일을 올리지 않으면 V4에 포함됐던 주간 경공매 자료를 자동으로 표시합니다.",
+    key="v4_auction_upload",
+)
+v4_auctions = pd.DataFrame()
+v4_source = ""
+try:
+    if v4_upload is not None:
+        v4_auctions = cached_auction_workbook(uploaded_bytes(v4_upload), v4_upload.name)
+        v4_source = v4_upload.name
+    elif bundled_path.exists():
+        v4_auctions = cached_bundled_auctions(str(bundled_path), bundled_path.stat().st_mtime)
+        v4_source = bundled_path.name
+
+    if not v4_auctions.empty:
+        event_count = v4_auctions["사건번호"].astype(str).nunique() if "사건번호" in v4_auctions.columns else len(v4_auctions)
+        pnu_count = v4_auctions["pnu"].astype(str).ne("").sum() if "pnu" in v4_auctions.columns else 0
+        low_rate = (pd.to_numeric(v4_auctions.get("최저가율", pd.Series(dtype=float)), errors="coerce") <= 70).sum()
+        a1, a2, a3, a4 = st.columns(4)
+        a1.metric("연결 자료", v4_source)
+        a2.metric("사건", f"{event_count:,}건")
+        a3.metric("필지", f"{len(v4_auctions):,}건")
+        a4.metric("PNU 보유", f"{pnu_count:,}건")
+
+        search_text = st.text_input("경공매 검색", placeholder="사건번호·주소·PNU", key="v4_auction_search")
+        v4_view = v4_auctions
+        if search_text:
+            searchable = v4_view[[c for c in ["사건번호", "주소", "pnu"] if c in v4_view.columns]].fillna("").astype(str).agg(" ".join, axis=1)
+            v4_view = v4_view[searchable.str.contains(search_text, case=False, regex=False)]
+        v4_cols = [c for c in ["경매/공매", "사건번호", "주소", "지목", "pnu", "감평가", "최저가", "최저가율", "위도", "경도", "토지이용계획", "링크"] if c in v4_view.columns]
+        st.dataframe(
+            v4_view[v4_cols].head(3000), use_container_width=True, hide_index=True, height=430,
+            column_config={"링크": st.column_config.LinkColumn("원문")},
+        )
+        st.caption(f"검색 결과 {len(v4_view):,}필지 · 화면에는 최대 3,000행을 표시하며 전체 {len(v4_auctions):,}행은 뉴스 MATCH에 사용됩니다.")
+        if st.button("⚡ V4 경공매와 공익사업 뉴스 MATCH", use_container_width=True, key="v4_news_match"):
+            with st.spinner("전국 경공매 주소와 공익사업 뉴스를 대조하고 있습니다..."):
+                match_news = st.session_state.comp_news
+                if "is_public_project" in match_news.columns:
+                    match_news = match_news[match_news["is_public_project"].fillna(False).astype(bool)]
+                st.session_state.comp_matches = match_news_to_auctions(match_news, v4_auctions)
+                st.session_state.comp_match_source = {"file": v4_source, "layer": "V4 주간 경공매", "rows": len(v4_auctions)}
+    else:
+        st.info("기본 V4 경공매 자료를 준비 중입니다. 새 XLSX·XLS·CSV를 올리면 바로 표시됩니다.")
+except Exception as error:
+    st.error(f"V4 경공매 자료 읽기 실패: {error}")
+
+st.markdown("#### GPKG 폴리곤 자료")
 upload = st.file_uploader(
     "이번 주 GPKG 업로드",
     type=["gpkg"],
