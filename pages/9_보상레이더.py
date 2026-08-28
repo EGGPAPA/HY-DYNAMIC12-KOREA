@@ -1,3 +1,4 @@
+import json
 import pandas as pd
 import streamlit as st
 from pathlib import Path
@@ -5,11 +6,13 @@ from pathlib import Path
 from compensation_radar import (
     GitHubStoreConfig,
     STRONG_SIGNALS,
+    build_project_parcel_geojson,
     collect_signal_news,
     dedupe_news,
     github_load_csv,
     github_save_csv,
     gpkg_fingerprint,
+    geojson_to_gpkg_bytes,
     list_gpkg_layers,
     match_news_to_auctions,
     official_search_links,
@@ -379,6 +382,75 @@ if isinstance(matches, pd.DataFrame) and not matches.empty:
                 column_config={"뉴스URL": st.column_config.LinkColumn("뉴스 원문")},
             )
             st.warning("A는 업로드한 세목조서 PNU 일치 후보입니다. 입찰 전 보상금 지급·수용재결·공탁 이력을 별도로 확인하세요.")
+
+            st.markdown("#### 사업 폴리곤 생성")
+            ledger_pnus = ledger.get("ledger_pnu", pd.Series(dtype=str)).astype(str)
+            ledger_pnus = [pnu for pnu in dict.fromkeys(ledger_pnus) if len(pnu) == 19]
+            try:
+                vworld_secret = st.secrets.get("vworld", {})
+            except Exception:
+                vworld_secret = {}
+            saved_vworld_key = str(vworld_secret.get("key", "")) if vworld_secret else ""
+            saved_domain = str(vworld_secret.get("domain", "https://hy-dynamic12-korea.streamlit.app")) if vworld_secret else "https://hy-dynamic12-korea.streamlit.app"
+            project_name = st.text_input(
+                "사업명",
+                value=str(candidate.get("뉴스제목", "보상사업"))[:100],
+                key="polygon_project_name",
+            )
+            vworld_key = saved_vworld_key or st.text_input(
+                "VWorld API 인증키", type="password",
+                help="키는 현재 실행에만 사용하며 화면이나 결과 파일에 저장하지 않습니다.",
+                key="vworld_api_key",
+            )
+            max_parcels = st.number_input(
+                "이번에 생성할 최대 필지 수", min_value=1, max_value=max(1, len(ledger_pnus)),
+                value=min(100, max(1, len(ledger_pnus))), step=10,
+                help="먼저 100필지로 확인한 뒤 필요하면 범위를 늘리세요.",
+            ) if ledger_pnus else 0
+            if not ledger_pnus:
+                st.info("폴리곤을 만들려면 세목조서에 19자리 PNU가 있어야 합니다.")
+            elif st.button("🗺️ 세목조서 PNU로 사업 폴리곤 생성", use_container_width=True, type="primary"):
+                try:
+                    with st.spinner(f"공식 지적경계 {min(int(max_parcels), len(ledger_pnus)):,}필지를 조회하고 있습니다..."):
+                        collection, failures = build_project_parcel_geojson(
+                            ledger_pnus[: int(max_parcels)], vworld_key, saved_domain, project_name,
+                        )
+                        st.session_state.comp_project_geojson = collection
+                        st.session_state.comp_project_failures = failures
+                        st.session_state.comp_project_gpkg = geojson_to_gpkg_bytes(collection, project_name)
+                except Exception as polygon_error:
+                    st.error(f"사업 폴리곤 생성 실패: {polygon_error}")
+
+            project_geojson = st.session_state.get("comp_project_geojson")
+            if isinstance(project_geojson, dict) and project_geojson.get("features"):
+                polygon_count = len(project_geojson["features"])
+                failures = st.session_state.get("comp_project_failures", [])
+                st.success(f"사업 폴리곤 생성 완료 · {polygon_count:,}필지 · 조회 실패 {len(failures):,}필지")
+                import folium
+                from streamlit_folium import st_folium
+
+                polygon_map = folium.Map(tiles="CartoDB positron", control_scale=True)
+                polygon_layer = folium.GeoJson(
+                    project_geojson,
+                    style_function=lambda _: {"color": "#dc2626", "weight": 1.2, "fillColor": "#fb7185", "fillOpacity": 0.3},
+                    tooltip=folium.GeoJsonTooltip(fields=["PNU", "사업명"], aliases=["PNU", "사업명"]),
+                ).add_to(polygon_map)
+                polygon_map.fit_bounds(polygon_layer.get_bounds())
+                st_folium(polygon_map, use_container_width=True, height=500, returned_objects=[])
+                safe_name = "".join(char if char.isalnum() or char in "-_" else "_" for char in project_name).strip("_") or "보상사업"
+                down1, down2 = st.columns(2)
+                down1.download_button(
+                    "GeoJSON 저장", json.dumps(project_geojson, ensure_ascii=False).encode("utf-8"),
+                    file_name=f"{safe_name}_편입필지.geojson", mime="application/geo+json", use_container_width=True,
+                )
+                down2.download_button(
+                    "GPKG 저장", st.session_state.get("comp_project_gpkg", b""),
+                    file_name=f"{safe_name}_편입필지.gpkg", mime="application/geopackage+sqlite3", use_container_width=True,
+                )
+                st.caption("생성 경계는 세목조서 PNU의 공식 지적경계입니다. 실제 편입·미보상 여부는 고시 원문과 보상대장으로 최종 확인하세요.")
+                if failures:
+                    with st.expander(f"조회 실패 PNU {len(failures):,}건"):
+                        st.dataframe(pd.DataFrame(failures), use_container_width=True, hide_index=True)
         except Exception as error:
             st.error(f"세목조서 읽기 실패: {error}")
 else:
