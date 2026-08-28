@@ -690,7 +690,8 @@ def _vworld_parcel_feature(pnu: str, api_key: str, domain: str) -> dict:
             response.raise_for_status()
             break
         except requests.RequestException as error:
-            last_error = error
+            status_code = getattr(getattr(error, "response", None), "status_code", None)
+            last_error = f"HTTP {status_code}" if status_code else type(error).__name__
             if attempt < 2:
                 time.sleep(1.5 * (attempt + 1))
     if response is None or last_error is not None and not response.ok:
