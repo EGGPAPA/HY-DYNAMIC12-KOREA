@@ -352,8 +352,8 @@ if parcel_upload is not None:
         with parcel_opt2:
             parcel_max = st.number_input(
                 "이번에 생성할 최대 필지 수", min_value=1, max_value=max(1, len(parcel_pnus)),
-                value=min(100, max(1, len(parcel_pnus))), step=10, key="auction_polygon_max",
-                help="대용량 자료는 먼저 100필지로 확인한 뒤 범위를 늘리세요.",
+                value=1, step=1, key="auction_polygon_max",
+                help="먼저 1필지로 인증과 연결을 확인한 뒤 10·100필지 순으로 늘리세요.",
             ) if parcel_pnus else 0
         key_col, domain_col = st.columns(2)
         with key_col:
@@ -562,8 +562,8 @@ if has_candidates:
             )
             max_parcels = st.number_input(
                 "이번에 생성할 최대 필지 수", min_value=1, max_value=max(1, len(ledger_pnus)),
-                value=min(100, max(1, len(ledger_pnus))), step=10,
-                help="먼저 100필지로 확인한 뒤 필요하면 범위를 늘리세요.",
+                value=1, step=1,
+                help="먼저 1필지로 인증과 연결을 확인한 뒤 10·100필지 순으로 늘리세요.",
             ) if ledger_pnus else 0
             if not ledger_pnus:
                 st.info("폴리곤을 만들려면 세목조서에 19자리 PNU가 있어야 합니다.")

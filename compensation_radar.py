@@ -7,6 +7,7 @@ import os
 import re
 import sqlite3
 import tempfile
+import time
 import urllib.parse
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
@@ -672,18 +673,28 @@ def verify_matches_with_ledger(matches: pd.DataFrame, ledger: pd.DataFrame) -> p
 
 
 def _vworld_parcel_feature(pnu: str, api_key: str, domain: str) -> dict:
-    response = requests.get(
-        "https://api.vworld.kr/req/data",
-        params={
-            "service": "data", "version": "2.0", "request": "GetFeature",
-            "format": "json", "size": 10, "page": 1, "geometry": "true",
-            "attribute": "true", "crs": "EPSG:4326", "data": "LP_PA_CBND_BUBUN",
-            "attrFilter": f"pnu:=:{pnu}", "key": api_key, "domain": domain,
-        },
-        timeout=20,
-        headers={"User-Agent": "HY-Compensation-Radar/1.0"},
-    )
-    response.raise_for_status()
+    params = {
+        "service": "data", "version": "2.0", "request": "GetFeature",
+        "format": "json", "size": 10, "page": 1, "geometry": "true",
+        "attribute": "true", "crs": "EPSG:4326", "data": "LP_PA_CBND_BUBUN",
+        "attrFilter": f"pnu:=:{pnu}", "key": api_key, "domain": domain,
+    }
+    response = None
+    last_error = None
+    for attempt in range(3):
+        try:
+            response = requests.get(
+                "https://api.vworld.kr/req/data", params=params, timeout=(10, 45),
+                headers={"User-Agent": "Mozilla/5.0 (compatible; HY-Compensation-Radar/1.0)"},
+            )
+            response.raise_for_status()
+            break
+        except requests.RequestException as error:
+            last_error = error
+            if attempt < 2:
+                time.sleep(1.5 * (attempt + 1))
+    if response is None or last_error is not None and not response.ok:
+        raise RuntimeError(f"VWorld 연결 재시도 실패: {last_error}")
     payload = response.json().get("response", {})
     if payload.get("status") not in (None, "OK"):
         error = payload.get("error", {})
@@ -699,7 +710,7 @@ def _vworld_parcel_feature(pnu: str, api_key: str, domain: str) -> dict:
 
 
 def build_project_parcel_geojson(
-    pnus: list[str], api_key: str, domain: str, project_name: str = "보상사업", max_workers: int = 5,
+    pnus: list[str], api_key: str, domain: str, project_name: str = "보상사업", max_workers: int = 2,
 ) -> tuple[dict, list[dict]]:
     """Fetch official cadastral polygons for ledger PNUs and combine them."""
     clean = list(dict.fromkeys(re.sub(r"\D", "", str(pnu)) for pnu in pnus))
@@ -709,7 +720,7 @@ def build_project_parcel_geojson(
     if not api_key:
         raise ValueError("VWorld API 인증키가 필요합니다.")
     features, failures = [], []
-    with ThreadPoolExecutor(max_workers=max(1, min(int(max_workers), 5))) as executor:
+    with ThreadPoolExecutor(max_workers=max(1, min(int(max_workers), 2))) as executor:
         futures = {executor.submit(_vworld_parcel_feature, pnu, api_key, domain): pnu for pnu in clean}
         for future in as_completed(futures):
             pnu = futures[future]
