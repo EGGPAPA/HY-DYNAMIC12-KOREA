@@ -9,7 +9,8 @@ def inject_sidebar_labels():
         a[data-testid="stSidebarNavLink"][href$="/"] p,
         a[data-testid="stSidebarNavLink"][href$="/ETF_전략검증"] p,
         a[data-testid="stSidebarNavLink"][href$="/보유종목"] p,
-        a[data-testid="stSidebarNavLink"][href$="/연금저축"] p {
+        a[data-testid="stSidebarNavLink"][href$="/연금저축"] p,
+        a[data-testid="stSidebarNavLink"][href$="/보상레이더"] p {
             font-size: 0 !important;
         }
         a[data-testid="stSidebarNavLink"][href$="/"] p::after {
@@ -23,6 +24,9 @@ def inject_sidebar_labels():
         }
         a[data-testid="stSidebarNavLink"][href$="/연금저축"] p::after {
             content: "🏦 연금저축";
+        }
+        a[data-testid="stSidebarNavLink"][href$="/보상레이더"] p::after {
+            content: "📡 보상레이더";
         }
         a[data-testid="stSidebarNavLink"] p::after {
             font-size: 0.875rem !important;
