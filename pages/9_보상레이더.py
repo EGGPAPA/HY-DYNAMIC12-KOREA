@@ -175,6 +175,7 @@ try:
                     match_news = match_news[match_news["is_public_project"].fillna(False).astype(bool)]
                 st.session_state.comp_matches = match_news_to_auctions(match_news, v4_auctions)
                 st.session_state.comp_match_source = {"file": v4_source, "layer": "V4 주간 경공매", "rows": len(v4_auctions)}
+                st.session_state.comp_match_ran = True
     else:
         st.info("기본 V4 경공매 자료를 준비 중입니다. 새 XLSX·XLS·CSV를 올리면 바로 표시됩니다.")
 except Exception as error:
@@ -307,6 +308,7 @@ if upload is not None:
                     match_news = match_news[match_news["is_public_project"].fillna(False).astype(bool)]
                 st.session_state.comp_matches = match_news_to_auctions(match_news, match_input)
                 st.session_state.comp_match_source = {"file": upload.name, "layer": selected_layer, "rows": len(match_input)}
+                st.session_state.comp_match_ran = True
     except Exception as e:
         st.error(f"GPKG 읽기 실패: {e}")
 
@@ -328,6 +330,12 @@ if isinstance(matches, pd.DataFrame) and not matches.empty:
     st.warning("S/A/B는 '뉴스 힌트 점수'입니다. 아직 세목조서 일치 등급이 아닙니다. 다음 단계에서 공식고시 → 첨부문서 → PNU MATCH를 붙입니다.")
 elif upload is not None and st.session_state.comp_news.empty:
     st.info("먼저 1단계에서 강한 신호 뉴스를 수집해야 MATCH할 수 있습니다.")
+elif st.session_state.get("comp_match_ran", False):
+    source = st.session_state.get("comp_match_source", {})
+    st.warning(
+        f"MATCH 완료 · {source.get('rows', 0):,}건을 확인했지만 정확한 행정구역 조합이 일치하는 후보는 0건입니다. "
+        "다른 지역의 유사 지명은 안전을 위해 제외했습니다."
+    )
 
 st.divider()
 st.subheader("3. 공식고시·세목조서 6단계 검증")
@@ -374,4 +382,7 @@ if isinstance(matches, pd.DataFrame) and not matches.empty:
         except Exception as error:
             st.error(f"세목조서 읽기 실패: {error}")
 else:
-    st.info("2단계에서 GPKG를 업로드하고 KEEP 뉴스와 MATCH하면 공식검증 대상이 나타납니다.")
+    if st.session_state.get("comp_match_ran", False):
+        st.info("MATCH는 완료됐지만 공식검증으로 넘길 정확한 지역 일치 후보가 없습니다.")
+    else:
+        st.info("2단계에서 V4 경공매 또는 GPKG를 KEEP 뉴스와 MATCH하면 공식검증 대상이 나타납니다.")
