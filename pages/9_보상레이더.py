@@ -11,9 +11,12 @@ from compensation_radar import (
     gpkg_fingerprint,
     list_gpkg_layers,
     match_news_to_auctions,
+    official_search_links,
     prepare_map_features,
+    read_ledger_upload,
     read_gpkg_layer,
     uploaded_bytes,
+    verify_matches_with_ledger,
 )
 
 
@@ -64,9 +67,10 @@ if "comp_news" not in st.session_state:
 
 news_state = st.session_state.comp_news
 level_series = news_state["signal_level"] if isinstance(news_state, pd.DataFrame) and "signal_level" in news_state.columns else pd.Series(dtype=str)
+public_series = news_state["is_public_project"].fillna(False).astype(bool) if isinstance(news_state, pd.DataFrame) and "is_public_project" in news_state.columns else pd.Series(False, index=news_state.index)
 m1, m2, m3, m4 = st.columns(4)
 m1.metric("KEEP 뉴스", f"{len(news_state):,}건")
-m2.metric("강한 신호", f"{(level_series == '강한 신호').sum():,}건")
+m2.metric("공익사업 보상", f"{public_series.sum():,}건")
 m3.metric("저장 방식", "GitHub 영구저장" if token else "현재 세션")
 m4.metric("검색 신호", f"{len(STRONG_SIGNALS)}개")
 
@@ -98,9 +102,14 @@ with left:
 with right:
     news = st.session_state.comp_news
     if not news.empty:
-        show_cols = [c for c in ["published_at", "signal_level", "signal_score", "signals", "source", "channel", "title", "url"] if c in news.columns]
-        st.dataframe(news[show_cols].head(300), use_container_width=True, hide_index=True, height=330,
+        public_only = st.toggle("공익사업만 표시", value=True, help="재건축·재개발·분양성 기사를 기본 제외합니다.")
+        news_view = news[news["is_public_project"].fillna(False).astype(bool)] if public_only and "is_public_project" in news.columns else news
+        show_cols = [c for c in ["published_at", "project_type", "signal_level", "signals", "related_reports", "reporting_sources", "title", "url"] if c in news_view.columns]
+        st.dataframe(news_view[show_cols].head(300), use_container_width=True, hide_index=True, height=330,
                      column_config={"url": st.column_config.LinkColumn("원문")})
+        related = news_view["related_reports"] if "related_reports" in news_view.columns else pd.Series(1, index=news_view.index)
+        grouped_count = int((pd.to_numeric(related, errors="coerce").fillna(1) > 1).sum()) if not news_view.empty else 0
+        st.caption(f"동일 사건 묶음 {grouped_count:,}개 · 같은 사업이라도 보상 단계가 달라진 후속 뉴스는 별도로 유지합니다.")
     else:
         st.info("아직 KEEP한 뉴스가 없습니다. 왼쪽 버튼으로 먼저 수집하세요.")
 
@@ -228,7 +237,10 @@ if upload is not None:
         if st.button("⚡ KEEP 뉴스와 자동 MATCH", use_container_width=True):
             with st.spinner("주소·지역명·신호강도·최저가율을 함께 비교하고 있습니다..."):
                 match_input = pd.DataFrame(auctions.drop(columns=auctions.geometry.name))
-                st.session_state.comp_matches = match_news_to_auctions(st.session_state.comp_news, match_input)
+                match_news = st.session_state.comp_news
+                if "is_public_project" in match_news.columns:
+                    match_news = match_news[match_news["is_public_project"].fillna(False).astype(bool)]
+                st.session_state.comp_matches = match_news_to_auctions(match_news, match_input)
                 st.session_state.comp_match_source = {"file": upload.name, "layer": selected_layer, "rows": len(match_input)}
     except Exception as e:
         st.error(f"GPKG 읽기 실패: {e}")
@@ -253,6 +265,48 @@ elif upload is not None and st.session_state.comp_news.empty:
     st.info("먼저 1단계에서 강한 신호 뉴스를 수집해야 MATCH할 수 있습니다.")
 
 st.divider()
-st.subheader("3. 다음 검증 단계")
-st.markdown("**뉴스 힌트 → 사업명 추출 → 공식고시 검색 → 세목조서 확보 → PNU 일치 → 최종 S급**")
-st.caption("이번 MVP는 앞쪽 두 단계(KEEP + 주간 경공매 MATCH)를 먼저 실제로 돌려보고, 결과가 좋은 지역/사업부터 공식고시 자동검증을 연결하도록 설계했습니다.")
+st.subheader("3. 공식고시·세목조서 6단계 검증")
+st.caption("V4 조사 흐름을 연결했습니다. 뉴스 점수만으로 A등급을 확정하지 않고 세목조서 PNU를 최종 근거로 사용합니다.")
+
+steps = st.columns(6)
+for box, label in zip(steps, ["① 지역·사업", "② 공식고시", "③ 실시계획", "④ 첨부파일", "⑤ 세목조서", "⑥ PNU 판정"]):
+    box.markdown(f"**{label}**")
+
+matches = st.session_state.get("comp_matches", pd.DataFrame())
+if isinstance(matches, pd.DataFrame) and not matches.empty:
+    candidate_index = st.selectbox(
+        "공식자료를 확인할 뉴스 연관 후보",
+        range(len(matches)),
+        format_func=lambda index: f"{matches.iloc[index].get('사건번호', '-') or '-'} · {matches.iloc[index].get('주소', '-')}",
+    )
+    candidate = matches.iloc[candidate_index]
+    links = official_search_links(candidate.get("주소", ""), candidate.get("신호", ""), candidate.get("뉴스제목", ""))
+    link_cols = st.columns(len(links))
+    for col, (label, url) in zip(link_cols, links.items()):
+        col.link_button(label, url, use_container_width=True)
+
+    ledger_upload = st.file_uploader(
+        "확보한 토지세목조서 업로드",
+        type=["csv", "xls", "xlsx"],
+        help="세목조서의 PNU 또는 주소를 모든 뉴스 연관 경공매 후보와 대조합니다.",
+        key="compensation_ledger_upload",
+    )
+    if ledger_upload is not None:
+        try:
+            ledger = read_ledger_upload(ledger_upload)
+            verified = verify_matches_with_ledger(matches, ledger)
+            st.session_state.comp_verified_matches = verified
+            v1, v2, v3 = st.columns(3)
+            v1.metric("조서 추출행", f"{len(ledger):,}건")
+            v2.metric("PNU 완전일치", f"{(verified['검증상태'] == '세목조서 PNU 일치').sum():,}건")
+            v3.metric("주소 후보", f"{(verified['검증상태'] == '세목조서 주소 후보').sum():,}건")
+            st.dataframe(
+                verified[[c for c in ["검증등급", "검증상태", "검증근거", "사건번호", "주소", "pnu", "뉴스제목", "뉴스URL"] if c in verified.columns]],
+                use_container_width=True, hide_index=True, height=420,
+                column_config={"뉴스URL": st.column_config.LinkColumn("뉴스 원문")},
+            )
+            st.warning("A는 업로드한 세목조서 PNU 일치 후보입니다. 입찰 전 보상금 지급·수용재결·공탁 이력을 별도로 확인하세요.")
+        except Exception as error:
+            st.error(f"세목조서 읽기 실패: {error}")
+else:
+    st.info("2단계에서 GPKG를 업로드하고 KEEP 뉴스와 MATCH하면 공식검증 대상이 나타납니다.")
