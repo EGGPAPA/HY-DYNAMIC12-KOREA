@@ -717,6 +717,12 @@ def build_project_parcel_geojson(
                 features.append(future.result())
             except Exception as error:
                 failures.append({"PNU": pnu, "오류": str(error)})
+    if not features:
+        first_error = failures[0]["오류"] if failures else "응답에 필지경계가 없습니다."
+        raise RuntimeError(
+            f"요청한 {len(clean):,}필지의 경계를 한 건도 받지 못했습니다. "
+            f"VWorld 응답: {first_error} 인증키와 등록 도메인이 현재 Streamlit 주소와 일치하는지 확인하세요."
+        )
     created_at = datetime.now(timezone.utc).isoformat()
     for feature in features:
         feature["properties"].update({"사업명": project_name, "생성일": created_at, "공식보상경계": False})
@@ -737,7 +743,10 @@ def geojson_to_gpkg_bytes(collection: dict, layer_name: str = "compensation_parc
         import geopandas as gpd
     except ImportError as exc:
         raise RuntimeError("GeoPackage 생성 라이브러리가 설치되지 않았습니다.") from exc
-    gdf = gpd.GeoDataFrame.from_features(collection.get("features", []), crs="EPSG:4326")
+    features = collection.get("features", []) if isinstance(collection, dict) else []
+    if not features:
+        raise ValueError("저장할 필지 폴리곤이 없습니다. VWorld 조회 결과를 먼저 확인하세요.")
+    gdf = gpd.GeoDataFrame.from_features(features, crs="EPSG:4326")
     if gdf.empty:
         raise ValueError("저장할 필지 폴리곤이 없습니다.")
     safe_layer = re.sub(r"[^0-9A-Za-z가-힣_-]+", "_", layer_name).strip("_") or "compensation_parcels"
