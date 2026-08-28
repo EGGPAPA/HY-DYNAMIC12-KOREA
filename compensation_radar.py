@@ -10,6 +10,7 @@ import tempfile
 import urllib.parse
 import xml.etree.ElementTree as ET
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from html import unescape
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -490,6 +491,78 @@ def official_search_links(address: str, project_type: str = "", project_name: st
     }
 
 
+def _plain_html(value: str) -> str:
+    value = re.sub(r"<script\b[^>]*>.*?</script>|<style\b[^>]*>.*?</style>", " ", str(value or ""), flags=re.I | re.S)
+    return re.sub(r"\s+", " ", unescape(re.sub(r"<[^>]+>", " ", value))).strip()
+
+
+def suggest_project_search_name(news_title: str) -> str:
+    title = re.sub(r"\[[^]]*]|\([^)]*\)|[|｜].*$", " ", str(news_title or ""))
+    title = re.sub(r"\b(단독|종합|속보)\b|\s+-\s+[^-]+$", " ", title)
+    title = re.sub(r"(보상계획|토지보상|감정평가|사업인정|실시계획|수용재결|공고|착수|열람).*", " ", title)
+    return re.sub(r"\s+", " ", title).strip(" -·,")[:100]
+
+
+def search_eum_official_notices(region: str, project_type: str, project_name: str = "", max_details: int = 5) -> dict:
+    """Track EUM official notices and inspect their detail pages for ledger evidence."""
+    city = next((part for part in str(region).split() if part.endswith(("시", "군", "구"))), "")
+    query_city = re.sub(r"(특별자치시|특별시|광역시|시|군|구)$", "", city)
+    subject = str(project_name or "").strip() or " ".join(part for part in [query_city, project_type] if part)
+    payload = urllib.parse.urlencode(
+        {"prj_nm": "", "zonenm": subject, "pageNo": "1", "listSize": "30"}, encoding="euc-kr"
+    ).encode("ascii")
+    manual_url = "https://www.eum.go.kr/web/gs/gv/gvGosiList.jsp?" + urllib.parse.urlencode({"prj_nm": subject, "gihyung_yn": "Y"})
+    try:
+        response = requests.post(
+            "https://www.eum.go.kr/web/gs/gv/gvGosiList.jsp",
+            data=payload,
+            headers={"User-Agent": "Mozilla/5.0 (HY-Compensation-Radar/1.0)", "Content-Type": "application/x-www-form-urlencoded"},
+            timeout=15,
+        )
+        response.raise_for_status()
+        page = response.content.decode("euc-kr", "replace")
+    except Exception as error:
+        return {"status": "blocked", "message": "자동접속 제한 또는 통신 오류", "error": str(error), "manual_url": manual_url, "results": []}
+
+    pattern = re.compile(r"<a\s+href=['\"](?P<href>gvGosiDet\.jsp\?[^'\"]*seq=(?P<seq>\d+)[^'\"]*)['\"][^>]*title=['\"](?P<title>[^'\"]+)['\"]", re.I)
+    results = []
+    seen = set()
+    for match in pattern.finditer(page):
+        seq = match.group("seq")
+        if seq in seen:
+            continue
+        seen.add(seq)
+        title = unescape(match.group("title")).strip()
+        score = (4 if query_city and query_city in title else 0) + (6 if subject and subject in title else 0)
+        score += sum(2 for term in OFFICIAL_PROCESS_TERMS if term in title)
+        results.append({"seq": seq, "title": title, "url": f"https://www.eum.go.kr/web/gs/gv/gvGosiDet.jsp?seq={seq}", "score": score, "has_ledger": False, "attachments": []})
+    results.sort(key=lambda item: (-item["score"], item["title"]))
+
+    ledger_pattern = re.compile(r"토지\s*세목|세목\s*조서|용지\s*조서|편입\s*토지|수용하거나\s*사용할\s*토지|토지\s*및\s*물건\s*조서")
+    attachment_ext = re.compile(r"\.(?:pdf|hwp|hwpx|xlsx?|zip)(?:\?|$)", re.I)
+    for item in results[: max(1, int(max_details))]:
+        try:
+            detail = requests.get(item["url"], headers={"User-Agent": "Mozilla/5.0 (HY-Compensation-Radar/1.0)"}, timeout=15)
+            detail.raise_for_status()
+            detail_html = detail.content.decode("euc-kr", "replace")
+            detail_text = _plain_html(detail_html)
+            item["has_ledger"] = bool(ledger_pattern.search(detail_text))
+            item["has_geo_notice"] = "지형도면" in detail_text
+            attachments = []
+            for href, label in re.findall(r"<a[^>]+href=['\"]([^'\"]+)['\"][^>]*>(.*?)</a>", detail_html, re.I | re.S):
+                label_text = _plain_html(label)
+                safe_href = href.strip()
+                if safe_href.lower().startswith("javascript:"):
+                    continue
+                if attachment_ext.search(label_text) or attachment_ext.search(safe_href) or ledger_pattern.search(label_text):
+                    attachments.append({"label": label_text or "첨부파일", "url": urllib.parse.urljoin(item["url"], safe_href)})
+            item["attachments"] = attachments[:20]
+        except Exception as error:
+            item["detail_error"] = str(error)
+    status = "ledger_found" if any(item.get("has_ledger") for item in results) else "notice_found" if results else "not_found"
+    return {"status": status, "query": subject, "manual_url": manual_url, "results": results[:15]}
+
+
 def read_ledger_upload(uploaded_file) -> pd.DataFrame:
     """Read a CSV/XLS(X) land ledger and normalize PNU/address evidence."""
     name = str(getattr(uploaded_file, "name", "")).lower()
@@ -725,3 +798,4 @@ def collect_signal_news(days: int = 14, naver_client_id: str = "", naver_client_
         return dedupe_news(pd.DataFrame())
     result = dedupe_news(pd.concat(usable, ignore_index=True))
     return result[result["is_public_project"]].reset_index(drop=True)
+
