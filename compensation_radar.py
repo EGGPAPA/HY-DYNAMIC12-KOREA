@@ -485,6 +485,53 @@ def read_ledger_upload(uploaded_file) -> pd.DataFrame:
     return pd.DataFrame(rows).drop_duplicates(["ledger_pnu", "ledger_address"]).reset_index(drop=True)
 
 
+def read_auction_workbook(source, filename: str = "") -> pd.DataFrame:
+    """Read the weekly V4 auction workbook/CSV and expose stable matching columns."""
+    raw = uploaded_bytes(source) if not isinstance(source, (str, os.PathLike)) else None
+    name = (filename or str(getattr(source, "name", "")) or str(source)).lower()
+    file_source = io.BytesIO(raw) if raw is not None else source
+    if name.endswith(".csv"):
+        try:
+            frame = pd.read_csv(file_source, encoding="utf-8-sig")
+        except UnicodeDecodeError:
+            if raw is None:
+                frame = pd.read_csv(source, encoding="cp949")
+            else:
+                frame = pd.read_csv(io.BytesIO(raw), encoding="cp949")
+    elif name.endswith((".xlsx", ".xls")):
+        sheets = pd.read_excel(file_source, sheet_name=None, dtype={"PNU": str, "pnu": str})
+        frame = pd.concat(sheets.values(), ignore_index=True)
+    else:
+        raise ValueError("경공매 자료는 XLSX, XLS 또는 CSV 형식으로 올려주세요.")
+
+    aliases = {
+        "사건번호": ["사건번호", "case_no", "event_id"],
+        "경매/공매": ["경매/공매", "구분"],
+        "주소": ["필지주소", "필지별 주소", "물건소재지", "소재지", "주소", "address"],
+        "pnu": ["PNU", "pnu", "필지고유번호"],
+        "최저가율": ["최저가율", "최저가율(%)", "유찰률"],
+        "최저가": ["최저가", "최저매각가격", "매각가격", "price"],
+        "감평가": ["감평가", "감정가", "감정평가액"],
+        "입찰일": ["입찰일", "매각기일"],
+        "위도": ["위도", "lat", "latitude", "Y"],
+        "경도": ["경도", "lon", "lng", "longitude", "X"],
+        "지목": ["지목", "land_category"],
+        "토지이용계획": ["토지이용계획", "사업명", "계획"],
+        "링크": ["링크", "url", "URL"],
+    }
+    normalized = {str(col).lower(): col for col in frame.columns}
+    for target, candidates in aliases.items():
+        source_col = next((normalized[candidate.lower()] for candidate in candidates if candidate.lower() in normalized), None)
+        if source_col is not None and target not in frame.columns:
+            frame[target] = frame[source_col]
+    if "pnu" in frame.columns:
+        frame["pnu"] = frame["pnu"].fillna("").map(lambda value: re.sub(r"\D", "", str(value).split(".")[0])).str.zfill(19)
+        frame.loc[frame["pnu"].eq("0000000000000000000"), "pnu"] = ""
+    if "주소" not in frame.columns:
+        raise ValueError("경공매 자료에서 필지주소·물건소재지·주소 열을 찾지 못했습니다.")
+    return frame.reset_index(drop=True)
+
+
 def verify_matches_with_ledger(matches: pd.DataFrame, ledger: pd.DataFrame) -> pd.DataFrame:
     if matches is None or matches.empty:
         return pd.DataFrame()
