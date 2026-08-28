@@ -351,7 +351,10 @@ for box, label in zip(steps, ["① 지역·사업", "② 공식고시", "③ 실
     box.markdown(f"**{label}**")
 
 matches = st.session_state.get("comp_matches", pd.DataFrame())
-if isinstance(matches, pd.DataFrame) and not matches.empty:
+has_candidates = isinstance(matches, pd.DataFrame) and not matches.empty
+candidate = None
+candidate_index = "manual"
+if has_candidates:
     candidate_index = st.selectbox(
         "공식자료를 확인할 뉴스 연관 후보",
         range(len(matches)),
@@ -363,60 +366,60 @@ if isinstance(matches, pd.DataFrame) and not matches.empty:
     for col, (label, url) in zip(link_cols, links.items()):
         col.link_button(label, url, use_container_width=True)
 
-    st.markdown("#### 공식고시·세목조서 자동추적")
-    auto_region = " ".join(str(candidate.get("주소", "")).split()[:3])
-    auto_project = suggest_project_search_name(candidate.get("뉴스제목", ""))
-    track1, track2 = st.columns(2)
-    with track1:
-        tracking_region = st.text_input("검색 지역", value=auto_region, key=f"tracking_region_{candidate_index}")
-    with track2:
-        tracking_project = st.text_input("사업명·검색어", value=auto_project, key=f"tracking_project_{candidate_index}")
-    tracking_candidate_key = "|".join([
-        str(candidate.get("사건번호", "")),
-        str(candidate.get("주소", "")),
-        str(candidate.get("뉴스제목", "")),
-    ])
-    if st.button("🔎 공식고시·세목조서 자동추적", use_container_width=True, key=f"track_notice_{candidate_index}"):
+st.markdown("#### 공식고시·세목조서 자동추적")
+if not has_candidates:
+    st.info("MATCH 후보가 없어도 아래에 지역과 사업명을 직접 입력해 공식고시를 찾을 수 있습니다.")
+auto_region = " ".join(str(candidate.get("주소", "")).split()[:3]) if candidate is not None else ""
+auto_project = suggest_project_search_name(candidate.get("뉴스제목", "")) if candidate is not None else ""
+track1, track2 = st.columns(2)
+with track1:
+    tracking_region = st.text_input("검색 지역", value=auto_region, placeholder="예: 경남 창녕군", key=f"tracking_region_{candidate_index}")
+with track2:
+    tracking_project = st.text_input("사업명·검색어", value=auto_project, placeholder="예: 영산 도로 확장공사", key=f"tracking_project_{candidate_index}")
+tracking_candidate_key = "|".join([
+    str(candidate.get("사건번호", "")) if candidate is not None else "직접검색",
+    str(candidate.get("주소", "")) if candidate is not None else tracking_region,
+    str(candidate.get("뉴스제목", "")) if candidate is not None else tracking_project,
+])
+if st.button("🔎 공식고시·세목조서 자동추적", use_container_width=True, key=f"track_notice_{candidate_index}"):
+    if not tracking_region.strip() or not tracking_project.strip():
+        st.warning("검색 지역과 사업명을 입력해 주세요.")
+    else:
         with st.spinner("토지이음 공식고시와 첨부파일에서 세목조서 단서를 찾고 있습니다..."):
-            tracking_result = search_eum_official_notices(
-                tracking_region, "공익사업", tracking_project,
-            )
+            tracking_result = search_eum_official_notices(tracking_region, "공익사업", tracking_project)
             tracking_result["candidate_key"] = tracking_candidate_key
             st.session_state.comp_notice_tracking = tracking_result
-    tracking = st.session_state.get("comp_notice_tracking")
-    if isinstance(tracking, dict) and tracking.get("candidate_key") == tracking_candidate_key:
-        tracking_status = tracking.get("status")
-        if tracking_status == "ledger_found":
-            st.success("세목조서 문구가 포함된 공식고시 후보를 발견했습니다.")
-        elif tracking_status == "notice_found":
-            st.warning("공식고시는 발견했지만 세목조서 첨부 여부는 추가 확인이 필요합니다.")
-        elif tracking_status == "not_found":
-            st.info("자동추적 완료·공식고시 후보 0건입니다. 사업명 대체어 또는 시행기관 확인이 필요합니다.")
-        elif tracking_status == "blocked":
-            st.warning("토지이음 자동접속이 제한됐습니다. 아래 공식검색 링크에서 직접 확인할 수 있습니다.")
-        if tracking.get("manual_url"):
-            st.link_button("토지이음 공식검색에서 확인", tracking["manual_url"], use_container_width=True)
-        tracking_rows = []
+tracking = st.session_state.get("comp_notice_tracking")
+if isinstance(tracking, dict) and tracking.get("candidate_key") == tracking_candidate_key:
+    tracking_status = tracking.get("status")
+    if tracking_status == "ledger_found":
+        st.success("세목조서 문구가 포함된 공식고시 후보를 발견했습니다.")
+    elif tracking_status == "notice_found":
+        st.warning("공식고시는 발견했지만 세목조서 첨부 여부는 추가 확인이 필요합니다.")
+    elif tracking_status == "not_found":
+        st.info("자동추적 완료·공식고시 후보 0건입니다. 사업명 대체어 또는 시행기관 확인이 필요합니다.")
+    elif tracking_status == "blocked":
+        st.warning("토지이음 자동접속이 제한됐습니다. 아래 공식검색 링크에서 직접 확인할 수 있습니다.")
+    if tracking.get("manual_url"):
+        st.link_button("토지이음 공식검색에서 확인", tracking["manual_url"], use_container_width=True)
+    tracking_rows = []
+    for notice in tracking.get("results", []):
+        attachments = notice.get("attachments", [])
+        tracking_rows.append({
+            "점수": notice.get("score", 0), "세목단서": "있음" if notice.get("has_ledger") else "미확인",
+            "지형도면": "있음" if notice.get("has_geo_notice") else "-", "공식고시": notice.get("title", ""),
+            "공식URL": notice.get("url", ""), "첨부수": len(attachments),
+        })
+    if tracking_rows:
+        st.dataframe(pd.DataFrame(tracking_rows), use_container_width=True, hide_index=True,
+                     column_config={"공식URL": st.column_config.LinkColumn("공식 원문")})
         for notice in tracking.get("results", []):
-            attachments = notice.get("attachments", [])
-            tracking_rows.append({
-                "점수": notice.get("score", 0),
-                "세목단서": "있음" if notice.get("has_ledger") else "미확인",
-                "지형도면": "있음" if notice.get("has_geo_notice") else "-",
-                "공식고시": notice.get("title", ""),
-                "공식URL": notice.get("url", ""),
-                "첨부수": len(attachments),
-            })
-        if tracking_rows:
-            st.dataframe(
-                pd.DataFrame(tracking_rows), use_container_width=True, hide_index=True,
-                column_config={"공식URL": st.column_config.LinkColumn("공식 원문")},
-            )
-            for notice in tracking.get("results", []):
-                if notice.get("attachments"):
-                    with st.expander(f"첨부파일 · {notice.get('title', '')[:70]}"):
-                        for attachment in notice["attachments"]:
-                            st.markdown(f"- [{attachment.get('label', '첨부파일')}]({attachment.get('url', '')})")
+            if notice.get("attachments"):
+                with st.expander(f"첨부파일 · {notice.get('title', '')[:70]}"):
+                    for attachment in notice["attachments"]:
+                        st.markdown(f"- [{attachment.get('label', '첨부파일')}]({attachment.get('url', '')})")
+
+if has_candidates:
 
     ledger_upload = st.file_uploader(
         "확보한 토지세목조서 업로드",
