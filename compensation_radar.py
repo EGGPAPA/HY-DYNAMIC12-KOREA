@@ -9,6 +9,7 @@ import sqlite3
 import tempfile
 import urllib.parse
 import xml.etree.ElementTree as ET
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -595,6 +596,88 @@ def verify_matches_with_ledger(matches: pd.DataFrame, ledger: pd.DataFrame) -> p
     result["검증상태"] = statuses
     result["검증근거"] = evidence
     return result.sort_values(["검증등급", "매칭점수"], ascending=[True, False]).reset_index(drop=True)
+
+
+def _vworld_parcel_feature(pnu: str, api_key: str, domain: str) -> dict:
+    response = requests.get(
+        "https://api.vworld.kr/req/data",
+        params={
+            "service": "data", "version": "2.0", "request": "GetFeature",
+            "format": "json", "size": 10, "page": 1, "geometry": "true",
+            "attribute": "true", "crs": "EPSG:4326", "data": "LP_PA_CBND_BUBUN",
+            "attrFilter": f"pnu:=:{pnu}", "key": api_key, "domain": domain,
+        },
+        timeout=20,
+        headers={"User-Agent": "HY-Compensation-Radar/1.0"},
+    )
+    response.raise_for_status()
+    payload = response.json().get("response", {})
+    if payload.get("status") not in (None, "OK"):
+        error = payload.get("error", {})
+        raise RuntimeError(error.get("text") or error.get("message") or str(error) or "VWorld 조회 실패")
+    collection = payload.get("result", {}).get("featureCollection", {})
+    features = collection.get("features", [])
+    if not features:
+        raise LookupError("필지경계 없음")
+    feature = features[0]
+    feature.setdefault("properties", {})
+    feature["properties"].update({"PNU": pnu, "자료등급": "공식 연속지적도", "자료출처": "VWorld LP_PA_CBND_BUBUN"})
+    return feature
+
+
+def build_project_parcel_geojson(
+    pnus: list[str], api_key: str, domain: str, project_name: str = "보상사업", max_workers: int = 5,
+) -> tuple[dict, list[dict]]:
+    """Fetch official cadastral polygons for ledger PNUs and combine them."""
+    clean = list(dict.fromkeys(re.sub(r"\D", "", str(pnu)) for pnu in pnus))
+    clean = [pnu for pnu in clean if len(pnu) == 19]
+    if not clean:
+        raise ValueError("세목조서에서 유효한 19자리 PNU를 찾지 못했습니다.")
+    if not api_key:
+        raise ValueError("VWorld API 인증키가 필요합니다.")
+    features, failures = [], []
+    with ThreadPoolExecutor(max_workers=max(1, min(int(max_workers), 5))) as executor:
+        futures = {executor.submit(_vworld_parcel_feature, pnu, api_key, domain): pnu for pnu in clean}
+        for future in as_completed(futures):
+            pnu = futures[future]
+            try:
+                features.append(future.result())
+            except Exception as error:
+                failures.append({"PNU": pnu, "오류": str(error)})
+    created_at = datetime.now(timezone.utc).isoformat()
+    for feature in features:
+        feature["properties"].update({"사업명": project_name, "생성일": created_at, "공식보상경계": False})
+    collection = {
+        "type": "FeatureCollection",
+        "name": re.sub(r"[^0-9A-Za-z가-힣_-]+", "_", project_name).strip("_") or "보상사업",
+        "properties": {
+            "사업명": project_name, "생성일": created_at, "근거": "업로드 세목조서 PNU + VWorld 연속지적도",
+            "주의": "지적경계이며 실제 보상 편입범위는 고시·세목조서 원문으로 최종 확인",
+        },
+        "features": features,
+    }
+    return collection, failures
+
+
+def geojson_to_gpkg_bytes(collection: dict, layer_name: str = "compensation_parcels") -> bytes:
+    try:
+        import geopandas as gpd
+    except ImportError as exc:
+        raise RuntimeError("GeoPackage 생성 라이브러리가 설치되지 않았습니다.") from exc
+    gdf = gpd.GeoDataFrame.from_features(collection.get("features", []), crs="EPSG:4326")
+    if gdf.empty:
+        raise ValueError("저장할 필지 폴리곤이 없습니다.")
+    safe_layer = re.sub(r"[^0-9A-Za-z가-힣_-]+", "_", layer_name).strip("_") or "compensation_parcels"
+    temp_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".gpkg", delete=False) as tmp:
+            temp_path = tmp.name
+        gdf.to_file(temp_path, layer=safe_layer[:60], driver="GPKG", engine="pyogrio")
+        with open(temp_path, "rb") as file:
+            return file.read()
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
 
 
 def github_load_csv(cfg: GitHubStoreConfig) -> tuple[pd.DataFrame, str | None]:
