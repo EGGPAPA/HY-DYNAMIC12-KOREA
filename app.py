@@ -16,6 +16,8 @@ from wealth_jump_ui import render_wealth_jump_tab
 from wealth_jump_ui import get_market_cap_data, get_flow_data
 from pension_manager_ui import _load_pension, _auto_price
 from naver_fallback_html import get_full_universe_html, get_flow_map_html
+from krx_kis_pipeline import collect_krx_ohlcv, build_first_pass_screen
+from korea_holdings_ui import get_kis_price, kis_ready
 
 try:
     from pykrx import stock
@@ -245,6 +247,16 @@ def download_chunk(symbols, period="3mo"):
         return pd.DataFrame()
 
 
+@st.cache_data(ttl=900, show_spinner=False)
+def get_krx_batch_history():
+    if not PYKRX_OK:
+        return pd.DataFrame(), None
+    try:
+        return collect_krx_ohlcv(stock, latest_business_day(), sessions=22)
+    except Exception:
+        return pd.DataFrame(), None
+
+
 def extract_one(batch, symbol):
     if batch.empty:
         return pd.DataFrame()
@@ -371,8 +383,25 @@ def fundamental_score(code, market):
     return clip(score, 0, 100)
 
 
+@st.cache_data(ttl=10, show_spinner=False)
+def get_candidate_kis_prices(codes):
+    if not kis_ready():
+        return {}
+    prices = {}
+    for code in codes:
+        try:
+            price = get_kis_price(str(code).zfill(6))
+        except Exception:
+            price = None
+        if price is not None and float(price) > 0:
+            prices[str(code).zfill(6)] = float(price)
+    return prices
+
+
 def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
     candidates = screen.head(max(int(candidate_count), FINAL_TOP_N * 4)).copy()
+    candidate_codes = tuple(candidates["종목코드"].astype(str).str.zfill(6))
+    kis_prices = get_candidate_kis_prices(candidate_codes)
     symbols = [yf_symbol(r["종목코드"], r["시장"]) for _, r in candidates.iterrows()]
     batch = download_chunk(tuple(symbols), "6mo")
     rows = []
@@ -390,7 +419,10 @@ def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
         if len(close) < 60:
             continue
 
-        p = float(close.iloc[-1])
+        history_price = float(close.iloc[-1])
+        kis_price = kis_prices.get(code)
+        use_kis = bool(kis_price and history_price > 0 and .70 <= kis_price / history_price <= 1.30)
+        p = float(kis_price) if use_kis else history_price
         ma20 = float(close.tail(20).mean())
         ma60 = float(close.tail(60).mean())
         high20 = float(close.tail(20).max())
@@ -411,6 +443,7 @@ def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
         rows.append({
             "_종목코드": code,
             "_시장": r["시장"],
+            "_시세출처": "KIS" if use_kis else "KRX/Yahoo",
             "종목명": r["종목명"],
             "현재가": round(p),
             "종합점수": round(score, 1),
@@ -491,7 +524,17 @@ def apply_relative(rows, regime):
 def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEEP_CANDIDATE_COUNT):
     """Shared market/TOP12 analysis used by both update buttons."""
     flow_map, flow_auto_ok, flow_msg = get_auto_flow()
-    screen = build_market_screen(universe, flow_map, progress)
+    krx_history, krx_date = get_krx_batch_history()
+    screen = build_first_pass_screen(
+        krx_history, universe, flow_map, MIN_PRICE, MIN_AVG_VALUE
+    )
+    if not screen.empty:
+        screen_source = f"KRX 시장별 일괄수집 · {krx_date}"
+        if progress is not None:
+            progress.progress(1.0)
+    else:
+        screen = build_market_screen(universe, flow_map, progress)
+        screen_source = "Yahoo 일괄수집 fallback"
     if screen.empty:
         raise RuntimeError("가격/유동성 조건을 통과한 종목이 없습니다.")
     if not flow_auto_ok:
@@ -509,6 +552,8 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
     st.session_state.update({
         "eligible_count": len(screen),
         "candidate_count": min(max(int(candidate_count), FINAL_TOP_N * 4), len(screen)),
+        "screen_source": screen_source,
+        "kis_candidate_count": sum(r.get("_시세출처") == "KIS" for r in rows),
         "flow_auto_ok": flow_auto_ok,
         "flow_msg": flow_msg,
         "analysis_at": datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST"),
@@ -534,7 +579,11 @@ def run_full_update(status):
 
     status.write("⏳ ② 전체시장 분석 중...")
     rows, regime, _, _ = run_market_analysis(universe, uni_source)
-    status.write(f"✅ ② 전체시장 분석 완료 · 적격 {st.session_state['eligible_count']:,}개")
+    status.write(
+        f"✅ ② 전체시장 분석 완료 · {st.session_state['screen_source']} → "
+        f"후보 {st.session_state['candidate_count']:,}개 → "
+        f"KIS 정밀시세 {st.session_state['kis_candidate_count']:,}개"
+    )
     status.write(f"✅ ③ TOP12 선정 완료 · {min(FINAL_TOP_N, len(rows))}개")
 
     status.write("⏳ ④ 부의 점프 계산 중...")
@@ -586,7 +635,10 @@ def run_fast_update(status):
 
     status.write("⏳ ② 전체시장 후보 갱신 중...")
     rows, regime, _, _ = run_market_analysis(universe, source, candidate_count=60)
-    status.write(f"✅ ② 후보 분석 완료 · {len(rows)}개")
+    status.write(
+        f"✅ ② 후보 분석 완료 · {st.session_state['screen_source']} → "
+        f"KIS 정밀시세 {st.session_state['kis_candidate_count']:,}개"
+    )
     status.write(f"✅ ③ TOP12 갱신 완료 · {min(FINAL_TOP_N, len(rows))}개")
 
     status.write("⏳ ④ 부의 점프 갱신 중...")
