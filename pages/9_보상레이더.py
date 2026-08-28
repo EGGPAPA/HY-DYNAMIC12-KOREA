@@ -8,9 +8,33 @@ from compensation_radar import (
     dedupe_news,
     github_load_csv,
     github_save_csv,
-    load_gpkg_attributes,
+    gpkg_fingerprint,
+    list_gpkg_layers,
     match_news_to_auctions,
+    prepare_map_features,
+    read_gpkg_layer,
+    uploaded_bytes,
 )
+
+
+@st.cache_data(show_spinner=False, max_entries=4)
+def cached_layer_list(raw: bytes):
+    return list_gpkg_layers(raw)
+
+
+@st.cache_data(show_spinner=False, max_entries=3)
+def cached_layer_read(raw: bytes, layer: str, row_limit: int | None):
+    return read_gpkg_layer(raw, layer, row_limit)
+
+
+def first_existing(columns, candidates):
+    normalized = {str(c).lower(): c for c in columns}
+    for candidate in candidates:
+        if candidate in columns:
+            return candidate
+        if candidate.lower() in normalized:
+            return normalized[candidate.lower()]
+    return None
 
 st.set_page_config(page_title="HY 보상레이더", page_icon="📡", layout="wide")
 st.title("📡 HY 보상레이더")
@@ -82,17 +106,130 @@ with right:
 
 st.divider()
 st.subheader("2. 이번 주 신규 경공매와 대조")
-upload = st.file_uploader("이번 주 GPKG 업로드", type=["gpkg"], help="QGIS용 신규 경공매 GPKG를 그대로 올리면 됩니다.")
+st.caption("GPKG의 레이어와 폴리곤을 먼저 확인한 뒤, 같은 자료를 KEEP 뉴스와 대조합니다.")
+upload = st.file_uploader(
+    "이번 주 GPKG 업로드",
+    type=["gpkg"],
+    help="여러 레이어가 들어 있어도 업로드 후 원하는 레이어를 선택할 수 있습니다.",
+)
 if upload is not None:
     try:
-        auctions = load_gpkg_attributes(upload)
-        c1, c2, c3 = st.columns(3)
-        c1.metric("신규 경공매", f"{len(auctions):,}건")
-        c2.metric("PNU 보유", f"{auctions['pnu'].notna().sum():,}건" if "pnu" in auctions.columns else "-")
-        c3.metric("최저가율 70% 이하", f"{(pd.to_numeric(auctions['최저가율'], errors='coerce') <= 70).sum():,}건" if "최저가율" in auctions.columns else "-")
+        raw = uploaded_bytes(upload)
+        file_key = gpkg_fingerprint(raw)[:12]
+        layers = cached_layer_list(raw)
+        layer_by_name = {item.name: item for item in layers}
+
+        select_col, limit_col = st.columns([2, 1])
+        with select_col:
+            selected_layer = st.selectbox(
+                "표시할 레이어",
+                list(layer_by_name),
+                format_func=lambda name: (
+                    f"{name} · {layer_by_name[name].geometry_type} · "
+                    f"{layer_by_name[name].feature_count:,}건"
+                ),
+                key=f"gpkg_layer_{file_key}",
+            )
+        with limit_col:
+            limit_label = st.selectbox(
+                "분석할 행 수",
+                ["전체", "10,000건", "5,000건", "1,000건"],
+                help="매우 큰 파일은 일부 행으로 먼저 시험할 수 있습니다. 뉴스 MATCH도 선택한 행만 대상으로 합니다.",
+                key=f"gpkg_limit_{file_key}",
+            )
+        row_limit = {"전체": None, "10,000건": 10_000, "5,000건": 5_000, "1,000건": 1_000}[limit_label]
+
+        with st.spinner(f"'{selected_layer}' 레이어를 읽고 있습니다..."):
+            auctions = cached_layer_read(raw, selected_layer, row_limit)
+        info = layer_by_name[selected_layer]
+
+        pnu_col = first_existing(auctions.columns, ["pnu", "PNU", "필지고유번호"])
+        rate_col = first_existing(auctions.columns, ["최저가율", "최저가율(%)", "유찰률"])
+        c1, c2, c3, c4 = st.columns(4)
+        c1.metric("선택 레이어 전체", f"{info.feature_count:,}건")
+        c2.metric("현재 분석", f"{len(auctions):,}건")
+        c3.metric("PNU 보유", f"{auctions[pnu_col].notna().sum():,}건" if pnu_col else "-")
+        c4.metric(
+            "최저가율 70% 이하",
+            f"{(pd.to_numeric(auctions[rate_col], errors='coerce') <= 70).sum():,}건" if rate_col else "-",
+        )
+
+        st.markdown("#### 폴리곤 지도")
+        opt1, opt2 = st.columns(2)
+        with opt1:
+            map_sample = st.select_slider(
+                "지도 표시 개수",
+                options=[100, 300, 500, 1000, 2000, 5000],
+                value=1000 if len(auctions) >= 1000 else min([v for v in [100, 300, 500, 1000, 2000, 5000] if v >= len(auctions)], default=100),
+                help="분석 자료는 그대로 두고 지도에 그릴 폴리곤만 고정 방식으로 샘플링합니다.",
+                key=f"map_sample_{file_key}_{selected_layer}",
+            )
+        with opt2:
+            simplify_m = st.slider(
+                "경계 간소화 (m)", 0, 30, 2,
+                help="값이 클수록 지도가 빨라지며 원본 GPKG와 MATCH 데이터는 변경되지 않습니다.",
+                key=f"map_simplify_{file_key}_{selected_layer}",
+            )
+
+        map_gdf = prepare_map_features(auctions, map_sample, simplify_m)
+        if not map_gdf.empty:
+            import folium
+            from streamlit_folium import st_folium
+
+            bounds = map_gdf.total_bounds
+            center = [(bounds[1] + bounds[3]) / 2, (bounds[0] + bounds[2]) / 2]
+            fmap = folium.Map(location=center, zoom_start=11, control_scale=True, tiles="CartoDB positron")
+            key_fields = [
+                first_existing(map_gdf.columns, names)
+                for names in [
+                    ["사건번호", "case_no", "사건"],
+                    ["필지별 주소", "주소", "소재지", "address"],
+                    ["pnu", "PNU", "필지고유번호"],
+                    ["최저가율", "최저가율(%)", "유찰률"],
+                ]
+            ]
+            key_fields = list(dict.fromkeys(field for field in key_fields if field and field != map_gdf.geometry.name))
+            folium.GeoJson(
+                map_gdf,
+                name=selected_layer,
+                style_function=lambda _: {"color": "#e11d48", "weight": 1.5, "fillColor": "#fb7185", "fillOpacity": 0.28},
+                highlight_function=lambda _: {"weight": 3, "fillOpacity": 0.48},
+                tooltip=folium.GeoJsonTooltip(fields=key_fields, aliases=key_fields, sticky=False) if key_fields else None,
+            ).add_to(fmap)
+            fmap.fit_bounds([[bounds[1], bounds[0]], [bounds[3], bounds[2]]])
+            folium.LayerControl().add_to(fmap)
+            st_folium(fmap, use_container_width=True, height=540, returned_objects=[])
+            if len(map_gdf) < len(auctions):
+                st.caption(f"지도 속도를 위해 분석 대상 {len(auctions):,}건 중 {len(map_gdf):,}건을 고정 샘플로 표시했습니다.")
+        else:
+            st.warning("선택한 레이어에 표시 가능한 도형이 없습니다.")
+
+        st.markdown("#### 주요 속성")
+        primary_candidates = [
+            ["사건번호", "case_no", "사건"], ["경매/공매", "구분"],
+            ["필지별 주소", "주소", "소재지", "address"], ["pnu", "PNU", "필지고유번호"],
+            ["최저가율", "최저가율(%)", "유찰률"], ["최저가", "최저매각가격"],
+            ["감평가", "감정평가액"], ["입찰일", "매각기일"],
+        ]
+        table_cols = list(dict.fromkeys(
+            col for names in primary_candidates
+            if (col := first_existing(auctions.columns, names)) is not None
+        ))
+        extra_cols = st.multiselect(
+            "표에 추가할 속성",
+            [c for c in auctions.columns if c != auctions.geometry.name and c not in table_cols],
+            key=f"extra_cols_{file_key}_{selected_layer}",
+        )
+        if not table_cols and not extra_cols:
+            st.info("표준 열 이름을 찾지 못했습니다. 위에서 표시할 속성을 선택하세요.")
+        else:
+            st.dataframe(auctions[table_cols + extra_cols], use_container_width=True, hide_index=True, height=420)
+
         if st.button("⚡ KEEP 뉴스와 자동 MATCH", use_container_width=True):
             with st.spinner("주소·지역명·신호강도·최저가율을 함께 비교하고 있습니다..."):
-                st.session_state.comp_matches = match_news_to_auctions(st.session_state.comp_news, auctions)
+                match_input = pd.DataFrame(auctions.drop(columns=auctions.geometry.name))
+                st.session_state.comp_matches = match_news_to_auctions(st.session_state.comp_news, match_input)
+                st.session_state.comp_match_source = {"file": upload.name, "layer": selected_layer, "rows": len(match_input)}
     except Exception as e:
         st.error(f"GPKG 읽기 실패: {e}")
 

@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import base64
+import hashlib
 import io
+import os
 import re
 import sqlite3
+import tempfile
 import urllib.parse
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass
@@ -46,6 +49,104 @@ class GitHubStoreConfig:
     branch: str = "main"
 
 
+@dataclass(frozen=True)
+class GpkgLayerInfo:
+    name: str
+    feature_count: int
+    geometry_column: str
+    geometry_type: str
+    srs_id: int | None
+
+
+def uploaded_bytes(uploaded_file) -> bytes:
+    """Return upload contents without depending on the current file cursor."""
+    if isinstance(uploaded_file, bytes):
+        return uploaded_file
+    if hasattr(uploaded_file, "getvalue"):
+        return uploaded_file.getvalue()
+    return uploaded_file.read()
+
+
+def gpkg_fingerprint(raw: bytes) -> str:
+    return hashlib.sha256(raw).hexdigest()
+
+
+def _memory_gpkg(raw: bytes) -> sqlite3.Connection:
+    con = sqlite3.connect(":memory:")
+    try:
+        con.deserialize(raw)
+    except AttributeError as exc:
+        con.close()
+        raise RuntimeError("현재 Python sqlite3가 GPKG 메모리 읽기를 지원하지 않습니다.") from exc
+    return con
+
+
+def _quote_identifier(value: str) -> str:
+    return '"' + str(value).replace('"', '""') + '"'
+
+
+def list_gpkg_layers(raw: bytes) -> list[GpkgLayerInfo]:
+    """Inspect feature layers quickly through GeoPackage metadata."""
+    con = _memory_gpkg(raw)
+    try:
+        rows = con.execute(
+            """
+            SELECT c.table_name, g.column_name, g.geometry_type_name, g.srs_id
+            FROM gpkg_contents c
+            JOIN gpkg_geometry_columns g ON g.table_name = c.table_name
+            WHERE c.data_type = 'features'
+            ORDER BY c.table_name
+            """
+        ).fetchall()
+        layers = []
+        for name, geom_col, geom_type, srs_id in rows:
+            count = con.execute(f"SELECT COUNT(*) FROM {_quote_identifier(name)}").fetchone()[0]
+            layers.append(GpkgLayerInfo(str(name), int(count), str(geom_col), str(geom_type), srs_id))
+        if not layers:
+            raise ValueError("GPKG에서 feature 레이어를 찾지 못했습니다.")
+        return layers
+    finally:
+        con.close()
+
+
+def read_gpkg_layer(raw: bytes, layer: str, row_limit: int | None = None):
+    """Read one selected layer as a GeoDataFrame using the fast pyogrio engine."""
+    try:
+        import geopandas as gpd
+    except ImportError as exc:
+        raise RuntimeError("지도 읽기 라이브러리가 설치되지 않았습니다. requirements.txt를 다시 설치해 주세요.") from exc
+
+    temp_path = ""
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".gpkg", delete=False) as tmp:
+            tmp.write(raw)
+            temp_path = tmp.name
+        kwargs = {"layer": layer, "engine": "pyogrio", "use_arrow": True}
+        if row_limit and row_limit > 0:
+            kwargs["rows"] = slice(0, int(row_limit))
+        gdf = gpd.read_file(temp_path, **kwargs)
+        if gdf.crs is None:
+            raise ValueError("선택한 레이어에 좌표계(CRS)가 없습니다. QGIS에서 좌표계를 지정한 뒤 다시 저장해 주세요.")
+        return gdf
+    finally:
+        if temp_path and os.path.exists(temp_path):
+            os.unlink(temp_path)
+
+
+def prepare_map_features(gdf, sample_size: int = 1000, simplify_meters: float = 2.0):
+    """Create a lightweight WGS84 copy for display; original rows remain untouched."""
+    if gdf is None or gdf.empty:
+        return gdf
+    display = gdf.loc[gdf.geometry.notna() & ~gdf.geometry.is_empty].copy()
+    if len(display) > sample_size:
+        display = display.sample(n=sample_size, random_state=42).sort_index()
+    display = display.to_crs(epsg=4326)
+    if simplify_meters > 0:
+        tolerance = float(simplify_meters) / 111_320.0
+        display.geometry = display.geometry.simplify(tolerance, preserve_topology=True)
+    return display
+
+
 def signal_score(text: str) -> tuple[int, list[str], str]:
     text = str(text or "")
     strong = [k for k in STRONG_SIGNALS if k in text]
@@ -74,23 +175,23 @@ def extract_region_tokens(address: str) -> list[str]:
     return out
 
 
-def load_gpkg_attributes(uploaded_file) -> pd.DataFrame:
-    raw = uploaded_file.getvalue() if hasattr(uploaded_file, "getvalue") else uploaded_file.read()
-    con = sqlite3.connect(":memory:")
+def load_gpkg_attributes(uploaded_file, layer: str | None = None, row_limit: int | None = None) -> pd.DataFrame:
+    """Compatibility helper for attribute-only matching."""
+    raw = uploaded_bytes(uploaded_file)
+    con = _memory_gpkg(raw)
     try:
-        try:
-            con.deserialize(raw)
-        except AttributeError as exc:
-            raise RuntimeError("현재 Python sqlite3가 GPKG 메모리 읽기를 지원하지 않습니다.") from exc
         contents = pd.read_sql_query("SELECT table_name, data_type FROM gpkg_contents", con)
         feature_tables = contents.loc[contents["data_type"] == "features", "table_name"].tolist()
         if not feature_tables:
             raise ValueError("GPKG에서 feature 레이어를 찾지 못했습니다.")
-        table = feature_tables[0]
+        table = layer or feature_tables[0]
+        if table not in feature_tables:
+            raise ValueError(f"GPKG에서 '{table}' 레이어를 찾지 못했습니다.")
         cols = pd.read_sql_query(f'PRAGMA table_info("{table}")', con)["name"].tolist()
         keep = [c for c in cols if c.lower() not in {"geom", "geometry"}]
         quoted = ",".join([f'"{c}"' for c in keep])
-        return pd.read_sql_query(f'SELECT {quoted} FROM "{table}"', con)
+        limit_sql = f" LIMIT {int(row_limit)}" if row_limit and row_limit > 0 else ""
+        return pd.read_sql_query(f'SELECT {quoted} FROM {_quote_identifier(table)}{limit_sql}', con)
     finally:
         con.close()
 
@@ -174,9 +275,27 @@ def dedupe_news(df: pd.DataFrame) -> pd.DataFrame:
 def match_news_to_auctions(news: pd.DataFrame, auctions: pd.DataFrame) -> pd.DataFrame:
     if news is None or news.empty or auctions is None or auctions.empty:
         return pd.DataFrame()
-    addr_col = next((c for c in ["필지별 주소", "주소", "소재지"] if c in auctions.columns), None)
+
+    normalized_cols = {str(c).lower(): c for c in auctions.columns}
+
+    def find_col(*candidates: str):
+        for candidate in candidates:
+            if candidate in auctions.columns:
+                return candidate
+            if candidate.lower() in normalized_cols:
+                return normalized_cols[candidate.lower()]
+        return None
+
+    addr_col = find_col("필지별 주소", "주소", "소재지", "address")
     if not addr_col:
         raise ValueError("경공매 자료에서 주소 열을 찾지 못했습니다.")
+    case_col = find_col("사건번호", "case_no", "사건")
+    kind_col = find_col("경매/공매", "구분")
+    pnu_col = find_col("pnu", "필지고유번호")
+    rate_col = find_col("최저가율", "최저가율(%)", "유찰률")
+    min_price_col = find_col("최저가", "최저매각가격")
+    appraisal_col = find_col("감평가", "감정평가액")
+    bid_date_col = find_col("입찰일", "매각기일")
 
     news_rows = []
     summary = news["summary"].fillna("") if "summary" in news.columns else pd.Series("", index=news.index)
@@ -201,7 +320,7 @@ def match_news_to_auctions(news: pd.DataFrame, auctions: pd.DataFrame) -> pd.Dat
             specificity = 20 if specific and any(t in news_texts.loc[ni] for t in specific) else 8
             auction_discount = 0
             try:
-                rate = float(a.get("최저가율", 100))
+                rate = float(a.get(rate_col, 100)) if rate_col else 100
                 auction_discount = max(0, min(15, (80 - rate) * 0.5)) if rate < 80 else 0
             except Exception:
                 pass
@@ -210,14 +329,14 @@ def match_news_to_auctions(news: pd.DataFrame, auctions: pd.DataFrame) -> pd.Dat
             news_rows.append({
                 "등급": grade,
                 "매칭점수": round(score, 1),
-                "사건번호": a.get("사건번호", ""),
-                "경매/공매": a.get("경매/공매", ""),
+                "사건번호": a.get(case_col, "") if case_col else "",
+                "경매/공매": a.get(kind_col, "") if kind_col else "",
                 "주소": address,
-                "pnu": a.get("pnu", ""),
-                "최저가율": a.get("최저가율", ""),
-                "최저가": a.get("최저가", ""),
-                "감평가": a.get("감평가", ""),
-                "입찰일": a.get("입찰일", ""),
+                "pnu": a.get(pnu_col, "") if pnu_col else "",
+                "최저가율": a.get(rate_col, "") if rate_col else "",
+                "최저가": a.get(min_price_col, "") if min_price_col else "",
+                "감평가": a.get(appraisal_col, "") if appraisal_col else "",
+                "입찰일": a.get(bid_date_col, "") if bid_date_col else "",
                 "신호단계": n.get("signal_level", ""),
                 "신호": n.get("signals", ""),
                 "뉴스제목": n.get("title", ""),
