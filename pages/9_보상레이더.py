@@ -355,10 +355,17 @@ if parcel_upload is not None:
                 value=min(100, max(1, len(parcel_pnus))), step=10, key="auction_polygon_max",
                 help="대용량 자료는 먼저 100필지로 확인한 뒤 범위를 늘리세요.",
             ) if parcel_pnus else 0
-        parcel_vworld_key = parcel_saved_key or st.text_input(
-            "VWorld API 인증키", type="password", key="auction_polygon_vworld_key",
-            help="공식 연속지적도에서 PNU별 필지경계를 가져오는 데 필요하며 결과 파일에는 저장하지 않습니다.",
-        )
+        key_col, domain_col = st.columns(2)
+        with key_col:
+            parcel_vworld_key = parcel_saved_key or st.text_input(
+                "VWorld API 인증키", type="password", key="auction_polygon_vworld_key",
+                help="공식 연속지적도에서 PNU별 필지경계를 가져오는 데 필요하며 결과 파일에는 저장하지 않습니다.",
+            )
+        with domain_col:
+            parcel_domain = st.text_input(
+                "VWorld 키에 등록한 도메인", value=parcel_domain, key="auction_polygon_vworld_domain",
+                help="VWorld 인증키 발급 시 등록한 Streamlit 주소와 정확히 같아야 합니다.",
+            )
         if not parcel_pnus:
             st.warning("업로드 파일에서 유효한 19자리 PNU를 찾지 못했습니다.")
         elif st.button("🗺️ 업로드한 경공매 PNU로 폴리곤 생성", use_container_width=True, type="primary"):
