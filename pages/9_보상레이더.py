@@ -317,6 +317,97 @@ if upload is not None:
     except Exception as e:
         st.error(f"GPKG 읽기 실패: {e}")
 
+st.markdown("#### 경공매 Excel·CSV PNU 폴리곤 생성")
+parcel_upload = st.file_uploader(
+    "경공매 Excel·CSV 업로드",
+    type=["xlsx", "xls", "csv"],
+    help="PNU가 들어 있는 경공매 자료를 올리면 공식 연속지적도 경계를 조회해 지도와 GPKG로 만듭니다.",
+    key="auction_parcel_polygon_upload",
+)
+if parcel_upload is not None:
+    try:
+        parcel_auctions = cached_auction_workbook(uploaded_bytes(parcel_upload), parcel_upload.name)
+        parcel_pnus = parcel_auctions.get("pnu", pd.Series(dtype=str)).fillna("").astype(str)
+        parcel_pnus = [pnu for pnu in dict.fromkeys(parcel_pnus) if len(pnu) == 19]
+        event_count = parcel_auctions["사건번호"].astype(str).nunique() if "사건번호" in parcel_auctions.columns else len(parcel_auctions)
+        pc1, pc2, pc3 = st.columns(3)
+        pc1.metric("사건", f"{event_count:,}건")
+        pc2.metric("필지", f"{len(parcel_auctions):,}건")
+        pc3.metric("폴리곤 가능 PNU", f"{len(parcel_pnus):,}건")
+        preview_cols = [c for c in ["사건번호", "경매/공매", "주소", "pnu", "지목", "최저가율", "위도", "경도", "링크"] if c in parcel_auctions.columns]
+        st.dataframe(
+            parcel_auctions[preview_cols].head(1000), use_container_width=True, hide_index=True, height=330,
+            column_config={"링크": st.column_config.LinkColumn("원문")},
+        )
+
+        try:
+            parcel_vworld = st.secrets.get("vworld", {})
+        except Exception:
+            parcel_vworld = {}
+        parcel_saved_key = str(parcel_vworld.get("key", "")) if parcel_vworld else ""
+        parcel_domain = str(parcel_vworld.get("domain", "https://hy-dynamic12-korea.streamlit.app")) if parcel_vworld else "https://hy-dynamic12-korea.streamlit.app"
+        parcel_opt1, parcel_opt2 = st.columns(2)
+        with parcel_opt1:
+            parcel_project_name = st.text_input("폴리곤 묶음 이름", value=Path(parcel_upload.name).stem, key="auction_polygon_name")
+        with parcel_opt2:
+            parcel_max = st.number_input(
+                "이번에 생성할 최대 필지 수", min_value=1, max_value=max(1, len(parcel_pnus)),
+                value=min(100, max(1, len(parcel_pnus))), step=10, key="auction_polygon_max",
+                help="대용량 자료는 먼저 100필지로 확인한 뒤 범위를 늘리세요.",
+            ) if parcel_pnus else 0
+        parcel_vworld_key = parcel_saved_key or st.text_input(
+            "VWorld API 인증키", type="password", key="auction_polygon_vworld_key",
+            help="공식 연속지적도에서 PNU별 필지경계를 가져오는 데 필요하며 결과 파일에는 저장하지 않습니다.",
+        )
+        if not parcel_pnus:
+            st.warning("업로드 파일에서 유효한 19자리 PNU를 찾지 못했습니다.")
+        elif st.button("🗺️ 업로드한 경공매 PNU로 폴리곤 생성", use_container_width=True, type="primary"):
+            try:
+                with st.spinner(f"공식 지적경계 {min(int(parcel_max), len(parcel_pnus)):,}필지를 조회하고 있습니다..."):
+                    parcel_collection, parcel_failures = build_project_parcel_geojson(
+                        parcel_pnus[: int(parcel_max)], parcel_vworld_key, parcel_domain, parcel_project_name,
+                    )
+                    st.session_state.auction_parcel_geojson = parcel_collection
+                    st.session_state.auction_parcel_failures = parcel_failures
+                    st.session_state.auction_parcel_gpkg = geojson_to_gpkg_bytes(parcel_collection, "auction_parcels")
+                    st.session_state.auction_parcel_source = parcel_upload.name
+            except Exception as polygon_error:
+                st.error(f"경공매 폴리곤 생성 실패: {polygon_error}")
+
+        parcel_geojson = st.session_state.get("auction_parcel_geojson")
+        if (st.session_state.get("auction_parcel_source") == parcel_upload.name
+                and isinstance(parcel_geojson, dict) and parcel_geojson.get("features")):
+            import folium
+            from streamlit_folium import st_folium
+
+            parcel_failures = st.session_state.get("auction_parcel_failures", [])
+            st.success(f"폴리곤 생성 완료 · {len(parcel_geojson['features']):,}필지 · 조회 실패 {len(parcel_failures):,}필지")
+            parcel_map = folium.Map(tiles="CartoDB positron", control_scale=True)
+            parcel_layer = folium.GeoJson(
+                parcel_geojson,
+                style_function=lambda _: {"color": "#2563eb", "weight": 1.3, "fillColor": "#60a5fa", "fillOpacity": 0.32},
+                highlight_function=lambda _: {"weight": 3, "fillOpacity": 0.5},
+                tooltip=folium.GeoJsonTooltip(fields=["PNU", "사업명"], aliases=["PNU", "자료명"]),
+            ).add_to(parcel_map)
+            parcel_map.fit_bounds(parcel_layer.get_bounds())
+            st_folium(parcel_map, use_container_width=True, height=540, returned_objects=[])
+            parcel_safe_name = "".join(c if c.isalnum() or c in "-_" else "_" for c in parcel_project_name).strip("_") or "경공매_필지"
+            pd1, pd2 = st.columns(2)
+            pd1.download_button(
+                "GeoJSON 저장", json.dumps(parcel_geojson, ensure_ascii=False).encode("utf-8"),
+                file_name=f"{parcel_safe_name}.geojson", mime="application/geo+json", use_container_width=True,
+            )
+            pd2.download_button(
+                "GPKG 저장", st.session_state.get("auction_parcel_gpkg", b""),
+                file_name=f"{parcel_safe_name}.gpkg", mime="application/geopackage+sqlite3", use_container_width=True,
+            )
+            st.caption("이 지도는 경공매 PNU의 개별 지적경계입니다. 도로사업 전체 경계는 세목조서 PNU 또는 지형도면이 추가로 필요합니다.")
+            if parcel_failures:
+                with st.expander(f"조회 실패 PNU {len(parcel_failures):,}건"):
+                    st.dataframe(pd.DataFrame(parcel_failures), use_container_width=True, hide_index=True)
+    except Exception as error:
+        st.error(f"경공매 Excel·CSV 읽기 실패: {error}")
+
 matches = st.session_state.get("comp_matches", pd.DataFrame())
 if isinstance(matches, pd.DataFrame) and not matches.empty:
     s = (matches["등급"] == "S").sum()
