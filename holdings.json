@@ -77,9 +77,9 @@
     "ticker": "196170",
     "name": "알테오젠",
     "market": "KOSDAQ",
-    "status": "holding",
+    "status": "closed",
     "average_price": 304250.0,
-    "quantity": 10.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 304250.0,
@@ -88,9 +88,19 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-08-26T00:58:28.797119+00:00"
+    "sales": [
+      {
+        "price": 295500.0,
+        "quantity": 10.0,
+        "average_cost": 304250.0,
+        "realized_pnl": -87500.0,
+        "realized_return_pct": -2.8759244042728005,
+        "executed_at": "2026-08-31T01:31:24.969749+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-08-31T01:31:24.969749+00:00",
+    "closed_at": "2026-08-31T01:31:24.969749+00:00"
   },
   {
     "ticker": "086790",
