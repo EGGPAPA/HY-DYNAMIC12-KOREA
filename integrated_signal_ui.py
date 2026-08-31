@@ -3,6 +3,8 @@ import pandas as pd
 import streamlit as st
 import yfinance as yf
 
+from korea_live_price import get_live_price
+
 
 def _clip(x, lo=0.0, hi=100.0):
     try: return max(lo, min(hi, float(x)))
@@ -54,7 +56,7 @@ def build_integrated_rows(rows,jump_rows,regime="중립장"):
         else:action,entry="🔴 제외","매수하지 않음"
         if hot and total>=70:action,entry="🟡 과열·눌림대기","추격매수 금지"
         match="🔥 3/3" if hits==3 else ("🟢 2/3" if hits==2 else ("🟡 1/3" if hits==1 else "⚪ 0/3"))
-        out.append({"종목":row.get("종목명"),"현재가":row.get("현재가"),"통합점수":total,"교차포착":match,"TOP12":"✅" if th else "-","TOP점수":round(top,1),"부의점프":"✅" if wh else ("데이터대기" if cv is None or pd.isna(cv) else "-"),"Conviction":None if cv is None or pd.isna(cv) else round(float(cv),1),"5개월선":ma["label"],"MA5이격":ma["gap"],"과열":row.get("과열"),"최종판정":action,"행동":entry,"1차매수가":row.get("1차 매수가"),"2차매수가":row.get("2차 매수가")})
+        out.append({"_종목코드":code,"_시장":market,"종목":row.get("종목명"),"현재가":row.get("현재가"),"통합점수":total,"교차포착":match,"TOP12":"✅" if th else "-","TOP점수":round(top,1),"부의점프":"✅" if wh else ("데이터대기" if cv is None or pd.isna(cv) else "-"),"Conviction":None if cv is None or pd.isna(cv) else round(float(cv),1),"5개월선":ma["label"],"MA5이격":ma["gap"],"과열":row.get("과열"),"최종판정":action,"행동":entry,"1차매수가":row.get("1차 매수가"),"2차매수가":row.get("2차 매수가")})
     return sorted(out,key=lambda x:x["통합점수"],reverse=True)
 
 
@@ -151,15 +153,30 @@ def _recommend(summary):
     return valid.sort_values("균형점수",ascending=False).iloc[0]
 
 
+@st.fragment(run_every="10s")
+def _render_live_integrated_table(data):
+    show=[]
+    for i,item in enumerate(data[:15],1):
+        row=dict(item)
+        live=get_live_price(row.get("_종목코드"),row.get("_시장","KOSPI"))
+        if live is not None:row["현재가"]=live
+        show.append({
+            "순위":i,"종목":row["종목"],"통합점수":row["통합점수"],"교차포착":row["교차포착"],
+            "TOP12":row["TOP12"],"부의점프":row["부의점프"],"5개월선":row["5개월선"],
+            "MA5이격":row["MA5이격"],"최종판정":row["최종판정"],"행동":row["행동"],
+            "현재가":_won(row["현재가"]),"1차매수가":_won(row["1차매수가"]),"2차매수가":_won(row["2차매수가"]),
+        })
+    st.dataframe(pd.DataFrame(show),use_container_width=True,hide_index=True)
+
+
 def render_integrated_decision(rows,jump_rows,regime="중립장",universe=None):
     st.divider();st.markdown("## 🎯 TOP12 × 부의 점프 × 5개월선 통합 매수판정");st.caption("3개 모두를 필수로 묶지 않고 2/3 동시포착부터 정상 후보로 인정합니다.")
     data=build_integrated_rows(rows,jump_rows,regime)
     if not data:st.info("통합할 후보 데이터가 없습니다.");return
     buy=[x for x in data if x["최종판정"].startswith("🟢")];a,b,c,d=st.columns(4);a.metric("🟢 매수후보",len(buy));b.metric("🔥 3/3",sum(x["교차포착"].startswith("🔥") for x in data));c.metric("🟢 2/3",sum(x["교차포착"].startswith("🟢") for x in data));d.metric("시장환경",regime)
     if buy:st.success("오늘 우선 검토: "+", ".join(f"{x['종목']} {x['통합점수']:.1f}점" for x in buy[:3]))
-    show=[]
-    for i,x in enumerate(data[:15],1):show.append({"순위":i,"종목":x["종목"],"통합점수":x["통합점수"],"교차포착":x["교차포착"],"TOP12":x["TOP12"],"부의점프":x["부의점프"],"5개월선":x["5개월선"],"MA5이격":x["MA5이격"],"최종판정":x["최종판정"],"행동":x["행동"],"현재가":_won(x["현재가"]),"1차매수가":_won(x["1차매수가"]),"2차매수가":_won(x["2차매수가"])})
-    st.dataframe(pd.DataFrame(show),use_container_width=True,hide_index=True);st.info("80점↑ 적극매수 후보 · 70~79점 1차 분할매수 · 60~69점 눌림/관찰 · 60점 미만 제외")
+    _render_live_integrated_table(data)
+    st.info("80점↑ 적극매수 후보 · 70~79점 1차 분할매수 · 60~69점 눌림/관찰 · 60점 미만 제외")
     st.markdown("### 🧪 통합점수 백테스트");st.caption("과거 월봉 가격·거래량만 사용한 탐색형 백테스트입니다. TOP12·부의점프는 프록시이므로 실전 공식과 완전히 동일하지 않습니다.")
     if universe is None or universe.empty:
         universe=pd.DataFrame([{"종목코드":x.get("_종목코드"),"종목명":x.get("종목명"),"시장":x.get("_시장","KOSPI")} for x in rows])
