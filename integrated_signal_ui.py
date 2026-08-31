@@ -4,6 +4,7 @@ import streamlit as st
 import yfinance as yf
 
 from korea_live_price import get_live_price
+from korea_holdings_ui import kakao_ready, send_kakao_message
 
 
 def _clip(x, lo=0.0, hi=100.0):
@@ -153,6 +154,31 @@ def _recommend(summary):
     return valid.sort_values("균형점수",ascending=False).iloc[0]
 
 
+def _alert_integrated_candidates(data):
+    if not kakao_ready():return
+    candidates=[
+        row for row in data
+        if float(row.get("통합점수",0) or 0)>=80 and str(row.get("최종판정","")).startswith("🟢")
+    ]
+    if not candidates:return
+    today=datetime.now().strftime("%Y-%m-%d")
+    state_key=f"integrated_buy_alerts_{today}"
+    sent=set(st.session_state.get(state_key,[]))
+    fresh=[row for row in candidates if row.get("_종목코드") not in sent][:3]
+    if not fresh:return
+    lines=["🚨 통합 적극매수 후보 신규 도달",""]
+    for row in fresh:
+        lines.append(f"{row['종목']} · {row['통합점수']:.1f}점 · {row['교차포착']}")
+    lines.extend(["","※ TOP12·부의 점프·5개월선 통합 참고 신호"])
+    try:
+        send_kakao_message("\n".join(lines))
+        sent.update(row.get("_종목코드") for row in fresh)
+        st.session_state[state_key]=sorted(sent)
+        st.session_state.pop("integrated_buy_alert_error",None)
+    except Exception as exc:
+        st.session_state["integrated_buy_alert_error"]=str(exc)
+
+
 @st.fragment(run_every="10s")
 def _render_live_integrated_table(data):
     show=[]
@@ -173,6 +199,7 @@ def render_integrated_decision(rows,jump_rows,regime="중립장",universe=None):
     st.divider();st.markdown("## 🎯 TOP12 × 부의 점프 × 5개월선 통합 매수판정");st.caption("3개 모두를 필수로 묶지 않고 2/3 동시포착부터 정상 후보로 인정합니다.")
     data=build_integrated_rows(rows,jump_rows,regime)
     if not data:st.info("통합할 후보 데이터가 없습니다.");return
+    _alert_integrated_candidates(data)
     buy=[x for x in data if x["최종판정"].startswith("🟢")];a,b,c,d=st.columns(4);a.metric("🟢 매수후보",len(buy));b.metric("🔥 3/3",sum(x["교차포착"].startswith("🔥") for x in data));c.metric("🟢 2/3",sum(x["교차포착"].startswith("🟢") for x in data));d.metric("시장환경",regime)
     if buy:st.success("오늘 우선 검토: "+", ".join(f"{x['종목']} {x['통합점수']:.1f}점" for x in buy[:3]))
     _render_live_integrated_table(data)
