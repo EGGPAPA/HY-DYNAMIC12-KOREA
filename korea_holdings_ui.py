@@ -31,6 +31,41 @@ def secret_value(name,default=""):
     except Exception:pass
     return os.getenv(name,default).strip()
 def github_pat():return secret_value("GITHUB_PAT")
+def secret_float(name,default):
+    try:return float(secret_value(name,str(default)))
+    except:return float(default)
+def trade_costs(side,amount,market):
+    fee_rate=secret_float("KR_BUY_FEE_RATE_PCT",0.015) if side=="buy" else secret_float("KR_SELL_FEE_RATE_PCT",0.015)
+    tax_rate=0.0 if side=="buy" else secret_float("KR_SELL_TAX_RATE_PCT",0.15)
+    return round(float(amount)*fee_rate/100),round(float(amount)*tax_rate/100)
+def trade_journal_rows(rows):
+    journal=[]
+    for row in rows:
+        code=str(row.get("ticker","")).zfill(6);name=row.get("name") or code;market=row.get("market","KOSPI")
+        for trade in normalized_purchases(row):
+            price=float(trade.get("price",0) or 0);quantity=float(trade.get("quantity",0) or 0);amount=price*quantity
+            fee=float(trade.get("fee",trade_costs("buy",amount,market)[0]) or 0)
+            journal.append({"거래일":str(trade.get("executed_at",""))[:10],"종목":name,"종목코드":code,"구분":"매수","체결가격":won(price),"수량":compact_quantity(quantity),"거래금액":won(amount),"매매사유":trade.get("reason") or trade.get("source") or "매수","메모":trade.get("memo") or "","순실현손익":"-","순수익률":"-","_일시":str(trade.get("executed_at","")),"_비용":fee})
+        for sale in row.get("sales",[]) or []:
+            price=float(sale.get("price",0) or 0);quantity=float(sale.get("quantity",0) or 0);average=float(sale.get("average_cost",row.get("average_price",0)) or 0);amount=price*quantity
+            fee_default,tax_default=trade_costs("sell",amount,market);fee=float(sale.get("fee",fee_default) or 0);tax=float(sale.get("tax",tax_default) or 0)
+            buy_fee=float(sale.get("buy_fee",trade_costs("buy",average*quantity,market)[0]) or 0)
+            net=float(sale.get("net_realized_pnl",(price-average)*quantity-fee-tax-buy_fee))
+            invested=average*quantity+buy_fee;net_rate=net/invested*100 if invested else 0
+            journal.append({"거래일":str(sale.get("executed_at",""))[:10],"종목":name,"종목코드":code,"구분":"매도","체결가격":won(price),"수량":compact_quantity(quantity),"거래금액":won(amount),"매매사유":sale.get("reason") or "매도","메모":sale.get("memo") or "","순실현손익":won(net),"순수익률":f"{net_rate:+.2f}%","_일시":str(sale.get("executed_at","")),"_순손익":net,"_순수익률":net_rate,"_비용":fee+tax+buy_fee})
+    return sorted(journal,key=lambda item:item.get("_일시",""),reverse=True)
+def render_trade_journal(rows):
+    st.markdown("### 📒 보유종목 매매 거래일지")
+    journal=trade_journal_rows(rows)
+    if not journal:
+        st.info("매수·매도 체결을 등록하면 거래일지가 자동으로 작성됩니다.")
+        return
+    sales=[item for item in journal if item["구분"]=="매도"];net_total=sum(float(item.get("_순손익",0) or 0) for item in sales);wins=sum(float(item.get("_순손익",0) or 0)>0 for item in sales)
+    m1,m2,m3,m4=st.columns(4);m1.metric("누적 순실현손익",won(net_total));m2.metric("완료 매매",f"{len(sales)}건");m3.metric("승률",f"{wins/len(sales)*100:.1f}%" if sales else "-");m4.metric("평균 순수익률",f"{sum(float(x.get('_순수익률',0) or 0) for x in sales)/len(sales):+.2f}%" if sales else "-")
+    visible=pd.DataFrame(journal)[["거래일","종목","종목코드","구분","체결가격","수량","거래금액","매매사유","메모","순실현손익","순수익률"]]
+    styled=visible.style.map(profit_text_color,subset=["순실현손익","순수익률"])
+    st.dataframe(styled,use_container_width=True,hide_index=True)
+    st.download_button("거래일지 CSV 다운로드",visible.to_csv(index=False).encode("utf-8-sig"),"KR_보유종목_거래일지.csv","text/csv",use_container_width=True)
 def kakao_ready():return bool(secret_value("KAKAO_REST_API_KEY") and secret_value("KAKAO_REFRESH_TOKEN"))
 def refresh_kakao_token():
     data={"grant_type":"refresh_token","client_id":secret_value("KAKAO_REST_API_KEY"),"refresh_token":secret_value("KAKAO_REFRESH_TOKEN")}
@@ -260,16 +295,16 @@ def render_holdings_tab():
         st.markdown("### 💸 매도 체결 등록")
         sell_labels=[f"{z[0].get('name')} ({str(z[0].get('ticker','')).zfill(6)})" for z in details]
         with st.form("kr_hold_sell_form"):
-            sell_sel=st.selectbox("매도 종목",sell_labels);sx=details[sell_labels.index(sell_sel)];sr,sq,scost,savg,*_=sx;u,v=st.columns(2);sell_price=u.number_input("실제 체결 매도가(원)",min_value=0.0,step=1000.0);sell_qty=v.number_input("매도 수량",min_value=0.0,max_value=float(sq),step=1.0);sell_ok=st.form_submit_button("💸 매도 등록",type="primary",use_container_width=True)
+            sell_sel=st.selectbox("매도 종목",sell_labels);sx=details[sell_labels.index(sell_sel)];sr,sq,scost,savg,*_=sx;u,v=st.columns(2);sell_price=u.number_input("실제 체결 매도가(원)",min_value=0.0,step=1000.0);sell_qty=v.number_input("매도 수량",min_value=0.0,max_value=float(sq),step=1.0);sell_reason=st.selectbox("매도 사유",["손절","1차 익절","2차 익절","3차 익절","신호 약화","리밸런싱","기타"]);sell_memo=st.text_input("매도 복기 메모",placeholder="판단 근거 또는 다음 거래에 참고할 내용을 입력하세요.");sell_ok=st.form_submit_button("💸 매도 등록",type="primary",use_container_width=True)
         if sell_ok:
             if sell_price<=0 or sell_qty<=0:st.error("매도가와 매도수량을 입력하세요.")
             else:
-                rows,sha=load_holdings();idx,old=find_active(rows,str(sr.get("ticker","")));ps=normalized_purchases(old);oq,ocost,oavg=calc_position(ps);sell_qty=min(float(sell_qty),oq);realized=(float(sell_price)-oavg)*sell_qty;realized_rate=(float(sell_price)/oavg-1)*100 if oavg else 0;now=datetime.now(timezone.utc).isoformat();sales=old.get("sales",[]) if isinstance(old.get("sales",[]),list) else [];sales.append({"price":float(sell_price),"quantity":sell_qty,"average_cost":oavg,"realized_pnl":realized,"realized_return_pct":realized_rate,"executed_at":now});remain=oq-sell_qty;old["sales"]=sales;old["quantity"]=remain;old["updated_at"]=now
+                rows,sha=load_holdings();idx,old=find_active(rows,str(sr.get("ticker","")));ps=normalized_purchases(old);oq,ocost,oavg=calc_position(ps);sell_qty=min(float(sell_qty),oq);realized=(float(sell_price)-oavg)*sell_qty;now=datetime.now(timezone.utc).isoformat();sell_amount=float(sell_price)*sell_qty;fee,tax=trade_costs("sell",sell_amount,old.get("market","KOSPI"));buy_fee=trade_costs("buy",oavg*sell_qty,old.get("market","KOSPI"))[0];net_realized=realized-fee-tax-buy_fee;net_rate=net_realized/(oavg*sell_qty+buy_fee)*100 if oavg else 0;sales=old.get("sales",[]) if isinstance(old.get("sales",[]),list) else [];sales.append({"price":float(sell_price),"quantity":sell_qty,"average_cost":oavg,"realized_pnl":realized,"realized_return_pct":(float(sell_price)/oavg-1)*100 if oavg else 0,"net_realized_pnl":net_realized,"net_realized_return_pct":net_rate,"fee":fee,"tax":tax,"buy_fee":buy_fee,"reason":sell_reason,"memo":sell_memo,"executed_at":now});remain=oq-sell_qty;old["sales"]=sales;old["quantity"]=remain;old["updated_at"]=now
                 if remain<=0:old.update({"quantity":0,"status":"closed","enabled":False,"closed_at":now})
-                rows[idx]=old;save_holdings(rows,sha,f"Register Korea sell {sr.get('ticker')}");st.success(f"매도 등록 완료 · 실현손익 {won(realized)} · 수익률 {realized_rate:+.2f}%" + (" · 전량매도 완료" if remain<=0 else f" · 잔여 {remain:g}주"));st.rerun()
+                rows[idx]=old;save_holdings(rows,sha,f"Register Korea sell {sr.get('ticker')}");st.success(f"매도 등록 완료 · 순실현손익 {won(net_realized)} · 순수익률 {net_rate:+.2f}%" + (" · 전량매도 완료" if remain<=0 else f" · 잔여 {remain:g}주"));st.rerun()
     else:st.info("현재 등록된 보유종목이 없습니다.")
     with st.form("kr_hold_buy_form"):
-        a,b,c=st.columns([1,2,1]);code=a.text_input("종목코드").strip();name=b.text_input("종목명").strip();market=c.selectbox("시장",["KOSPI","KOSDAQ"]);d,e=st.columns(2);price=d.number_input("실제 체결 매수가(원)",min_value=0.0,step=1000.0);qty=e.number_input("매수 수량",min_value=0.0,step=1.0);ok=st.form_submit_button("➕ 보유 등록 / 추가 매수",type="primary",use_container_width=True)
+        a,b,c=st.columns([1,2,1]);code=a.text_input("종목코드").strip();name=b.text_input("종목명").strip();market=c.selectbox("시장",["KOSPI","KOSDAQ"]);d,e=st.columns(2);price=d.number_input("실제 체결 매수가(원)",min_value=0.0,step=1000.0);qty=e.number_input("매수 수량",min_value=0.0,step=1.0);buy_reason=st.selectbox("매수 사유",["통합 적극매수","1차 분할매수","2차 분할매수","눌림목 매수","추가매수","기타"]);buy_memo=st.text_input("매수 메모",placeholder="매수 근거를 간단히 기록하세요.");ok=st.form_submit_button("➕ 보유 등록 / 추가 매수",type="primary",use_container_width=True)
     if ok:
         code="".join(ch for ch in code if ch.isdigit()).zfill(6)
         missing=[]
@@ -280,7 +315,7 @@ def render_holdings_tab():
             st.error("저장되지 않았습니다. " + ", ".join(missing) + "을(를) 확인하세요.")
         else:
             try:
-                rows,sha=load_holdings();idx,old=find_active(rows,code);now=datetime.now(timezone.utc).isoformat();trade={"price":float(price),"quantity":float(qty),"executed_at":now,"source":"추가매수" if old else "신규매수"}
+                rows,sha=load_holdings();idx,old=find_active(rows,code);now=datetime.now(timezone.utc).isoformat();buy_fee=trade_costs("buy",float(price)*float(qty),market)[0];trade={"price":float(price),"quantity":float(qty),"fee":buy_fee,"tax":0,"reason":buy_reason,"memo":buy_memo,"executed_at":now,"source":"추가매수" if old else "신규매수"}
                 if old is None:
                     ps=[trade];nq,_,na=calc_position(ps);rows.append({"ticker":code,"name":name or code,"market":market,"status":"holding","average_price":na,"quantity":nq,"purchases":ps,"sales":[],"enabled":True,"updated_at":now})
                 else:
@@ -290,13 +325,7 @@ def render_holdings_tab():
                 st.rerun()
             except Exception as e:
                 st.error(f"보유종목 저장 실패: {e}")
-    closed=[x for x in rows if str(x.get("status","")).lower()=="closed" or x.get("sales")]
-    if closed:
-        with st.expander("📕 매도완료 / 거래기록"):
-            history=[]
-            for rr in closed:
-                for sale in rr.get("sales",[]) or []:history.append({"종목":rr.get("name"),"종목코드":rr.get("ticker"),"매도가":won(sale.get("price")),"매도수량":sale.get("quantity"),"매도시 평균단가":won(sale.get("average_cost")),"실현손익":won(sale.get("realized_pnl")),"실현수익률":f"{float(sale.get('realized_return_pct',0)):+.2f}%","매도일":str(sale.get("executed_at",''))[:10]})
-            if history:st.dataframe(pd.DataFrame(history),use_container_width=True,hide_index=True)
+    render_trade_journal(rows)
 
 def _load_backtest_universe():
     try:
