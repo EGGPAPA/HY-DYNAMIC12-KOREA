@@ -120,5 +120,24 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-08-26T05:43:56.748592+00:00"
+  },
+  {
+    "ticker": "008930",
+    "name": "한미사이언스",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 44600.0,
+    "quantity": 22.0,
+    "purchases": [
+      {
+        "price": 44600.0,
+        "quantity": 22.0,
+        "executed_at": "2026-08-31T02:56:48.452769+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-08-31T02:56:48.452769+00:00"
   }
 ]
