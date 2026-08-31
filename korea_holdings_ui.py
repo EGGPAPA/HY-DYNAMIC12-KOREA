@@ -43,7 +43,7 @@ def refresh_kakao_token():
     return token
 def send_kakao_message(text):
     token=refresh_kakao_token()
-    template={"object_type":"text","text":text,"link":{"web_url":"https://eggpapa-hy-dynamic12-korea.streamlit.app","mobile_web_url":"https://eggpapa-hy-dynamic12-korea.streamlit.app"},"button_title":"보유종목 확인"}
+    app_url=secret_value("KOREA_APP_URL","https://github.com/EGGPAPA/HY-DYNAMIC12-KOREA")\n    template={"object_type":"text","text":text,"link":{"web_url":app_url,"mobile_web_url":app_url},"button_title":"보유종목 확인"}
     response=requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",headers={"Authorization":f"Bearer {token}"},data={"template_object":json.dumps(template,ensure_ascii=False)},timeout=20)
     if not response.ok:raise RuntimeError(f"카카오 메시지 전송 실패: HTTP {response.status_code}")
 def holding_stop_message(items):
