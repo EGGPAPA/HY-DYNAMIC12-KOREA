@@ -68,9 +68,9 @@
     "ticker": "073240",
     "name": "금호타이어",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 6960.0,
-    "quantity": 400.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 6960.0,
@@ -79,9 +79,26 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-08-25T00:59:00.800685+00:00"
+    "sales": [
+      {
+        "price": 7380.0,
+        "quantity": 400.0,
+        "average_cost": 6960.0,
+        "realized_pnl": 168000.0,
+        "realized_return_pct": 6.034482758620685,
+        "net_realized_pnl": 162711.0,
+        "net_realized_return_pct": 5.8436269267042515,
+        "fee": 443,
+        "tax": 4428,
+        "buy_fee": 418,
+        "reason": "신호 약화",
+        "memo": "",
+        "executed_at": "2026-08-31T05:06:45.049001+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-08-31T05:06:45.049001+00:00",
+    "closed_at": "2026-08-31T05:06:45.049001+00:00"
   },
   {
     "ticker": "196170",
