@@ -205,27 +205,19 @@ def render_holdings_tab():
         profit_cols=[col for col in ("수익금","수익률") if col in view_df.columns]
         styled_view=view_df.style.map(profit_text_color,subset=profit_cols) if profit_cols else view_df
         st.dataframe(styled_view,use_container_width=True,hide_index=True)
-        st.markdown("#### 🔔 보유종목 가격 단계 카카오 알림")
-        alert_col,manual_col=st.columns([1.5,1])
-        auto_price_alert=alert_col.toggle("손절·1차·2차·3차 신규 도달 시 자동알림",value=True,disabled=not kakao_ready(),key="holding_price_kakao_auto")
-        manual_send=manual_col.button("현재 도달 단계 알림 보내기",disabled=not kakao_ready() or not price_alerts,use_container_width=True,key="holding_price_kakao_manual")
-        if not kakao_ready():
-            st.caption("KAKAO_REST_API_KEY와 KAKAO_REFRESH_TOKEN을 설정하면 자동알림을 사용할 수 있습니다.")
-        else:
+        if kakao_ready():
             today=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%Y-%m-%d")
             state_key=f"holding_price_alerts_{today}"
             sent=set(st.session_state.get(state_key,[]))
             fresh=[item for item in price_alerts if item["id"] not in sent]
-            try:
-                if manual_send:
-                    send_kakao_message(holding_price_alert_message(price_alerts));st.success("현재 도달한 손절·익절 단계를 카카오로 보냈습니다.")
-                    sent.update(item["id"] for item in price_alerts);st.session_state[state_key]=sorted(sent)
-                elif auto_price_alert and fresh:
-                    send_kakao_message(holding_price_alert_message(fresh));st.success("새로 도달한 손절·익절 단계를 카카오로 보냈습니다.")
-                    sent.update(item["id"] for item in fresh);st.session_state[state_key]=sorted(sent)
-            except Exception as exc:
-                st.warning(str(exc))
-        st.caption("앱이 열려 있는 동안 10초마다 확인하며 같은 종목·같은 단계의 자동알림은 하루 한 번만 발송합니다.")
+            if fresh:
+                try:
+                    send_kakao_message(holding_price_alert_message(fresh))
+                    sent.update(item["id"] for item in fresh)
+                    st.session_state[state_key]=sorted(sent)
+                    st.session_state.pop("holding_price_alert_error",None)
+                except Exception as exc:
+                    st.session_state["holding_price_alert_error"]=str(exc)
         labels=[f"{x[0].get('name')} ({str(x[0].get('ticker','')).zfill(6)})" for x in details];selected=st.selectbox("🔎 평가할 보유종목",labels);x=details[labels.index(selected)];r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act=x
         st.markdown(f"### 🧠 {r.get('name')} 종합판단");m1,m2,m3,m4=st.columns(4);m1.metric("현재가",won(p));m2.metric("평균매수가",won(avg));m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-");st.info(f"현재 판단: **{state} · {act}**");st.markdown("#### 🎯 실전 가격 가이드");g1,g2,g3,g4=st.columns(4);g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d));st.caption(f"시세 출처: {src} · 선택한 보유종목 기준 자동 평가")
         render_holding_assessment(r,p)
