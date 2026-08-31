@@ -504,6 +504,104 @@ def _render_live_strong_tables(strong):
             else:st.warning(message)
     st.caption("자동알림은 앱이 열려 있는 동안 10초 가격 갱신과 함께 작동하며, 같은 종목은 하루 한 번만 발송합니다.")
 
+@st.fragment(run_every="10s")
+def _render_live_sector_leaders(candidates, sector_leaders, leading_sectors):
+    live = candidates.copy()
+    prices = _live_leader_prices(tuple(live["_시세심볼"].tolist())) if "_시세심볼" in live else {}
+    if prices:
+        live["현재가(원)"] = [
+            round(prices.get(str(symbol), old))
+            for symbol, old in zip(live["_시세심볼"], live["현재가(원)"])
+        ]
+
+    current = pd.to_numeric(live["현재가(원)"], errors="coerce")
+    first = pd.to_numeric(live["1차 관찰가(원)"], errors="coerce")
+    ma20 = pd.to_numeric(live["_20일선"], errors="coerce")
+    invalid = pd.to_numeric(live["추세 무효선(원)"], errors="coerce")
+    gap = (current / ma20 - 1) * 100
+    live["_조건가격"] = (current / first - 1).abs() <= .02
+    live["_조건20일선"] = current >= ma20
+    live["_조건추세"] = current > invalid
+    live["_진입조건충족"] = (
+        live["_조건가격"] & live["_조건20일선"]
+        & live["_조건거래량"] & live["_조건추세"]
+    )
+    live["매수시기"] = np.select(
+        [live["_진입조건충족"], gap >= 12, gap >= 6, (current < ma20) & live["_조건추세"]],
+        ["🚨 1차 분할매수 조건 충족", "⏸️ 과열·추격금지", "🟡 눌림 대기", "🔵 20일선 회복 확인"],
+        default="⚪ 관망",
+    )
+
+    st.markdown("### 주도 업종 · 업종별 최강 종목")
+    st.caption(
+        "현재가는 KIS 국내 시세를 우선해 10초마다 갱신하며, 실패하면 Yahoo 시세로 보완합니다. "
+        "업종 평가는 중기 지표를 유지하고 가격 관련 매수 신호만 최신가로 다시 계산합니다."
+    )
+    summary_rows = []
+    for sector in leading_sectors:
+        group = live[live["업종"] == sector].sort_values(
+            "종합 주도점수", ascending=False
+        ).head(3)
+        if group.empty:
+            continue
+        leader = group.iloc[0]
+        sector_row = sector_leaders[sector_leaders["업종"] == sector].iloc[0]
+        summary_rows.append({
+            "업종": sector,
+            "최강 종목": f"⭐ {leader['종목']}",
+            "현재가(원)": int(leader["현재가(원)"]),
+            "종목 20일(%)": round(float(leader["20일 수익률(%)"]), 1),
+            "최초 포착일": leader.get("최초 포착일", "-"),
+            "주도 지속": f"{int(leader.get('주도 지속(거래일)', 0))}일",
+            "매수 신호": "🟢 1차 검토" if leader["_진입조건충족"] else "⏳ 관찰",
+            "업종 20일(%)": round(float(sector_row["업종 20일(%)"]), 1),
+            "업종 60일(%)": round(float(sector_row["업종 60일(%)"]), 1),
+            "상승종목 비율(%)": round(float(sector_row["상승종목 비율(%)"])),
+            "업종 평가": sector_row["평가"],
+            "2·3위 종목": ", ".join(group.iloc[1:]["종목"].tolist()) or "-",
+            "업종점수": sector_row["업종점수"],
+        })
+    st.dataframe(
+        pd.DataFrame(summary_rows), use_container_width=True, hide_index=True,
+        column_config={
+            "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
+            "업종점수": st.column_config.ProgressColumn(
+                "업종점수", min_value=0, max_value=100, format="%.1f"
+            ),
+        },
+    )
+
+    with st.expander("대표 종목 최종평가 보기 · 점수순 정렬", expanded=True):
+        detail_columns = [
+            "종목", "종합 평가", "종합 주도점수",
+            "현재가(원)", "매수시기", "1차 관찰가(원)", "추세 무효선(원)",
+            "20일 수익률(%)", "60일 수익률(%)", "거래량 배수", "종목 추세",
+        ]
+        detail_view = live[detail_columns].sort_values("종합 주도점수", ascending=False)
+
+        def _score_color(value):
+            score = float(value)
+            if score >= 80:
+                return "color: #ff5b5b; font-weight: 700"
+            if score >= 70:
+                return "color: #ffb84d; font-weight: 700"
+            return "color: #5aa2ff; font-weight: 700"
+
+        styled_detail = detail_view.style.map(
+            _score_color, subset=["종합 주도점수"]
+        )
+        st.dataframe(
+            styled_detail, use_container_width=True, hide_index=True,
+            column_config={
+                "종합 주도점수": st.column_config.NumberColumn("점수", format="%d"),
+                "현재가(원)": st.column_config.NumberColumn("현재가", format="%,d원"),
+                "1차 관찰가(원)": st.column_config.NumberColumn("1차 관찰가", format="%,d원"),
+                "추세 무효선(원)": st.column_config.NumberColumn("무효선", format="%,d원"),
+            },
+        )
+        st.info("종합평가를 먼저 보고 현재가·1차 관찰가·무효선을 확인하세요. 실제 매수는 TOP12 분석과 함께 사용하세요.")
+
+
 def _render_leader_stock_chart(all_candidates):
     st.markdown("### 📈 업종 대표 종목 차트")
     st.caption("종목을 선택하면 최근 1년 종가와 20일·60일 이동평균선, 거래량을 확인할 수 있습니다.")
@@ -1209,73 +1307,7 @@ def render_market_environment(market_is_open=False):
             else:
                 st.info("현재 기준을 모두 충족하는 ‘강한 상승’ 종목은 없습니다. 일반 상승 종목은 아래 상세표에서 확인하세요.")
 
-            st.markdown("### 주도 업종 · 업종별 최강 종목")
-            st.caption("업종 평균 20일·60일 성과, 상승종목 비율과 업종 ETF 흐름을 먼저 평가한 뒤 상위 5개 업종만 표시합니다.")
-            summary_rows = []
-            for sector in leading_sectors:
-                group = candidates[candidates["업종"] == sector].sort_values(
-                    "종합 주도점수", ascending=False
-                ).head(3)
-                if group.empty:
-                    continue
-                leader = group.iloc[0]
-                sector_row = sector_leaders[sector_leaders["업종"] == sector].iloc[0]
-                summary_rows.append({
-                    "업종": sector,
-                    "최강 종목": f"⭐ {leader['종목']}",
-                    "현재가(원)": int(leader["현재가(원)"]),
-                    "종목 20일(%)": round(float(leader["20일 수익률(%)"]), 1),
-                    "최초 포착일": leader.get("최초 포착일", "-"),
-                    "주도 지속": f"{int(leader.get('주도 지속(거래일)', 0))}일",
-                    "매수 신호": "🟢 1차 검토" if leader["_진입조건충족"] else "⏳ 관찰",
-                    "업종 20일(%)": round(float(sector_row["업종 20일(%)"]), 1),
-                    "업종 60일(%)": round(float(sector_row["업종 60일(%)"]), 1),
-                    "상승종목 비율(%)": round(float(sector_row["상승종목 비율(%)"])),
-                    "업종 평가": sector_row["평가"],
-                    "2·3위 종목": ", ".join(group.iloc[1:]["종목"].tolist()) or "-",
-                    "업종점수": sector_row["업종점수"],
-                })
-            st.dataframe(
-                pd.DataFrame(summary_rows), use_container_width=True, hide_index=True,
-                column_config={
-                    "현재가(원)": st.column_config.NumberColumn(format="%,d원"),
-                    "업종점수": st.column_config.ProgressColumn(
-                        "업종점수", min_value=0, max_value=100, format="%.1f"
-                    ),
-                },
-            )
-
-            with st.expander("대표 종목 최종평가 보기 · 점수순 정렬", expanded=True):
-                detail_columns = [
-                    "종목", "종합 평가", "종합 주도점수",
-                    "현재가(원)", "매수시기", "1차 관찰가(원)", "추세 무효선(원)",
-                    "20일 수익률(%)", "60일 수익률(%)", "거래량 배수", "종목 추세",
-                ]
-                detail_view = candidates[detail_columns].sort_values(
-                    "종합 주도점수", ascending=False
-                )
-
-                def _score_color(value):
-                    score = float(value)
-                    if score >= 80:
-                        return "color: #ff5b5b; font-weight: 700"
-                    if score >= 70:
-                        return "color: #ffb84d; font-weight: 700"
-                    return "color: #5aa2ff; font-weight: 700"
-
-                styled_detail = detail_view.style.map(
-                    _score_color, subset=["종합 주도점수"]
-                )
-                st.dataframe(
-                    styled_detail, use_container_width=True, hide_index=True,
-                    column_config={
-                        "종합 주도점수": st.column_config.NumberColumn("점수", format="%d"),
-                        "현재가(원)": st.column_config.NumberColumn("현재가", format="%,d원"),
-                        "1차 관찰가(원)": st.column_config.NumberColumn("1차 관찰가", format="%,d원"),
-                        "추세 무효선(원)": st.column_config.NumberColumn("무효선", format="%,d원"),
-                    },
-                )
-                st.info("종합평가를 먼저 보고 현재가·1차 관찰가·무효선을 확인하세요. 실제 매수는 TOP12 분석과 함께 사용하세요.")
+            _render_live_sector_leaders(candidates, sector_leaders, leading_sectors)
 
             with st.expander("📈 업종 대표 종목 차트 상세 보기", expanded=False):
                 _render_leader_stock_chart(all_candidates)
