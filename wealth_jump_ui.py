@@ -7,6 +7,7 @@ import streamlit as st
 from naver_fallback import get_flow_map as get_naver_flow_map
 from naver_fallback import get_market_cap_ranking as get_naver_cap_ranking
 from integrated_signal_ui import render_integrated_decision
+from korea_live_price import get_live_price
 
 try:
     from pykrx import stock
@@ -239,6 +240,23 @@ def action_decision(r, regime):
     return "⏳ 대기", "0%", "조건 불충분"
 
 
+@st.fragment(run_every="10s")
+def _render_live_action_board(top):
+    action_display=[]
+    for i,item in enumerate(top,1):
+        row=dict(item)
+        live=get_live_price(row.get("_종목코드"),row.get("_시장","KOSPI"))
+        if live is not None:row["현재가"]=live
+        action_display.append({
+            "순위":i,"종목":row.get("종목명"),"실행":row.get("실행"),"진입비중":row.get("권장진입"),
+            "현재가":_won(row.get("현재가")),"1차매수가":_won(row.get("1차 매수가")),
+            "2차매수가":_won(row.get("2차 매수가")),"종합 확신도":_score_text(row.get("Conviction")),
+            "수급":_score_text(row.get("수급점수")),"시총M":_score_text(row.get("시총모멘텀")),
+            "과열":row.get("과열"),"한줄판단":row.get("실행근거"),
+        })
+    st.dataframe(pd.DataFrame(action_display),use_container_width=True,hide_index=True)
+
+
 def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     st.subheader("🚀 HY 부의 점프")
     st.caption("KRX를 우선 사용하고, KRX 호출이 막히면 네이버 금융 읽기 전용 데이터로 자동 보완합니다.")
@@ -286,10 +304,7 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
     render_integrated_decision(rows, jump_rows, regime=regime)
 
     st.markdown("## ⚡ 오늘의 실행판")
-    action_display = []
-    for i, r in enumerate(top, 1):
-        action_display.append({"순위": i, "종목": r.get("종목명"), "실행": r.get("실행"), "진입비중": r.get("권장진입"), "현재가": _won(r.get("현재가")), "1차매수가": _won(r.get("1차 매수가")), "2차매수가": _won(r.get("2차 매수가")), "종합 확신도": _score_text(r.get("Conviction")), "수급": _score_text(r.get("수급점수")), "시총M": _score_text(r.get("시총모멘텀")), "과열": r.get("과열"), "한줄판단": r.get("실행근거")})
-    st.dataframe(pd.DataFrame(action_display), use_container_width=True, hide_index=True)
+    _render_live_action_board(top)
 
     buy_now = [r for r in top if str(r.get("실행", "")).startswith("🚀")]
     if buy_now:
