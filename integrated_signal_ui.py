@@ -40,6 +40,7 @@ def _ma5_live(code,market):
     elif now>mn and slope>0 and gap<=6:score,label=80,"🟢 MA5 위·상승"
     elif now>mn and slope>0:score,label=70,"🟡 상승추세·이격주의"
     elif now>mn:score,label=55,"🟡 MA5 위·기울기약함"
+    elif gap>=-3:score,label=60,"🟡 MA5 -3% 이내 접근"
     else:score,label=25,"🔴 MA5 아래"
     return {"score":score,"hit":score>=60,"label":label,"gap":round(gap,2)}
 
@@ -50,7 +51,7 @@ def _market_score(regime): return 100 if str(regime)=="강세장" else (30 if st
 def build_integrated_rows(rows,jump_rows,regime="중립장"):
     jm={str(r.get("_종목코드","")).zfill(6):r for r in (jump_rows or [])};out=[]
     for rank,row in enumerate(rows or [],1):
-        code=str(row.get("_종목코드","")).zfill(6);market=row.get("_시장","KOSPI");top=_clip(row.get("종합점수",0));th=rank<=12 or top>=72;j=jm.get(code,{});cv=j.get("Conviction");wealth=50 if cv is None or pd.isna(cv) else _clip(cv);wh=cv is not None and not pd.isna(cv) and float(cv)>=72;ma=_ma5_live(code,market);hits=int(th)+int(wh)+int(ma["hit"]);total=top*.35+wealth*.35+float(ma["score"])*.20+_market_score(regime)*.10;hot=str(row.get("과열",""))=="과열";total-=5 if hot else 0;total=round(_clip(total),1)
+        code=str(row.get("_종목코드","")).zfill(6);market=row.get("_시장","KOSPI");top=_clip(row.get("종합점수",0));th=rank<=12 or top>=70;j=jm.get(code,{});cv=j.get("Conviction");wealth=50 if cv is None or pd.isna(cv) else _clip(cv);wh=cv is not None and not pd.isna(cv) and float(cv)>=70;ma=_ma5_live(code,market);hits=int(th)+int(wh)+int(ma["hit"]);total=top*.35+wealth*.35+float(ma["score"])*.20+_market_score(regime)*.10;hot=str(row.get("과열",""))=="과열";total-=5 if hot else 0;total=round(_clip(total),1)
         if total>=80 and hits>=2 and not hot:action,entry="🟢 적극매수 후보","1차 25% 분할"
         elif total>=70 and hits>=2 and not hot:action,entry="🟢 1차 분할매수","1차 15~20%"
         elif total>=60:action,entry="🟡 눌림·관찰","신규매수 대기"
@@ -99,7 +100,7 @@ def _hist_score(c,v,i,ms):
         try:vr=float(v.iloc[i])/float(pv.mean()) if len(pv) and pv.mean()>0 else 1
         except:vr=1
     high=float(c.iloc[i-11:i+1].max());wealth=_clip(50+mom3*1.35+(vr-1)*22+((p/high)-.90)*80);slope=(m5/pm5-1)*100 if pm5 else 0;prev=float(c.iloc[i-1]);bo=prev<=pm5 and p>m5;gap=(p/m5-1)*100
-    ma=100 if bo and slope>0 else (90 if bo else (80 if p>m5 and slope>0 and gap<=6 else (70 if p>m5 and slope>0 else (55 if p>m5 else 25))))
+    ma=100 if bo and slope>0 else (90 if bo else (80 if p>m5 and slope>0 and gap<=6 else (70 if p>m5 and slope>0 else (55 if p>m5 else (60 if gap>=-3 else 25)))))
     hits=int(top>=65)+int(wealth>=65)+int(ma>=60);return round(_clip(top*.35+wealth*.35+ma*.20+ms*.10),2),hits
 
 
@@ -196,14 +197,14 @@ def _render_live_integrated_table(data):
 
 
 def render_integrated_decision(rows,jump_rows,regime="중립장",universe=None):
-    st.divider();st.markdown("## 🎯 TOP12 × 부의 점프 × 5개월선 통합 매수판정");st.caption("3개 모두를 필수로 묶지 않고 2/3 동시포착부터 정상 후보로 인정합니다.")
+    st.divider();st.markdown("## 🎯 TOP12 × 부의 점프 × 5개월선 통합 매수판정");st.caption("2/3 동시포착부터 후보로 인정하며, 5개월선 아래 -3% 이내 접근도 선행 신호로 포함합니다. 과열 종목은 별도로 눌림 대기 처리합니다.")
     data=build_integrated_rows(rows,jump_rows,regime)
     if not data:st.info("통합할 후보 데이터가 없습니다.");return
     _alert_integrated_candidates(data)
     buy=[x for x in data if x["최종판정"].startswith("🟢")];a,b,c,d=st.columns(4);a.metric("🟢 매수후보",len(buy));b.metric("🔥 3/3",sum(x["교차포착"].startswith("🔥") for x in data));c.metric("🟢 2/3",sum(x["교차포착"].startswith("🟢") for x in data));d.metric("시장환경",regime)
     if buy:st.success("오늘 우선 검토: "+", ".join(f"{x['종목']} {x['통합점수']:.1f}점" for x in buy[:3]))
     _render_live_integrated_table(data)
-    st.info("80점↑ 적극매수 후보 · 70~79점 1차 분할매수 · 60~69점 눌림/관찰 · 60점 미만 제외")
+    st.info("완화 기준: TOP·Conviction 70점+ · 5개월선 -3% 이내 접근 인정 · 80점↑ 적극매수 · 70~79점 1차 분할 · 과열은 눌림대기")
     st.markdown("### 🧪 통합점수 백테스트");st.caption("과거 월봉 가격·거래량만 사용한 탐색형 백테스트입니다. TOP12·부의점프는 프록시이므로 실전 공식과 완전히 동일하지 않습니다.")
     if universe is None or universe.empty:
         universe=pd.DataFrame([{"종목코드":x.get("_종목코드"),"종목명":x.get("종목명"),"시장":x.get("_시장","KOSPI")} for x in rows])
