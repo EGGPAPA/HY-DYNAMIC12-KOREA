@@ -31,6 +31,30 @@ def secret_value(name,default=""):
     except Exception:pass
     return os.getenv(name,default).strip()
 def github_pat():return secret_value("GITHUB_PAT")
+def kakao_ready():return bool(secret_value("KAKAO_REST_API_KEY") and secret_value("KAKAO_REFRESH_TOKEN"))
+def refresh_kakao_token():
+    data={"grant_type":"refresh_token","client_id":secret_value("KAKAO_REST_API_KEY"),"refresh_token":secret_value("KAKAO_REFRESH_TOKEN")}
+    client_secret=secret_value("KAKAO_CLIENT_SECRET")
+    if client_secret:data["client_secret"]=client_secret
+    response=requests.post("https://kauth.kakao.com/oauth/token",data=data,timeout=20)
+    if not response.ok:raise RuntimeError(f"카카오 토큰 갱신 실패: HTTP {response.status_code}")
+    token=response.json().get("access_token")
+    if not token:raise RuntimeError("카카오 access_token을 받지 못했습니다.")
+    return token
+def send_kakao_message(text):
+    token=refresh_kakao_token()
+    app_url=secret_value("KOREA_APP_URL","https://github.com/EGGPAPA/HY-DYNAMIC12-KOREA")\n    template={"object_type":"text","text":text,"link":{"web_url":app_url,"mobile_web_url":app_url},"button_title":"보유종목 확인"}
+    response=requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",headers={"Authorization":f"Bearer {token}"},data={"template_object":json.dumps(template,ensure_ascii=False)},timeout=20)
+    if not response.ok:raise RuntimeError(f"카카오 메시지 전송 실패: HTTP {response.status_code}")
+def holding_stop_message(items):
+    lines=["🚨 보유종목 손절선 이탈 알림",""]
+    for item in items:
+        lines.append(f"{item['name']} ({item['code']})")
+        lines.append(f"현재가 {won(item['price'])} / 손절선 {won(item['stop'])} / 평균매수가 {won(item['average'])}")
+        lines.append(f"수익률 {item['return']:+.2f}% · 손절/비중축소 검토")
+        lines.append("")
+    lines.append("※ 자동감시 참고 알림이며 주문은 직접 확인 후 실행하세요.")
+    return "\n".join(lines)
 def headers():
     h={"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","Cache-Control":"no-cache"}
     if github_pat():h["Authorization"]=f"Bearer {github_pat()}"
@@ -173,13 +197,34 @@ def render_holdings_tab():
     c1,c2,c3=st.columns(3);c1.metric("보유종목",len(active));c2.metric("GitHub 저장","준비됨" if github_pat() else "PAT 미설정");c3.metric("시세","KIS 우선" if kis_ready() else "Yahoo")
     details=[]
     if active:
-        view=[]
+        view=[];stop_alerts=[]
         for r in active:
-            ps=normalized_purchases(r);q,cost,avg=calc_position(ps);p,src=get_current_price(str(r.get("ticker","")).zfill(6),r.get("market","KOSPI"));val=p*q if p else None;pnl=val-cost if val is not None else None;ret=pnl/cost*100 if pnl is not None and cost else None;s,a,b,d,state,act=sell_guide(avg,p);details.append((r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act));view.append({"종목코드":r.get("ticker"),"종목명":r.get("name"),"시장":r.get("market"),"평균매수가":won(avg),"수량":compact_quantity(q),"현재가":won(p),"평가금액":won(val),"수익금":won(pnl),"수익률":f"{ret:+.2f}%" if ret is not None else "-","손절(-3%)":won(s),"1차(+15%)":won(a),"2차(+20%)":won(b),"3차(+25%)":won(d),"상태":state,"매도판단":act})
+            ps=normalized_purchases(r);q,cost,avg=calc_position(ps);p,src=get_current_price(str(r.get("ticker","")).zfill(6),r.get("market","KOSPI"));val=p*q if p else None;pnl=val-cost if val is not None else None;ret=pnl/cost*100 if pnl is not None and cost else None;s,a,b,d,state,act=sell_guide(avg,p);details.append((r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act));stop_alerts.append({"code":str(r.get("ticker","")).zfill(6),"name":r.get("name") or str(r.get("ticker","")).zfill(6),"price":p,"stop":s,"average":avg,"return":ret}) if state=="🔴 손절선 이탈" and p is not None else None;view.append({"종목코드":r.get("ticker"),"종목명":r.get("name"),"시장":r.get("market"),"평균매수가":won(avg),"수량":compact_quantity(q),"현재가":won(p),"평가금액":won(val),"수익금":won(pnl),"수익률":f"{ret:+.2f}%" if ret is not None else "-","손절(-3%)":won(s),"1차(+15%)":won(a),"2차(+20%)":won(b),"3차(+25%)":won(d),"상태":state,"매도판단":act})
         view_df=pd.DataFrame(view)
         profit_cols=[col for col in ("수익금","수익률") if col in view_df.columns]
         styled_view=view_df.style.map(profit_text_color,subset=profit_cols) if profit_cols else view_df
         st.dataframe(styled_view,use_container_width=True,hide_index=True)
+        st.markdown("#### 🔔 보유종목 손절 카카오 알림")
+        alert_col,manual_col=st.columns([1.5,1])
+        auto_stop_alert=alert_col.toggle("손절선 신규 이탈 시 자동알림",value=True,disabled=not kakao_ready(),key="holding_stop_kakao_auto")
+        manual_send=manual_col.button("현재 손절 이탈 종목 알림 보내기",disabled=not kakao_ready() or not stop_alerts,use_container_width=True,key="holding_stop_kakao_manual")
+        if not kakao_ready():
+            st.caption("KAKAO_REST_API_KEY와 KAKAO_REFRESH_TOKEN을 설정하면 자동알림을 사용할 수 있습니다.")
+        else:
+            today=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%Y-%m-%d")
+            state_key=f"holding_stop_alerts_{today}"
+            sent=set(st.session_state.get(state_key,[]))
+            fresh=[item for item in stop_alerts if item["code"] not in sent]
+            try:
+                if manual_send:
+                    send_kakao_message(holding_stop_message(stop_alerts));st.success("현재 손절선 이탈 종목을 카카오로 보냈습니다.")
+                    sent.update(item["code"] for item in stop_alerts);st.session_state[state_key]=sorted(sent)
+                elif auto_stop_alert and fresh:
+                    send_kakao_message(holding_stop_message(fresh));st.success("새 손절선 이탈 종목을 카카오로 보냈습니다.")
+                    sent.update(item["code"] for item in fresh);st.session_state[state_key]=sorted(sent)
+            except Exception as exc:
+                st.warning(str(exc))
+        st.caption("앱이 열려 있는 동안 10초마다 확인하며 같은 종목의 자동알림은 하루 한 번만 발송합니다.")
         labels=[f"{x[0].get('name')} ({str(x[0].get('ticker','')).zfill(6)})" for x in details];selected=st.selectbox("🔎 평가할 보유종목",labels);x=details[labels.index(selected)];r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act=x
         st.markdown(f"### 🧠 {r.get('name')} 종합판단");m1,m2,m3,m4=st.columns(4);m1.metric("현재가",won(p));m2.metric("평균매수가",won(avg));m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-");st.info(f"현재 판단: **{state} · {act}**");st.markdown("#### 🎯 실전 가격 가이드");g1,g2,g3,g4=st.columns(4);g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d));st.caption(f"시세 출처: {src} · 선택한 보유종목 기준 자동 평가")
         render_holding_assessment(r,p)
