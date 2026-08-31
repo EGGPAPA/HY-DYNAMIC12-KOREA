@@ -187,9 +187,63 @@ def render_holding_assessment(row,current):
     st.caption(f"현재가 {price:,.0f}원 · 20일선 {a['ma20']:,.0f}원 · 60일선 {a['ma60']:,.0f}원 · 160일선 {a['ma160']:,.0f}원 · 20일 수익률 {a['ret20']:+.1f}% · {a['fundamental_note']}")
 
 
+def holding_snapshot(active):
+    details=[];view=[];price_alerts=[]
+    for row in active:
+        purchases=normalized_purchases(row)
+        quantity,cost,average=calc_position(purchases)
+        price,source=get_current_price(str(row.get("ticker","")).zfill(6),row.get("market","KOSPI"))
+        value=price*quantity if price else None
+        profit=value-cost if value is not None else None
+        return_rate=profit/cost*100 if profit is not None and cost else None
+        stop,take1,take2,take3,state,action=sell_guide(average,price)
+        details.append((row,quantity,cost,average,price,source,value,profit,return_rate,stop,take1,take2,take3,state,action))
+        code=str(row.get("ticker","")).zfill(6);name=row.get("name") or code
+        levels=[
+            ("stop","🔴 손절선 이탈",stop,"손절/비중축소 검토",price<=stop),
+            ("take15","🟡 1차(+15%) 도달",take1,"일부익절 검토",price>=take1),
+            ("take20","🔵 2차(+20%) 도달",take2,"추가익절 검토",price>=take2),
+            ("take25","🟣 3차(+25%) 도달",take3,"분할익절/추세보유",price>=take3),
+        ] if price is not None else []
+        price_alerts.extend({
+            "id":f"{code}:{key}","code":code,"name":name,"event":event,
+            "price":price,"level":level,"average":average,"return":return_rate,"action":alert_action,
+        } for key,event,level,alert_action,reached in levels if reached)
+        view.append({
+            "종목코드":row.get("ticker"),"종목명":row.get("name"),"시장":row.get("market"),
+            "평균매수가":won(average),"수량":compact_quantity(quantity),"현재가":won(price),
+            "평가금액":won(value),"수익금":won(profit),
+            "수익률":f"{return_rate:+.2f}%" if return_rate is not None else "-",
+            "손절(-3%)":won(stop),"1차(+15%)":won(take1),"2차(+20%)":won(take2),"3차(+25%)":won(take3),
+            "상태":state,"매도판단":action,
+        })
+    return details,view,price_alerts
+
+
 @st.fragment(run_every="10s")
+def render_live_holdings_table(active):
+    _,view,price_alerts=holding_snapshot(active)
+    view_df=pd.DataFrame(view)
+    profit_cols=[col for col in ("수익금","수익률") if col in view_df.columns]
+    styled_view=view_df.style.map(profit_text_color,subset=profit_cols) if profit_cols else view_df
+    st.dataframe(styled_view,use_container_width=True,hide_index=True)
+    if kakao_ready():
+        today=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%Y-%m-%d")
+        state_key=f"holding_price_alerts_{today}"
+        sent=set(st.session_state.get(state_key,[]))
+        fresh=[item for item in price_alerts if item["id"] not in sent]
+        if fresh:
+            try:
+                send_kakao_message(holding_price_alert_message(fresh))
+                sent.update(item["id"] for item in fresh)
+                st.session_state[state_key]=sorted(sent)
+                st.session_state.pop("holding_price_alert_error",None)
+            except Exception as exc:
+                st.session_state["holding_price_alert_error"]=str(exc)
+
+
 def render_holdings_tab():
-    st.subheader("💼 보유종목 관리");st.caption("일반계좌 보유종목의 현재가·평가손익을 10초마다 자동 갱신합니다. 연금 ETF는 연금저축에서 별도 관리합니다.")
+    st.subheader("💼 보유종목 관리");st.caption("상단 보유종목 표의 현재가·평가손익만 10초마다 자동 갱신합니다. 나머지 화면은 그대로 유지됩니다.")
     notice=st.session_state.pop("kr_holding_save_notice",None)
     if notice:st.success(notice)
     try:rows,sha=load_holdings()
@@ -198,26 +252,8 @@ def render_holdings_tab():
     c1,c2,c3=st.columns(3);c1.metric("보유종목",len(active));c2.metric("GitHub 저장","준비됨" if github_pat() else "PAT 미설정");c3.metric("시세","KIS 우선" if kis_ready() else "Yahoo")
     details=[]
     if active:
-        view=[];price_alerts=[]
-        for r in active:
-            ps=normalized_purchases(r);q,cost,avg=calc_position(ps);p,src=get_current_price(str(r.get("ticker","")).zfill(6),r.get("market","KOSPI"));val=p*q if p else None;pnl=val-cost if val is not None else None;ret=pnl/cost*100 if pnl is not None and cost else None;s,a,b,d,state,act=sell_guide(avg,p);details.append((r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act));code=str(r.get("ticker","")).zfill(6);name=r.get("name") or code;levels=[("stop","🔴 손절선 이탈",s,"손절/비중축소 검토",p<=s),("take15","🟡 1차(+15%) 도달",a,"일부익절 검토",p>=a),("take20","🔵 2차(+20%) 도달",b,"추가익절 검토",p>=b),("take25","🟣 3차(+25%) 도달",d,"분할익절/추세보유",p>=d)] if p is not None else [];price_alerts.extend({"id":f"{code}:{key}","code":code,"name":name,"event":event,"price":p,"level":level,"average":avg,"return":ret,"action":action} for key,event,level,action,reached in levels if reached);view.append({"종목코드":r.get("ticker"),"종목명":r.get("name"),"시장":r.get("market"),"평균매수가":won(avg),"수량":compact_quantity(q),"현재가":won(p),"평가금액":won(val),"수익금":won(pnl),"수익률":f"{ret:+.2f}%" if ret is not None else "-","손절(-3%)":won(s),"1차(+15%)":won(a),"2차(+20%)":won(b),"3차(+25%)":won(d),"상태":state,"매도판단":act})
-        view_df=pd.DataFrame(view)
-        profit_cols=[col for col in ("수익금","수익률") if col in view_df.columns]
-        styled_view=view_df.style.map(profit_text_color,subset=profit_cols) if profit_cols else view_df
-        st.dataframe(styled_view,use_container_width=True,hide_index=True)
-        if kakao_ready():
-            today=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%Y-%m-%d")
-            state_key=f"holding_price_alerts_{today}"
-            sent=set(st.session_state.get(state_key,[]))
-            fresh=[item for item in price_alerts if item["id"] not in sent]
-            if fresh:
-                try:
-                    send_kakao_message(holding_price_alert_message(fresh))
-                    sent.update(item["id"] for item in fresh)
-                    st.session_state[state_key]=sorted(sent)
-                    st.session_state.pop("holding_price_alert_error",None)
-                except Exception as exc:
-                    st.session_state["holding_price_alert_error"]=str(exc)
+        render_live_holdings_table(active)
+        details,_,_=holding_snapshot(active)
         labels=[f"{x[0].get('name')} ({str(x[0].get('ticker','')).zfill(6)})" for x in details];selected=st.selectbox("🔎 평가할 보유종목",labels);x=details[labels.index(selected)];r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act=x
         st.markdown(f"### 🧠 {r.get('name')} 종합판단");m1,m2,m3,m4=st.columns(4);m1.metric("현재가",won(p));m2.metric("평균매수가",won(avg));m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-");st.info(f"현재 판단: **{state} · {act}**");st.markdown("#### 🎯 실전 가격 가이드");g1,g2,g3,g4=st.columns(4);g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d));st.caption(f"시세 출처: {src} · 선택한 보유종목 기준 자동 평가")
         render_holding_assessment(r,p)
