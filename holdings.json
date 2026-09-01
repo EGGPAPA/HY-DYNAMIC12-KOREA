@@ -189,5 +189,28 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-08-31T05:05:05.029779+00:00"
+  },
+  {
+    "ticker": "257720",
+    "name": "실리콘투",
+    "market": "KOSDAQ",
+    "status": "holding",
+    "average_price": 52200.0,
+    "quantity": 100.0,
+    "purchases": [
+      {
+        "price": 52200.0,
+        "quantity": 100.0,
+        "fee": 783,
+        "tax": 0,
+        "reason": "통합 적극매수",
+        "memo": "",
+        "executed_at": "2026-09-01T06:20:24.164360+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-09-01T06:20:24.164360+00:00"
   }
 ]
