@@ -33,7 +33,7 @@ def holding_symbol_master():
     required={"종목코드","종목명","시장"}
     if df.empty or not required.issubset(df.columns):return pd.DataFrame(columns=list(required))
     df=df[list(required)].dropna(subset=["종목코드","종목명"])
-    df["종목코드"]=df["종목코드"].astype(str).str.replace(r"\\.0$","",regex=True).str.zfill(6)
+    df["종목코드"]=df["종목코드"].astype(str).str.replace(r"\.0$","",regex=True).str.zfill(6)
     df["종목명"]=df["종목명"].astype(str).str.strip()
     df["시장"]=df["시장"].astype(str).str.upper().replace({"KOSDAQ GLOBAL":"KOSDAQ"})
     return df.drop_duplicates("종목코드")
