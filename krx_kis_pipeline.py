@@ -30,17 +30,28 @@ def collect_krx_ohlcv(stock_module, end_date=None, sessions=22, max_calendar_day
     for _ in range(max_calendar_days):
         date_text = day.strftime("%Y%m%d")
         daily = []
-        for market in ("KOSPI", "KOSDAQ"):
-            try:
-                normalized = _normalize_daily(
-                    stock_module.get_market_ohlcv_by_ticker(date_text, market=market),
-                    market,
-                    date_text,
-                )
-            except Exception:
-                normalized = pd.DataFrame(columns=REQUIRED_COLUMNS)
-            if not normalized.empty:
-                daily.append(normalized)
+        try:
+            combined = _normalize_daily(
+                stock_module.get_market_ohlcv_by_ticker(date_text, market="ALL"),
+                "ALL",
+                date_text,
+            )
+        except Exception:
+            combined = pd.DataFrame(columns=REQUIRED_COLUMNS)
+        if not combined.empty:
+            daily.append(combined)
+        else:
+            for market in ("KOSPI", "KOSDAQ"):
+                try:
+                    normalized = _normalize_daily(
+                        stock_module.get_market_ohlcv_by_ticker(date_text, market=market),
+                        market,
+                        date_text,
+                    )
+                except Exception:
+                    normalized = pd.DataFrame(columns=REQUIRED_COLUMNS)
+                if not normalized.empty:
+                    daily.append(normalized)
         if daily:
             frames.extend(daily)
             found_dates.append(date_text)

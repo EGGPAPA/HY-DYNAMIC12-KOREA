@@ -601,7 +601,6 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
 def run_full_update(status):
     """Refresh once, then reuse cached/common data through every dependent step."""
     status.write("⏳ ① 시장데이터 갱신 중...")
-    get_krx_batch_history.clear()
     get_auto_flow.clear()
     download_chunk.clear()
     get_single_history.clear()
