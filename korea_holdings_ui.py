@@ -17,6 +17,47 @@ def won(v):
 def compact_quantity(v):
     try:return f"{float(v):,.4f}".rstrip("0").rstrip(".")
     except:return "-"
+def parse_trade_number(value):
+    try:
+        cleaned=str(value or "").replace(",", "").replace("원", "").replace("주", "").strip()
+        return float(cleaned) if cleaned else 0.0
+    except:return 0.0
+def format_trade_input(key,unit):
+    value=parse_trade_number(st.session_state.get(key,""))
+    if value<=0:return
+    if unit=="원":st.session_state[key]=f"{int(round(value)):,}원"
+    else:st.session_state[key]=f"{compact_quantity(value)}주"
+@st.cache_data(ttl=60*60*24,show_spinner=False)
+def holding_symbol_master():
+    df=_load_backtest_universe().copy()
+    required={"종목코드","종목명","시장"}
+    if df.empty or not required.issubset(df.columns):return pd.DataFrame(columns=list(required))
+    df=df[list(required)].dropna(subset=["종목코드","종목명"])
+    df["종목코드"]=df["종목코드"].astype(str).str.replace(r"\.0$","",regex=True).str.zfill(6)
+    df["종목명"]=df["종목명"].astype(str).str.strip()
+    df["시장"]=df["시장"].astype(str).str.upper().replace({"KOSDAQ GLOBAL":"KOSDAQ"})
+    return df.drop_duplicates("종목코드")
+def sync_buy_symbol(source):
+    master=holding_symbol_master()
+    if master.empty:return
+    if source=="code":
+        code="".join(ch for ch in str(st.session_state.get("kr_buy_code","")) if ch.isdigit())
+        if len(code)!=6:return
+        matched=master[master["종목코드"]==code]
+    else:
+        name=str(st.session_state.get("kr_buy_name","")).strip()
+        if not name:return
+        exact=master[master["종목명"].str.casefold()==name.casefold()]
+        if not exact.empty:matched=exact
+        else:
+            partial=master[master["종목명"].str.casefold().str.startswith(name.casefold())]
+            matched=partial if len(partial)==1 else master.iloc[0:0]
+    if matched.empty:return
+    row=matched.iloc[0]
+    st.session_state["kr_buy_code"]=str(row["종목코드"]).zfill(6)
+    st.session_state["kr_buy_name"]=str(row["종목명"])
+    market=str(row["시장"]).upper()
+    st.session_state["kr_buy_market"]="KOSDAQ" if "KOSDAQ" in market else "KOSPI"
 def profit_text_color(value):
     try:
         number=float(str(value).replace(",","").replace("원","").replace("%","").replace("+","").strip())
@@ -302,22 +343,39 @@ def render_holdings_tab():
         st.markdown("### 💸 매도 체결 등록")
         sell_labels=[f"{z[0].get('name')} ({str(z[0].get('ticker','')).zfill(6)})" for z in details]
         with st.form("kr_hold_sell_form"):
-            sell_sel=st.selectbox("매도 종목",sell_labels);sx=details[sell_labels.index(sell_sel)];sr,sq,scost,savg,*_=sx;u,v=st.columns(2);sell_price=u.number_input("실제 체결 매도가(원)",min_value=0.0,step=1000.0);sell_qty=v.number_input("매도 수량",min_value=0.0,max_value=float(sq),step=1.0);sell_reason=st.selectbox("매도 사유",["손절","1차 익절","2차 익절","3차 익절","신호 약화","리밸런싱","기타"]);sell_memo=st.text_input("매도 복기 메모",placeholder="판단 근거 또는 다음 거래에 참고할 내용을 입력하세요.");sell_ok=st.form_submit_button("💸 매도 등록",type="primary",use_container_width=True)
+            sell_sel=st.selectbox("매도 종목",sell_labels,help="종목명 또는 종목코드로 검색할 수 있습니다.");sx=details[sell_labels.index(sell_sel)];sr,sq,scost,savg,*_=sx
+            u,v=st.columns(2)
+            sell_price_text=u.text_input("실제 체결 매도가",placeholder="예: 23,200원")
+            sell_qty_text=v.text_input("매도 체결수",placeholder=f"예: {compact_quantity(sq)}주")
+            sell_price=parse_trade_number(sell_price_text);sell_qty=parse_trade_number(sell_qty_text)
+            sell_reason=st.selectbox("매도 사유",["손절","1차 익절","2차 익절","3차 익절","신호 약화","리밸런싱","기타"]);sell_memo=st.text_input("매도 복기 메모",placeholder="판단 근거 또는 다음 거래에 참고할 내용을 입력하세요.");sell_ok=st.form_submit_button("💸 매도 등록",type="primary",use_container_width=True)
         if sell_ok:
-            if sell_price<=0 or sell_qty<=0:st.error("매도가와 매도수량을 입력하세요.")
+            if sell_price<=0 or sell_qty<=0:st.error("매도가와 매도 체결수를 입력하세요. 예: 23,200원 / 35주")
+            elif sell_qty>float(sq):st.error(f"보유수량 {compact_quantity(sq)}주를 초과해 매도할 수 없습니다.")
             else:
                 rows,sha=load_holdings();idx,old=find_active(rows,str(sr.get("ticker","")));ps=normalized_purchases(old);oq,ocost,oavg=calc_position(ps);sell_qty=min(float(sell_qty),oq);realized=(float(sell_price)-oavg)*sell_qty;now=datetime.now(timezone.utc).isoformat();sell_amount=float(sell_price)*sell_qty;fee,tax=trade_costs("sell",sell_amount,old.get("market","KOSPI"));buy_fee=trade_costs("buy",oavg*sell_qty,old.get("market","KOSPI"))[0];net_realized=realized-fee-tax-buy_fee;net_rate=net_realized/(oavg*sell_qty+buy_fee)*100 if oavg else 0;sales=old.get("sales",[]) if isinstance(old.get("sales",[]),list) else [];sales.append({"price":float(sell_price),"quantity":sell_qty,"average_cost":oavg,"realized_pnl":realized,"realized_return_pct":(float(sell_price)/oavg-1)*100 if oavg else 0,"net_realized_pnl":net_realized,"net_realized_return_pct":net_rate,"fee":fee,"tax":tax,"buy_fee":buy_fee,"reason":sell_reason,"memo":sell_memo,"executed_at":now});remain=oq-sell_qty;old["sales"]=sales;old["quantity"]=remain;old["updated_at"]=now
                 if remain<=0:old.update({"quantity":0,"status":"closed","enabled":False,"closed_at":now})
                 rows[idx]=old;save_holdings(rows,sha,f"Register Korea sell {sr.get('ticker')}");st.success(f"매도 등록 완료 · 순실현손익 {won(net_realized)} · 순수익률 {net_rate:+.2f}%" + (" · 전량매도 완료" if remain<=0 else f" · 잔여 {remain:g}주"));st.rerun()
     else:st.info("현재 등록된 보유종목이 없습니다.")
-    with st.form("kr_hold_buy_form"):
-        a,b,c=st.columns([1,2,1]);code=a.text_input("종목코드").strip();name=b.text_input("종목명").strip();market=c.selectbox("시장",["KOSPI","KOSDAQ"]);d,e=st.columns(2);price=d.number_input("실제 체결 매수가(원)",min_value=0.0,step=1000.0);qty=e.number_input("매수 수량",min_value=0.0,step=1.0);buy_reason=st.selectbox("매수 사유",["통합 적극매수","1차 분할매수","2차 분할매수","눌림목 매수","추가매수","기타"]);buy_memo=st.text_input("매수 메모",placeholder="매수 근거를 간단히 기록하세요.");ok=st.form_submit_button("➕ 보유 등록 / 추가 매수",type="primary",use_container_width=True)
+    with st.container(border=True):
+        st.markdown("### ➕ 매수 체결 등록")
+        a,b,c=st.columns([1,2,1])
+        code=a.text_input("종목코드",key="kr_buy_code",placeholder="예: 257720",on_change=sync_buy_symbol,args=("code",)).strip()
+        name=b.text_input("종목명",key="kr_buy_name",placeholder="예: 실리콘투",on_change=sync_buy_symbol,args=("name",)).strip()
+        market=c.selectbox("시장",["KOSPI","KOSDAQ"],key="kr_buy_market")
+        d,e=st.columns(2)
+        price_text=d.text_input("실제 체결 매수가",key="kr_buy_price",placeholder="예: 23,200원",on_change=format_trade_input,args=("kr_buy_price","원"))
+        qty_text=e.text_input("매수 체결수",key="kr_buy_qty",placeholder="예: 35주",on_change=format_trade_input,args=("kr_buy_qty","주"))
+        price=parse_trade_number(price_text);qty=parse_trade_number(qty_text)
+        buy_reason=st.selectbox("매수 사유",["통합 적극매수","1차 분할매수","2차 분할매수","눌림목 매수","추가매수","기타"])
+        buy_memo=st.text_input("매수 메모",placeholder="매수 근거를 간단히 기록하세요.")
+        ok=st.button("➕ 보유 등록 / 추가 매수",type="primary",use_container_width=True)
     if ok:
         code="".join(ch for ch in code if ch.isdigit()).zfill(6)
         missing=[]
         if len(code)!=6 or code=="000000":missing.append("6자리 종목코드")
-        if price<=0:missing.append("실제 체결 매수가")
-        if qty<=0:missing.append("매수 수량")
+        if price<=0:missing.append("실제 체결 매수가(예: 23,200원)")
+        if qty<=0:missing.append("매수 체결수(예: 35주)")
         if missing:
             st.error("저장되지 않았습니다. " + ", ".join(missing) + "을(를) 확인하세요.")
         else:
