@@ -1,4 +1,5 @@
 import json
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from datetime import datetime, time, timedelta
 from zoneinfo import ZoneInfo
@@ -40,6 +41,8 @@ FINAL_TOP_N = 12
 DEEP_CANDIDATE_COUNT = 120
 YF_CHUNK = 180
 YF_THREADS = 8
+KIS_WORKERS = 4
+FUNDAMENTAL_WORKERS = 8
 MIN_PRICE = 1000
 MIN_AVG_VALUE = 2_000_000_000
 
@@ -387,21 +390,49 @@ def fundamental_score(code, market):
 def get_candidate_kis_prices(codes):
     if not kis_ready():
         return {}
-    prices = {}
-    for code in codes:
-        try:
-            price = get_kis_price(str(code).zfill(6))
-        except Exception:
-            price = None
-        if price is not None and float(price) > 0:
-            prices[str(code).zfill(6)] = float(price)
+    normalized=tuple(dict.fromkeys(str(code).zfill(6) for code in codes))
+    if not normalized:return {}
+    prices={}
+    first=normalized[0]
+    try:
+        first_price=get_kis_price(first)
+        if first_price is not None and float(first_price)>0:prices[first]=float(first_price)
+    except Exception:
+        pass
+
+    def fetch(code):
+        try:return code,get_kis_price(code)
+        except Exception:return code,None
+
+    with ThreadPoolExecutor(max_workers=KIS_WORKERS) as executor:
+        futures=[executor.submit(fetch,code) for code in normalized[1:]]
+        for future in as_completed(futures):
+            code,price=future.result()
+            if price is not None and float(price)>0:prices[code]=float(price)
     return prices
+
+
+def get_candidate_fundamentals(candidates):
+    items=[(str(row["종목코드"]).zfill(6),row["시장"]) for _,row in candidates.iterrows()]
+    scores={}
+
+    def fetch(item):
+        code,market=item
+        try:return code,fundamental_score(code,market)
+        except Exception:return code,50.0
+
+    with ThreadPoolExecutor(max_workers=FUNDAMENTAL_WORKERS) as executor:
+        futures=[executor.submit(fetch,item) for item in items]
+        for future in as_completed(futures):
+            code,score=future.result();scores[code]=score
+    return scores
 
 
 def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
     candidates = screen.head(max(int(candidate_count), FINAL_TOP_N * 4)).copy()
     candidate_codes = tuple(candidates["종목코드"].astype(str).str.zfill(6))
     kis_prices = get_candidate_kis_prices(candidate_codes)
+    fundamental_scores = get_candidate_fundamentals(candidates)
     symbols = [yf_symbol(r["종목코드"], r["시장"]) for _, r in candidates.iterrows()]
     batch = download_chunk(tuple(symbols), "6mo")
     rows = []
@@ -433,7 +464,7 @@ def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
         flow_score = 50.
         if flow_present:
             flow_score = clip((float(r["외국인백분위"]) + float(r["기관백분위"])) / 2, 0, 100)
-        fundamental = fundamental_score(code, r["시장"])
+        fundamental = float(fundamental_scores.get(code, 50.0))
         technical = trend * .45 + momentum * .35 + volume_score * .20
         score = technical * .40 + float(r["유동성백분위"]) * .12 + fundamental * .23 + flow_score * .25
         overheat = p / high20 >= .985 and momentum >= 75
@@ -570,7 +601,13 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
 def run_full_update(status):
     """Refresh once, then reuse cached/common data through every dependent step."""
     status.write("⏳ ① 시장데이터 갱신 중...")
-    st.cache_data.clear()
+    get_krx_batch_history.clear()
+    get_auto_flow.clear()
+    download_chunk.clear()
+    get_single_history.clear()
+    yf_history.clear()
+    _monthly_batch.clear()
+    _auto_price.clear()
     universe, uni_source = get_full_universe()
     if universe.empty:
         raise RuntimeError("KOSPI/KOSDAQ 종목목록을 가져오지 못했습니다.")
