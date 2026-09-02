@@ -818,7 +818,8 @@ with tabs[4]:
     render_monthly_ma5_tab()
 
 with tabs[5]:
-    render_rise_timing_watchlist()
+    rise_universe, _ = get_full_universe()
+    render_rise_timing_watchlist(rise_universe)
 
 with tabs[6]:
     universe, _ = get_full_universe()
