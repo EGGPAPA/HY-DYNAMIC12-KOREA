@@ -428,6 +428,46 @@ def get_candidate_fundamentals(candidates):
     return scores
 
 
+def rise_timing_signal(close, volume, price):
+    """Daily trend/volume/breakout signal designed to find an early move, not chase a late surge."""
+    try:
+        close=pd.to_numeric(close,errors="coerce").dropna()
+        volume=pd.to_numeric(volume,errors="coerce").reindex(close.index)
+        if len(close)<65:return {"score":0,"label":"⚪ 데이터부족","volume_ratio":None,"gap20":None,"late":False}
+        ma20=close.rolling(20).mean();ma60=close.rolling(60).mean()
+        p=float(price);m20=float(ma20.iloc[-1]);m60=float(ma60.iloc[-1])
+        prior_high=float(close.iloc[-21:-1].max());prev=float(close.iloc[-2])
+        gap20=(p/m20-1)*100 if m20 else 0
+        ret10=(p/float(close.iloc[-11])-1)*100 if len(close)>11 else 0
+        ret20=(p/float(close.iloc[-21])-1)*100 if len(close)>21 else 0
+        rising20=m20>float(ma20.iloc[-6])
+        cross=(ma20>ma60)&(ma20.shift(1)<=ma60.shift(1))
+        recent_cross=bool(cross.tail(10).fillna(False).any())
+        breakout=p>=prior_high and prev<prior_high
+        base_volume=pd.to_numeric(volume.iloc[-21:-1],errors="coerce").dropna()
+        recent_volume=pd.to_numeric(volume.tail(3),errors="coerce").dropna()
+        volume_ratio=float(recent_volume.max()/base_volume.mean()) if len(base_volume) and base_volume.mean()>0 and len(recent_volume) else 1.0
+        score=0
+        score+=20 if p>m20 else 0
+        score+=15 if rising20 else 0
+        score+=15 if p>m60 else 0
+        score+=15 if recent_cross else 0
+        score+=20 if breakout else (8 if p>=prior_high*.98 else 0)
+        score+=15 if volume_ratio>=1.5 else (8 if volume_ratio>=1.1 else 0)
+        late=gap20>15 or ret20>35 or ret10>25
+        if gap20>12:score-=20
+        if ret10>25:score-=15
+        score=round(clip(score,0,100),1)
+        if late:label="🔴 급등·추격금지"
+        elif score>=75 and gap20<=8:label="🟢 상승초입"
+        elif score>=60:label="🟡 돌파확인"
+        elif p>m60 and rising20:label="🔵 준비구간"
+        else:label="⚪ 신호대기"
+        return {"score":score,"label":label,"volume_ratio":round(volume_ratio,2),"gap20":round(gap20,1),"late":late}
+    except Exception:
+        return {"score":0,"label":"⚪ 계산불가","volume_ratio":None,"gap20":None,"late":False}
+
+
 def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
     candidates = screen.head(max(int(candidate_count), FINAL_TOP_N * 4)).copy()
     candidate_codes = tuple(candidates["종목코드"].astype(str).str.zfill(6))
@@ -458,6 +498,7 @@ def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
         ma60 = float(close.tail(60).mean())
         high20 = float(close.tail(20).max())
         vol_ratio = float(vol.tail(5).mean() / max(vol.tail(20).mean(), 1))
+        timing = rise_timing_signal(close, vol, p)
         trend = 100 if p > ma20 > ma60 else (72 if p > ma60 else 40)
         momentum = clip(50 + (p / float(close.iloc[-21]) - 1) * 180, 0, 100)
         volume_score = clip(50 + (vol_ratio - 1) * 35, 0, 100)
@@ -467,7 +508,8 @@ def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
         fundamental = float(fundamental_scores.get(code, 50.0))
         technical = trend * .45 + momentum * .35 + volume_score * .20
         score = technical * .40 + float(r["유동성백분위"]) * .12 + fundamental * .23 + flow_score * .25
-        overheat = p / high20 >= .985 and momentum >= 75
+        timing_gap=float(timing["gap20"] or 0)
+        overheat = timing["late"] or (p / high20 >= .985 and momentum >= 85 and timing_gap > 10)
         buy1 = min(p, ma20 * 1.01)
         buy2 = min(buy1, ma60 * 1.015 if ma60 > 0 else buy1 * .97)
 
@@ -482,6 +524,10 @@ def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
             "기술점수": round(technical, 1),
             "펀더멘털": round(fundamental, 1),
             "수급점수": round(flow_score, 1),
+            "상승시점점수": timing["score"],
+            "상승시점": timing["label"],
+            "돌파거래량배수": timing["volume_ratio"],
+            "20일선이격(%)": timing["gap20"],
             "과열": "과열" if overheat else "정상",
             "1차 매수가": round(buy1, -2),
             "2차 매수가": round(buy2, -2),
@@ -549,6 +595,14 @@ def apply_relative(rows, regime):
             r["진입판정"] = "🟠 소량 접근"
         else:
             r["진입판정"] = "🟢 1차 매수 가능"
+
+        timing_label=str(r.get("상승시점",""))
+        timing_score=float(r.get("상승시점점수",0) or 0)
+        if timing_label.startswith("🔴"):
+            r["진입판정"]="🔴 급등·추격 금지"
+            if r["판정"].startswith("🟢"):r["판정"]="🔴 추격금지"
+        elif timing_score>=75 and entry_gap<7:
+            r["진입판정"]="🟢 상승초입 1차"
     return rows, floor, active_pct
 
 
@@ -768,6 +822,7 @@ with tabs[1]:
 with tabs[2]:
     st.subheader("🏆 TOP12 개별주식 후보")
     st.info(
+        "상승시점은 20·60일선 회복, 직전 20일 고점 돌파, 거래량 증가를 함께 평가합니다. · "
         "1차 매수가 갭 기준 · 0~3%: 현재가 부근 1차 매수 가능 · "
         "3~7%: 추격하지 않고 소량 접근 · 7~12%: 눌림 대기 · "
         "12% 이상: 현재 매수 제외·추격 금지"
@@ -785,6 +840,10 @@ with tabs[2]:
                 "종목": r["종목명"],
                 "현재가(원)": r["현재가"],
                 "판정점수": r["판정점수"],
+                "상승시점": r.get("상승시점","⚪ 신호대기"),
+                "시점점수": r.get("상승시점점수",0),
+                "거래량배수": r.get("돌파거래량배수"),
+                "20일선이격(%)": r.get("20일선이격(%)"),
                 "시장상태": r["시장상태"],
                 "상대순위": r["상대순위"],
                 "수급대응": r["수급대응"],
