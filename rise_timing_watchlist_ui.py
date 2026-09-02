@@ -6,6 +6,12 @@ import pandas as pd
 import requests
 import streamlit as st
 import yfinance as yf
+from krx_kis_pipeline import collect_krx_ohlcv
+
+try:
+    from pykrx import stock
+except Exception:
+    stock=None
 
 REPO="EGGPAPA/HY-DYNAMIC12-KOREA"
 BRANCH="main"
@@ -107,9 +113,87 @@ def _timing(row):
     },history
 
 
-def render_rise_timing_watchlist():
-    st.subheader("📍 상승시점 관찰")
-    st.caption("통합매수판정과 분리된 개인 관찰화면입니다. 종목별 상승 단계와 분할매수 참고 가격만 확인합니다.")
+@st.cache_data(ttl=1800,show_spinner=False)
+def _scan_all_market(universe_rows):
+    if stock is None:return [],"pykrx를 불러오지 못했습니다."
+    universe=pd.DataFrame(list(universe_rows),columns=["종목코드","종목명","시장"])
+    try:
+        history,base_date=collect_krx_ohlcv(stock,sessions=70,max_calendar_days=120)
+    except Exception as exc:
+        return [],f"KRX 전종목 수집 실패: {exc}"
+    if history.empty:return [],"KRX 전종목 가격자료가 없습니다."
+    names=universe.copy();names["종목코드"]=names["종목코드"].astype(str).str.zfill(6)
+    names=names.drop_duplicates("종목코드").set_index("종목코드")
+    found=[]
+    for code,group in history.groupby("종목코드"):
+        if code not in names.index:continue
+        group=group.sort_values("기준일")
+        close=pd.to_numeric(group["종가"],errors="coerce").dropna()
+        volume=pd.to_numeric(group["거래량"],errors="coerce").reindex(close.index)
+        value=pd.to_numeric(group["거래대금"],errors="coerce").reindex(close.index).fillna(0)
+        if len(close)<65:continue
+        price=float(close.iloc[-1]);avg_value=float(value.tail(20).mean())
+        if price<1000 or avg_value<500_000_000:continue
+        ma20=close.rolling(20).mean();ma60=close.rolling(60).mean()
+        m20=float(ma20.iloc[-1]);m60=float(ma60.iloc[-1]);prior_high=float(close.iloc[-21:-1].max())
+        previous=float(close.iloc[-2]);gap20=(price/m20-1)*100 if m20 else 0
+        ret10=(price/float(close.iloc[-11])-1)*100;ret20=(price/float(close.iloc[-21])-1)*100
+        rising20=m20>float(ma20.iloc[-6]);cross=(ma20>ma60)&(ma20.shift(1)<=ma60.shift(1))
+        recent_cross=bool(cross.tail(10).fillna(False).any());breakout=price>=prior_high and previous<prior_high
+        base_volume=volume.iloc[-21:-1].dropna();recent_volume=volume.tail(3).dropna()
+        volume_ratio=float(recent_volume.max()/base_volume.mean()) if len(base_volume) and base_volume.mean()>0 and len(recent_volume) else 1.0
+        score=(20 if price>m20 else 0)+(15 if rising20 else 0)+(15 if price>m60 else 0)
+        score+=15 if recent_cross else 0;score+=20 if breakout else (8 if price>=prior_high*.98 else 0)
+        score+=15 if volume_ratio>=1.5 else (8 if volume_ratio>=1.1 else 0)
+        late=gap20>15 or ret20>35 or ret10>25
+        if gap20>12:score-=20
+        if ret10>25:score-=15
+        score=max(0,min(100,round(score,1)))
+        if late:continue
+        elif score>=75 and gap20<=8:label,action="🟢 상승초입","1차 분할 검토"
+        elif score>=60:label,action="🟡 돌파확인","종가·거래량 확인"
+        elif price>m60 and rising20:label,action="🔵 준비구간","20일 고점 돌파 대기"
+        else:continue
+        meta=names.loc[code]
+        buy1=min(price,max(m20,prior_high*.995)) if label.startswith("🟢") else max(m20,prior_high*.99)
+        buy2=m20*1.01;low10=float(close.tail(10).min());stop=min(price*.97,max(m20*.96,low10*.98))
+        found.append({"종목":str(meta["종목명"]),"코드":code,"시장":str(meta["시장"]),"단계":label,"시점점수":score,
+                      "현재가":round(price),"1차매수":round(buy1),"2차눌림":round(buy2),"손절참고":round(stop),
+                      "돌파기준":round(prior_high),"거래량배수":round(volume_ratio,2),"20일선이격":round(gap20,1),
+                      "평균거래대금":avg_value,"행동":action})
+    found=sorted(found,key=lambda x:(0 if x["단계"].startswith("🟢") else 1,-x["시점점수"],-x["평균거래대금"]))
+    return found,f"KRX {base_date} · KOSPI/KOSDAQ {len(names):,}개 분석"
+
+
+def render_rise_timing_watchlist(universe=None):
+    st.subheader("📍 전종목 상승시점 검색")
+    st.caption("통합매수판정과 완전히 분리해 KOSPI·KOSDAQ 전 종목에서 상승초입과 돌파확인 후보를 찾습니다.")
+    if universe is None or universe.empty:
+        st.warning("전종목 목록을 가져오지 못했습니다.")
+    elif st.button("🔎 KOSPI·KOSDAQ 전종목 상승초입 찾기",type="primary",use_container_width=True):
+        universe_rows=tuple(tuple(x) for x in universe[["종목코드","종목명","시장"]].astype(str).itertuples(index=False,name=None))
+        with st.status("전종목 70거래일 가격·거래량 분석 중...",expanded=True) as status:
+            scan,message=_scan_all_market(universe_rows)
+            st.session_state["rise_all_scan"]=scan;st.session_state["rise_all_scan_message"]=message
+            status.update(label=f"전종목 상승시점 검색 완료 · {len(scan):,}개 후보",state="complete")
+    scan=st.session_state.get("rise_all_scan",[])
+    if scan:
+        green=[x for x in scan if str(x["단계"]).startswith("🟢")]
+        yellow=[x for x in scan if str(x["단계"]).startswith("🟡")]
+        blue=[x for x in scan if str(x["단계"]).startswith("🔵")]
+        a,b,c1,d=st.columns(4);a.metric("🟢 상승초입",len(green));b.metric("🟡 돌파확인",len(yellow));c1.metric("🔵 준비구간",len(blue));d.metric("전체 후보",len(scan))
+        st.caption(st.session_state.get("rise_all_scan_message",""))
+        scan_df=pd.DataFrame(scan)
+        for col in ["현재가","1차매수","2차눌림","손절참고","돌파기준"]:scan_df[col]=scan_df[col].map(_won)
+        scan_df["20일선이격"]=scan_df["20일선이격"].map(lambda x:f"{x:+.1f}%")
+        scan_df["평균거래대금"]=scan_df["평균거래대금"].map(lambda x:f"{x/100_000_000:,.1f}억원")
+        st.dataframe(scan_df,use_container_width=True,hide_index=True)
+        st.info("🟢 상승초입을 먼저 보고 1차매수 참고가 부근에서 분할 접근합니다. 🔴 급등·추격금지 종목은 결과에서 제외합니다.")
+    elif st.session_state.get("rise_all_scan_message"):
+        st.info(st.session_state["rise_all_scan_message"])
+    st.divider()
+    st.markdown("### ⭐ 개인 관찰목록")
+    st.caption("전종목 검색 결과에서 따로 관리하고 싶은 종목을 아래 목록에 추가할 수 있습니다.")
     rows,sha=_load_watchlist()
     if not rows:
         st.warning("관찰종목이 없습니다. 아래에서 종목을 추가하세요.")
