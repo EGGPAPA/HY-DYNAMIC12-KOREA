@@ -7,6 +7,7 @@ import requests
 import streamlit as st
 import yfinance as yf
 from krx_kis_pipeline import collect_krx_ohlcv
+from korea_holdings_ui import kakao_ready, send_kakao_message
 
 try:
     from pykrx import stock
@@ -165,6 +166,31 @@ def _scan_all_market(universe_rows):
     return found,f"KRX {base_date} · KOSPI/KOSDAQ {len(names):,}개 분석"
 
 
+@st.cache_resource
+def _rise_alert_state():
+    return set()
+
+
+def _send_rise_scan_alerts(scan):
+    if not kakao_ready():return "카카오 연결정보가 없어 알림을 보내지 못했습니다."
+    today=datetime.now().strftime("%Y-%m-%d")
+    sent=_rise_alert_state()
+    candidates=[x for x in scan if str(x.get("단계","")).startswith(("🟢","🟡"))]
+    fresh=[x for x in candidates if f"{today}:{x['코드']}:{x['단계']}" not in sent][:5]
+    if not fresh:return None
+    lines=["📍 전종목 상승시점 신규 후보",""]
+    for item in fresh:
+        lines.append(f"{item['단계']} · {item['종목']} ({item['코드']}) · {item['시점점수']:.0f}점")
+        lines.append(f"현재 {_won(item['현재가'])} / 1차 {_won(item['1차매수'])} / 손절참고 {_won(item['손절참고'])}")
+    lines.extend(["","※ 통합매수판정과 분리된 기술적 관찰 신호입니다."])
+    try:
+        send_kakao_message("\n".join(lines))
+        sent.update(f"{today}:{x['코드']}:{x['단계']}" for x in fresh)
+        return f"카카오 알림 전송 완료 · 신규 후보 {len(fresh)}개"
+    except Exception as exc:
+        return f"카카오 알림 실패: {exc}"
+
+
 def render_rise_timing_watchlist(universe=None):
     st.subheader("📍 전종목 상승시점 검색")
     st.caption("통합매수판정과 완전히 분리해 KOSPI·KOSDAQ 전 종목에서 상승초입과 돌파확인 후보를 찾습니다.")
@@ -175,8 +201,13 @@ def render_rise_timing_watchlist(universe=None):
         with st.status("전종목 70거래일 가격·거래량 분석 중...",expanded=True) as status:
             scan,message=_scan_all_market(universe_rows)
             st.session_state["rise_all_scan"]=scan;st.session_state["rise_all_scan_message"]=message
+            st.session_state["rise_kakao_notice"]=_send_rise_scan_alerts(scan) if scan else None
             status.update(label=f"전종목 상승시점 검색 완료 · {len(scan):,}개 후보",state="complete")
     scan=st.session_state.get("rise_all_scan",[])
+    kakao_notice=st.session_state.pop("rise_kakao_notice",None)
+    if kakao_notice:
+        if "완료" in kakao_notice:st.success(kakao_notice)
+        else:st.warning(kakao_notice)
     if scan:
         green=[x for x in scan if str(x["단계"]).startswith("🟢")]
         yellow=[x for x in scan if str(x["단계"]).startswith("🟡")]
