@@ -149,7 +149,7 @@ def _scan_all_market(universe_rows):
         if gap20>12:score-=20
         if ret10>25:score-=15
         score=max(0,min(100,round(score,1)))
-        if late:label,action="🔴 급등·추격금지","신규매수 제외"
+        if late:continue
         elif score>=75 and gap20<=8:label,action="🟢 상승초입","1차 분할 검토"
         elif score>=60:label,action="🟡 돌파확인","종가·거래량 확인"
         elif price>m60 and rising20:label,action="🔵 준비구간","20일 고점 돌파 대기"
