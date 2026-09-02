@@ -91,6 +91,54 @@ def load_json(path, default):
     return default
 
 
+@st.cache_resource
+def shared_daily_analysis():
+    """Process-wide snapshot reused by new browser sessions on the same Streamlit instance."""
+    return {}
+
+
+def remember_daily_analysis():
+    rows=st.session_state.get("kr_rows",[]) or []
+    if not rows:return
+    snapshot={
+        "saved_date":datetime.now(SEOUL).strftime("%Y%m%d"),
+        "rows":rows,
+        "analysis_at":st.session_state.get("analysis_at"),
+        "universe_source":st.session_state.get("universe_source"),
+        "screen_source":st.session_state.get("screen_source"),
+        "kr_regime":st.session_state.get("kr_regime","중립장"),
+        "full_update_at":st.session_state.get("full_update_at") or st.session_state.get("analysis_at"),
+        "full_update_mode":st.session_state.get("full_update_mode","오늘 저장 결과"),
+    }
+    state=shared_daily_analysis();state.clear();state.update(snapshot)
+
+
+def restore_daily_analysis():
+    if st.session_state.get("kr_rows"):return False
+    target=latest_business_day()
+    state=shared_daily_analysis()
+    if state.get("rows") and str(state.get("saved_date",""))>=target:
+        snapshot=dict(state)
+    else:
+        rows=load_json(ANALYSIS_FILE,[])
+        if not rows or not ANALYSIS_FILE.exists():return False
+        saved_at=datetime.fromtimestamp(ANALYSIS_FILE.stat().st_mtime,SEOUL)
+        if saved_at.strftime("%Y%m%d")<target:return False
+        snapshot={"saved_date":saved_at.strftime("%Y%m%d"),"rows":rows,"analysis_at":saved_at.strftime("%Y-%m-%d %H:%M:%S KST"),
+                  "universe_source":"오늘 저장된 분석","screen_source":"저장 결과","kr_regime":"중립장",
+                  "full_update_at":saved_at.strftime("%Y-%m-%d %H:%M:%S KST"),"full_update_mode":"오늘 저장 결과"}
+        state.clear();state.update(snapshot)
+    st.session_state.update({
+        "kr_rows":snapshot["rows"],"analysis_at":snapshot.get("analysis_at","확인 불가"),
+        "universe_source":snapshot.get("universe_source","오늘 저장된 분석"),
+        "screen_source":snapshot.get("screen_source","저장 결과"),
+        "kr_regime":snapshot.get("kr_regime","중립장"),
+        "full_update_at":snapshot.get("full_update_at"),"full_update_mode":snapshot.get("full_update_mode","오늘 저장 결과"),
+        "daily_analysis_restored":True,
+    })
+    return True
+
+
 def market_open():
     now = datetime.now(SEOUL)
     return now.weekday() < 5 and time(9, 0) <= now.time() <= time(15, 30)
@@ -596,6 +644,7 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
     active_watch = [{"ticker": r["_종목코드"], "name": r["종목명"], "market": r["_시장"], "score": r["종합점수"], "relative_rank": r["상대순위"], "opinion": r["수급·질적 종합의견"]} for r in rows[:FINAL_TOP_N] if r["판정"].startswith("🟢 적극매수")]
     save_json(WATCHLIST_FILE, active_watch)
     save_json(ANALYSIS_FILE, rows)
+    remember_daily_analysis()
     return rows, regime, floor, active_pct
 
 
@@ -703,6 +752,7 @@ def run_fast_update(status):
     return completed_at, regime
 
 
+restore_daily_analysis()
 inject_theme()
 inject_sidebar_labels()
 
@@ -734,7 +784,9 @@ if full_col.button("🚀 정밀 전체 업데이트", use_container_width=True, 
 
 if st.session_state.get("full_update_at"):
     st.caption(f"마지막 업데이트: **{st.session_state['full_update_at']}** · {st.session_state.get('full_update_mode', '전체 업데이트')}")
-st.caption("평소에는 빠른 업데이트를 사용하고, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 실행하세요.")
+if st.session_state.pop("daily_analysis_restored",False):
+    st.success("오늘 저장된 분석 결과를 자동으로 불러왔습니다. 다시 분석하지 않아도 각 탭에서 바로 확인할 수 있습니다.")
+st.caption("같은 날에는 저장 결과를 자동 재사용합니다. 가격만 갱신하려면 빠른 업데이트, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 사용하세요.")
 
 tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 현재 5개월선 돌파", "📍 상승시점 관찰", "📈 과거 성과 검증"])
 
