@@ -1,0 +1,27 @@
+[
+  {
+    "ticker": "192820",
+    "name": "코스맥스",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "257720",
+    "name": "실리콘투",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "403870",
+    "name": "HPSP",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "008930",
+    "name": "한미사이언스",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "001210",
+    "name": "금호전기",
+    "market": "KOSPI"
+  }
+]
