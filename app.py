@@ -508,7 +508,8 @@ def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
         fundamental = float(fundamental_scores.get(code, 50.0))
         technical = trend * .45 + momentum * .35 + volume_score * .20
         score = technical * .40 + float(r["유동성백분위"]) * .12 + fundamental * .23 + flow_score * .25
-        overheat = (p / high20 >= .985 and momentum >= 75) or timing["late"]
+        timing_gap=float(timing["gap20"] or 0)
+        overheat = timing["late"] or (p / high20 >= .985 and momentum >= 85 and timing_gap > 10)
         buy1 = min(p, ma20 * 1.01)
         buy2 = min(buy1, ma60 * 1.015 if ma60 > 0 else buy1 * .97)
 
