@@ -5,8 +5,8 @@
     "market": "KOSPI",
     "mode": "holding",
     "status": "closed",
-    "average_price": 256000.0,
-    "quantity": 1.0,
+    "average_price": 256000,
+    "quantity": 1,
     "stop_loss_pct": 3,
     "enabled": false,
     "updated_at": "2026-08-17T03:37:47.492475+00:00",
@@ -18,17 +18,17 @@
     "market": "KOSPI",
     "mode": "holding",
     "status": "closed",
-    "average_price": 1697285.0,
+    "average_price": 1697285,
     "quantity": 0,
     "stop_loss_pct": 3,
     "enabled": false,
     "updated_at": "2026-08-24T03:28:11.212063+00:00",
     "sales": [
       {
-        "price": 1735000.0,
-        "quantity": 7.0,
-        "average_cost": 1697285.0,
-        "realized_pnl": 264005.0,
+        "price": 1735000,
+        "quantity": 7,
+        "average_cost": 1697285,
+        "realized_pnl": 264005,
         "realized_return_pct": 2.222078201362754,
         "executed_at": "2026-08-24T03:28:11.212063+00:00"
       }
@@ -40,22 +40,22 @@
     "name": "SK하이닉스",
     "market": "KOSPI",
     "status": "closed",
-    "average_price": 1703261.0,
+    "average_price": 1703261,
     "quantity": 0,
     "purchases": [
       {
-        "price": 1703261.0,
-        "quantity": 7.0,
+        "price": 1703261,
+        "quantity": 7,
         "executed_at": "2026-08-24T03:29:40.996871+00:00",
         "source": "신규매수"
       }
     ],
     "sales": [
       {
-        "price": 1617000.0,
-        "quantity": 7.0,
-        "average_cost": 1703261.0,
-        "realized_pnl": -603827.0,
+        "price": 1617000,
+        "quantity": 7,
+        "average_cost": 1703261,
+        "realized_pnl": -603827,
         "realized_return_pct": -5.064461641521767,
         "executed_at": "2026-08-31T04:07:55.195643+00:00"
       }
@@ -69,24 +69,24 @@
     "name": "금호타이어",
     "market": "KOSPI",
     "status": "closed",
-    "average_price": 6960.0,
+    "average_price": 6960,
     "quantity": 0,
     "purchases": [
       {
-        "price": 6960.0,
-        "quantity": 400.0,
+        "price": 6960,
+        "quantity": 400,
         "executed_at": "2026-08-25T00:59:00.800685+00:00",
         "source": "신규매수"
       }
     ],
     "sales": [
       {
-        "price": 7380.0,
-        "quantity": 400.0,
-        "average_cost": 6960.0,
-        "realized_pnl": 168000.0,
+        "price": 7380,
+        "quantity": 400,
+        "average_cost": 6960,
+        "realized_pnl": 168000,
         "realized_return_pct": 6.034482758620685,
-        "net_realized_pnl": 162711.0,
+        "net_realized_pnl": 162711,
         "net_realized_return_pct": 5.8436269267042515,
         "fee": 443,
         "tax": 4428,
@@ -105,22 +105,22 @@
     "name": "알테오젠",
     "market": "KOSDAQ",
     "status": "closed",
-    "average_price": 304250.0,
+    "average_price": 304250,
     "quantity": 0,
     "purchases": [
       {
-        "price": 304250.0,
-        "quantity": 10.0,
+        "price": 304250,
+        "quantity": 10,
         "executed_at": "2026-08-26T00:58:28.797119+00:00",
         "source": "신규매수"
       }
     ],
     "sales": [
       {
-        "price": 295500.0,
-        "quantity": 10.0,
-        "average_cost": 304250.0,
-        "realized_pnl": -87500.0,
+        "price": 295500,
+        "quantity": 10,
+        "average_cost": 304250,
+        "realized_pnl": -87500,
         "realized_return_pct": -2.8759244042728005,
         "executed_at": "2026-08-31T01:31:24.969749+00:00"
       }
@@ -134,24 +134,24 @@
     "name": "하나금융지주",
     "market": "KOSPI",
     "status": "closed",
-    "average_price": 133001.0,
+    "average_price": 133001,
     "quantity": 0,
     "purchases": [
       {
-        "price": 133001.0,
-        "quantity": 37.0,
+        "price": 133001,
+        "quantity": 37,
         "executed_at": "2026-08-26T05:43:56.748592+00:00",
         "source": "신규매수"
       }
     ],
     "sales": [
       {
-        "price": 139500.0,
-        "quantity": 37.0,
-        "average_cost": 133001.0,
-        "realized_pnl": 240463.0,
+        "price": 139500,
+        "quantity": 37,
+        "average_cost": 133001,
+        "realized_pnl": 240463,
         "realized_return_pct": 4.886429425342675,
-        "net_realized_pnl": 231209.0,
+        "net_realized_pnl": 231209,
         "net_realized_return_pct": 4.697675127367667,
         "fee": 774,
         "tax": 7742,
@@ -171,17 +171,17 @@
     "market": "KOSPI",
     "status": "holding",
     "average_price": 48374.7572815534,
-    "quantity": 103.0,
+    "quantity": 103,
     "purchases": [
       {
-        "price": 44600.0,
-        "quantity": 22.0,
+        "price": 44600,
+        "quantity": 22,
         "executed_at": "2026-08-31T02:56:48.452769+00:00",
         "source": "신규매수"
       },
       {
-        "price": 49400.0,
-        "quantity": 81.0,
+        "price": 49400,
+        "quantity": 81,
         "fee": 600,
         "tax": 0,
         "reason": "통합 적극매수",
@@ -199,12 +199,12 @@
     "name": "HPSP",
     "market": "KOSDAQ",
     "status": "closed",
-    "average_price": 50400.0,
+    "average_price": 50400,
     "quantity": 0,
     "purchases": [
       {
-        "price": 50400.0,
-        "quantity": 100.0,
+        "price": 50400,
+        "quantity": 100,
         "fee": 756,
         "tax": 0,
         "reason": "통합 적극매수",
@@ -215,12 +215,12 @@
     ],
     "sales": [
       {
-        "price": 49950.0,
-        "quantity": 100.0,
-        "average_cost": 50400.0,
-        "realized_pnl": -45000.0,
+        "price": 49950,
+        "quantity": 100,
+        "average_cost": 50400,
+        "realized_pnl": -45000,
         "realized_return_pct": -0.8928571428571397,
-        "net_realized_pnl": -53997.0,
+        "net_realized_pnl": -53997,
         "net_realized_return_pct": -1.071208366364093,
         "fee": 749,
         "tax": 7492,
@@ -239,12 +239,12 @@
     "name": "실리콘투",
     "market": "KOSDAQ",
     "status": "closed",
-    "average_price": 52200.0,
+    "average_price": 52200,
     "quantity": 0,
     "purchases": [
       {
-        "price": 52200.0,
-        "quantity": 100.0,
+        "price": 52200,
+        "quantity": 100,
         "fee": 783,
         "tax": 0,
         "reason": "통합 적극매수",
@@ -255,12 +255,12 @@
     ],
     "sales": [
       {
-        "price": 448129.0,
-        "quantity": 39.0,
-        "average_cost": 52200.0,
-        "realized_pnl": 15441231.0,
+        "price": 448129,
+        "quantity": 39,
+        "average_cost": 52200,
+        "realized_pnl": 15441231,
         "realized_return_pct": 758.4846743295019,
-        "net_realized_pnl": 15412088.0,
+        "net_realized_pnl": 15412088,
         "net_realized_return_pct": 756.9397452488944,
         "fee": 2622,
         "tax": 26216,
@@ -270,57 +270,12 @@
         "executed_at": "2026-09-03T05:49:27.474830+00:00"
       },
       {
-        "price": 48400.0,
-        "quantity": 61.0,
-        "average_cost": 52200.0,
-        "realized_pnl": -231800.0,
+        "price": 48400,
+        "quantity": 61,
+        "average_cost": 52200,
+        "realized_pnl": -231800,
         "realized_return_pct": -7.279693486590033,
-        "net_realized_pnl": -237150.0,
-        "net_realized_return_pct": -7.446592716751897,
-        "fee": 443,
-        "tax": 4429,
-        "buy_fee": 478,
-        "reason": "손절",
-        "memo": "",
-        "executed_at": "2026-09-03T05:49:48.752747+00:00"
-      },
-      {
-        "price": 48400.0,
-        "quantity": 61.0,
-        "average_cost": 52200.0,
-        "realized_pnl": -231800.0,
-        "realized_return_pct": -7.279693486590033,
-        "net_realized_pnl": -237150.0,
-        "net_realized_return_pct": -7.446592716751897,
-        "fee": 443,
-        "tax": 4429,
-        "buy_fee": 478,
-        "reason": "손절",
-        "memo": "",
-        "executed_at": "2026-09-03T05:50:07.700019+00:00"
-      },
-      {
-        "price": 48400.0,
-        "quantity": 61.0,
-        "average_cost": 52200.0,
-        "realized_pnl": -231800.0,
-        "realized_return_pct": -7.279693486590033,
-        "net_realized_pnl": -237150.0,
-        "net_realized_return_pct": -7.446592716751897,
-        "fee": 443,
-        "tax": 4429,
-        "buy_fee": 478,
-        "reason": "손절",
-        "memo": "",
-        "executed_at": "2026-09-03T05:51:21.428641+00:00"
-      },
-      {
-        "price": 48400.0,
-        "quantity": 61.0,
-        "average_cost": 52200.0,
-        "realized_pnl": -231800.0,
-        "realized_return_pct": -7.279693486590033,
-        "net_realized_pnl": -237150.0,
+        "net_realized_pnl": -237150,
         "net_realized_return_pct": -7.446592716751897,
         "fee": 443,
         "tax": 4429,
@@ -328,25 +283,10 @@
         "reason": "손절",
         "memo": "손절못함",
         "executed_at": "2026-09-03T05:51:43.592213+00:00"
-      },
-      {
-        "price": 48400.0,
-        "quantity": 100.0,
-        "average_cost": 52200.0,
-        "realized_pnl": -380000.0,
-        "realized_return_pct": -7.279693486590033,
-        "net_realized_pnl": -388769.0,
-        "net_realized_return_pct": -7.4465650075860275,
-        "fee": 726,
-        "tax": 7260,
-        "buy_fee": 783,
-        "reason": "손절",
-        "memo": "",
-        "executed_at": "2026-09-03T05:53:24.294981+00:00"
       }
     ],
     "enabled": false,
-    "updated_at": "2026-09-03T05:53:24.294981+00:00",
-    "closed_at": "2026-09-03T05:53:24.294981+00:00"
+    "updated_at": "2026-09-03T05:51:43.592213+00:00",
+    "closed_at": "2026-09-03T05:51:43.592213+00:00"
   }
 ]
