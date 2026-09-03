@@ -206,20 +206,47 @@ def render_trade_journal(rows):
         if not journal:
             st.info("매수·매도 체결을 등록하면 거래일지가 자동으로 작성됩니다.")
             return
-        sales=[item for item in journal if item["구분"]=="매도"]
-        net_total=sum(float(item.get("_순손익",0) or 0) for item in sales)
-        wins=sum(float(item.get("_순손익",0) or 0)>0 for item in sales)
+        for item in journal:item["_월"]=str(item.get("거래일",""))[:7]
+        months=sorted({item["_월"] for item in journal if len(item["_월"])==7},reverse=True)
+        monthly=[]
+        for month in months:
+            items=[x for x in journal if x["_월"]==month]
+            buys=[x for x in items if x["구분"]=="매수"];sales=[x for x in items if x["구분"]=="매도"]
+            net=sum(float(x.get("_순손익",0) or 0) for x in sales)
+            wins=sum(float(x.get("_순손익",0) or 0)>0 for x in sales)
+            avg_rate=sum(float(x.get("_순수익률",0) or 0) for x in sales)/len(sales) if sales else None
+            monthly.append({"월":month,"매수금액":won(sum(parse_trade_number(x["거래금액"]) for x in buys)),
+                            "매도금액":won(sum(parse_trade_number(x["거래금액"]) for x in sales)),
+                            "완료매매":f"{len(sales)}건","승률":f"{wins/len(sales)*100:.1f}%" if sales else "-",
+                            "순실현손익":won(net),"평균순수익률":f"{avg_rate:+.2f}%" if avg_rate is not None else "-"})
+        st.markdown("#### 📅 월별 종합")
+        monthly_df=pd.DataFrame(monthly)
+        monthly_style=monthly_df.style.map(profit_text_color,subset=["순실현손익","평균순수익률"])
+        st.dataframe(monthly_style,use_container_width=True,hide_index=True)
+
+        selected_month=st.selectbox("조회할 월",months,key="kr_journal_month")
+        selected_items=[x for x in journal if x["_월"]==selected_month]
+        selected_sales=[x for x in selected_items if x["구분"]=="매도"]
+        net_total=sum(float(x.get("_순손익",0) or 0) for x in selected_sales)
+        wins=sum(float(x.get("_순손익",0) or 0)>0 for x in selected_sales)
+        average_rate=sum(float(x.get("_순수익률",0) or 0) for x in selected_sales)/len(selected_sales) if selected_sales else None
         m1,m2,m3,m4=st.columns(4)
-        m1.metric("누적 순실현손익",won(net_total))
-        m2.metric("완료 매매",f"{len(sales)}건")
-        m3.metric("승률",f"{wins/len(sales)*100:.1f}%" if sales else "-")
-        average_rate=sum(float(x.get("_순수익률",0) or 0) for x in sales)/len(sales) if sales else None
+        m1.metric(f"{selected_month} 순실현손익",won(net_total))
+        m2.metric("완료 매매",f"{len(selected_sales)}건")
+        m3.metric("승률",f"{wins/len(selected_sales)*100:.1f}%" if selected_sales else "-")
         m4.metric("평균 순수익률",f"{average_rate:+.2f}%" if average_rate is not None else "-")
-        visible=pd.DataFrame(journal)[["거래일","종목","종목코드","구분","체결가격","수량","거래금액","매매사유","메모","순실현손익","순수익률"]]
+
+        st.markdown(f"#### {selected_month} 거래내역")
+        visible=pd.DataFrame(selected_items)[["거래일","종목","종목코드","구분","체결가격","수량","거래금액","매매사유","메모","순실현손익","순수익률"]]
         styled=visible.style.map(profit_text_color,subset=["순실현손익","순수익률"])
         st.dataframe(styled,use_container_width=True,hide_index=True)
-        st.download_button("거래일지 CSV 다운로드",visible.to_csv(index=False).encode("utf-8-sig"),"KR_보유종목_거래일지.csv","text/csv",use_container_width=True)
+        d1,d2=st.columns(2)
+        d1.download_button(f"{selected_month} 거래일지 CSV",visible.to_csv(index=False).encode("utf-8-sig"),f"KR_거래일지_{selected_month}.csv","text/csv",use_container_width=True)
+        all_visible=pd.DataFrame(journal)[["거래일","종목","종목코드","구분","체결가격","수량","거래금액","매매사유","메모","순실현손익","순수익률"]]
+        d2.download_button("전체 거래일지 CSV",all_visible.to_csv(index=False).encode("utf-8-sig"),"KR_보유종목_거래일지_전체.csv","text/csv",use_container_width=True)
         render_trade_editor(rows)
+
+
 def kakao_ready():return bool(secret_value("KAKAO_REST_API_KEY") and secret_value("KAKAO_REFRESH_TOKEN"))
 def refresh_kakao_token():
     data={"grant_type":"refresh_token","client_id":secret_value("KAKAO_REST_API_KEY"),"refresh_token":secret_value("KAKAO_REFRESH_TOKEN")}
