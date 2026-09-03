@@ -108,6 +108,98 @@ def trade_journal_rows(rows):
             invested=average*quantity+buy_fee;net_rate=net/invested*100 if invested else 0
             journal.append({"거래일":str(sale.get("executed_at",""))[:10],"종목":name,"종목코드":code,"구분":"매도","체결가격":won(price),"수량":compact_quantity(quantity),"거래금액":won(amount),"매매사유":sale.get("reason") or "매도","메모":sale.get("memo") or "","순실현손익":won(net),"순수익률":f"{net_rate:+.2f}%","_일시":str(sale.get("executed_at","")),"_순손익":net,"_순수익률":net_rate,"_비용":fee+tax+buy_fee})
     return sorted(journal,key=lambda item:item.get("_일시",""),reverse=True)
+def _trade_edit_options(rows):
+    options=[]
+    for row in rows:
+        code=str(row.get("ticker","")).zfill(6);name=row.get("name") or code
+        for side,key in (("매수","purchases"),("매도","sales")):
+            for trade in row.get(key,[]) or []:
+                executed=str(trade.get("executed_at",""))
+                options.append({"label":f"{executed[:10]} · {name} ({code}) · {side} · {won(trade.get('price'))} · {compact_quantity(trade.get('quantity'))}주",
+                                "ticker":code,"side":side,"executed_at":executed})
+    return sorted(options,key=lambda x:x["executed_at"],reverse=True)
+
+
+def _rebuild_trade_row(row):
+    purchases=row.get("purchases",[]) or [];sales=row.get("sales",[]) or []
+    events=[(str(x.get("executed_at","")),0,x) for x in purchases]+[(str(x.get("executed_at","")),1,x) for x in sales]
+    events.sort(key=lambda x:(x[0],x[1]))
+    quantity=0.0;cost=0.0;last_average=float(row.get("average_price",0) or 0)
+    for _,side,trade in events:
+        price=float(trade.get("price",0) or 0);qty=float(trade.get("quantity",0) or 0)
+        if price<=0 or qty<=0:raise ValueError("체결가격과 수량은 0보다 커야 합니다.")
+        if side==0:
+            fee,_=trade_costs("buy",price*qty,row.get("market","KOSPI"));trade["fee"]=fee;trade["tax"]=0
+            cost+=price*qty;quantity+=qty;last_average=cost/quantity
+        else:
+            if qty>quantity+1e-9:raise ValueError("매도수량 합계가 해당 시점의 보유수량을 초과합니다.")
+            average=cost/quantity if quantity else last_average;amount=price*qty
+            fee,tax=trade_costs("sell",amount,row.get("market","KOSPI"));buy_fee=trade_costs("buy",average*qty,row.get("market","KOSPI"))[0]
+            realized=(price-average)*qty;net=realized-fee-tax-buy_fee;invested=average*qty+buy_fee
+            trade.update({"average_cost":average,"realized_pnl":realized,"realized_return_pct":(price/average-1)*100 if average else 0,
+                          "net_realized_pnl":net,"net_realized_return_pct":net/invested*100 if invested else 0,
+                          "fee":fee,"tax":tax,"buy_fee":buy_fee})
+            cost-=average*qty;quantity-=qty
+            if quantity<1e-9:quantity=0.0;cost=0.0
+    row["quantity"]=quantity
+    row["average_price"]=cost/quantity if quantity else last_average
+    all_times=[x[0] for x in events if x[0]]
+    row["updated_at"]=max(all_times) if all_times else datetime.now(timezone.utc).isoformat()
+    if quantity>0:
+        row.update({"status":"holding","enabled":True});row.pop("closed_at",None)
+    else:
+        row.update({"status":"closed","enabled":False,"closed_at":row["updated_at"]})
+    return row
+
+
+def _replace_trade_date(executed_at,new_date):
+    try:dt=datetime.fromisoformat(str(executed_at).replace("Z","+00:00"))
+    except Exception:dt=datetime.now(timezone.utc)
+    return dt.replace(year=new_date.year,month=new_date.month,day=new_date.day).isoformat()
+
+
+def render_trade_editor(rows):
+    options=_trade_edit_options(rows)
+    if not options:return
+    st.markdown("#### ✏️ 거래기록 수정")
+    labels=[x["label"] for x in options]
+    selected_label=st.selectbox("수정할 거래",labels,key="kr_trade_edit_select")
+    selected=options[labels.index(selected_label)]
+    source_row=next((r for r in rows if str(r.get("ticker","")).zfill(6)==selected["ticker"] and
+                     any(str(t.get("executed_at",""))==selected["executed_at"] for t in r.get("purchases" if selected["side"]=="매수" else "sales",[]) or [])),None)
+    if source_row is None:return
+    key="purchases" if selected["side"]=="매수" else "sales"
+    trade=next(t for t in source_row.get(key,[]) if str(t.get("executed_at",""))==selected["executed_at"])
+    try:trade_date=datetime.fromisoformat(selected["executed_at"].replace("Z","+00:00")).date()
+    except Exception:trade_date=datetime.now(timezone.utc).date()
+    with st.form("kr_trade_edit_form"):
+        a,b,c=st.columns(3)
+        new_date=a.date_input("체결일",value=trade_date)
+        new_price_text=b.text_input("체결가격",value=won(trade.get("price")),help="예: 44,812원")
+        new_qty_text=c.text_input("수량",value=f"{compact_quantity(trade.get('quantity'))}주",help="예: 39주")
+        new_reason=st.text_input("매매사유",value=str(trade.get("reason") or trade.get("source") or selected["side"]))
+        new_memo=st.text_input("메모",value=str(trade.get("memo") or ""))
+        edit_ok=st.form_submit_button("수정 내용 저장",type="primary",use_container_width=True)
+    if edit_ok:
+        price=parse_trade_number(new_price_text);qty=parse_trade_number(new_qty_text)
+        if price<=0 or qty<=0:st.error("체결가격과 수량을 올바르게 입력하세요.")
+        else:
+            try:
+                latest,sha=load_holdings();target_row=None;target_trade=None
+                for candidate in latest:
+                    trades=candidate.get(key,[]) or []
+                    match=next((t for t in trades if str(t.get("executed_at",""))==selected["executed_at"]),None)
+                    if match is not None:target_row,target_trade=candidate,match;break
+                if target_row is None:raise ValueError("원본 거래를 찾지 못했습니다. 화면을 새로고침해 주세요.")
+                target_trade.update({"price":float(price),"quantity":float(qty),"reason":new_reason.strip(),"memo":new_memo.strip(),
+                                     "executed_at":_replace_trade_date(target_trade.get("executed_at"),new_date)})
+                _rebuild_trade_row(target_row)
+                save_holdings(latest,sha,f"Edit Korea trade {selected['ticker']}")
+                st.session_state["kr_holding_save_notice"]=f"{target_row.get('name')} {selected['side']} 기록을 수정했습니다."
+                st.rerun()
+            except Exception as exc:st.error(f"거래기록 수정 실패: {exc}")
+
+
 def render_trade_journal(rows):
     journal=trade_journal_rows(rows)
     with st.expander("📒 보유종목 매매 거래일지",expanded=False):
@@ -127,6 +219,7 @@ def render_trade_journal(rows):
         styled=visible.style.map(profit_text_color,subset=["순실현손익","순수익률"])
         st.dataframe(styled,use_container_width=True,hide_index=True)
         st.download_button("거래일지 CSV 다운로드",visible.to_csv(index=False).encode("utf-8-sig"),"KR_보유종목_거래일지.csv","text/csv",use_container_width=True)
+        render_trade_editor(rows)
 def kakao_ready():return bool(secret_value("KAKAO_REST_API_KEY") and secret_value("KAKAO_REFRESH_TOKEN"))
 def refresh_kakao_token():
     data={"grant_type":"refresh_token","client_id":secret_value("KAKAO_REST_API_KEY"),"refresh_token":secret_value("KAKAO_REFRESH_TOKEN")}
