@@ -133,9 +133,9 @@
     "ticker": "086790",
     "name": "하나금융지주",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 133001.0,
-    "quantity": 37.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 133001.0,
@@ -144,9 +144,26 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-08-26T05:43:56.748592+00:00"
+    "sales": [
+      {
+        "price": 139500.0,
+        "quantity": 37.0,
+        "average_cost": 133001.0,
+        "realized_pnl": 240463.0,
+        "realized_return_pct": 4.886429425342675,
+        "net_realized_pnl": 231209.0,
+        "net_realized_return_pct": 4.697675127367667,
+        "fee": 774,
+        "tax": 7742,
+        "buy_fee": 738,
+        "reason": "1차 익절",
+        "memo": "",
+        "executed_at": "2026-09-03T00:28:38.331270+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-03T00:28:38.331270+00:00",
+    "closed_at": "2026-09-03T00:28:38.331270+00:00"
   },
   {
     "ticker": "008930",
