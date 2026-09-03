@@ -240,7 +240,7 @@
     "market": "KOSDAQ",
     "status": "holding",
     "average_price": 52200.0,
-    "quantity": 61.0,
+    "quantity": 39.0,
     "purchases": [
       {
         "price": 52200.0,
@@ -268,9 +268,24 @@
         "reason": "손절",
         "memo": "",
         "executed_at": "2026-09-03T05:49:27.474830+00:00"
+      },
+      {
+        "price": 48400.0,
+        "quantity": 61.0,
+        "average_cost": 52200.0,
+        "realized_pnl": -231800.0,
+        "realized_return_pct": -7.279693486590033,
+        "net_realized_pnl": -237150.0,
+        "net_realized_return_pct": -7.446592716751897,
+        "fee": 443,
+        "tax": 4429,
+        "buy_fee": 478,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-09-03T05:49:48.752747+00:00"
       }
     ],
     "enabled": true,
-    "updated_at": "2026-09-03T05:49:27.474830+00:00"
+    "updated_at": "2026-09-03T05:49:48.752747+00:00"
   }
 ]
