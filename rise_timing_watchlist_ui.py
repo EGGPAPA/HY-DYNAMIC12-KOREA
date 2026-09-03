@@ -115,14 +115,77 @@ def _timing(row):
 
 
 @st.cache_data(ttl=1800,show_spinner=False)
+def _download_yahoo_chunk(symbols):
+    try:return yf.download(list(symbols),period="6mo",interval="1d",auto_adjust=False,group_by="ticker",threads=True,progress=False)
+    except Exception:return pd.DataFrame()
+
+
+def _yahoo_frame(batch,symbol):
+    if batch is None or batch.empty:return pd.DataFrame()
+    try:
+        if isinstance(batch.columns,pd.MultiIndex):
+            if symbol in batch.columns.get_level_values(0):return batch[symbol].dropna(how="all")
+            if symbol in batch.columns.get_level_values(1):return batch.xs(symbol,axis=1,level=1).dropna(how="all")
+        return batch.dropna(how="all")
+    except Exception:return pd.DataFrame()
+
+
+def _score_yahoo_candidate(code,name,market,history):
+    if history is None or len(history)<65:return None
+    close=pd.to_numeric(history.get("Close"),errors="coerce").dropna()
+    volume=pd.to_numeric(history.get("Volume"),errors="coerce").reindex(close.index)
+    if len(close)<65:return None
+    price=float(close.iloc[-1]);avg_value=float((close*volume).tail(20).mean())
+    if price<1000 or avg_value<500_000_000:return None
+    ma20=close.rolling(20).mean();ma60=close.rolling(60).mean()
+    m20=float(ma20.iloc[-1]);m60=float(ma60.iloc[-1]);prior_high=float(close.iloc[-21:-1].max())
+    previous=float(close.iloc[-2]);gap20=(price/m20-1)*100 if m20 else 0
+    ret10=(price/float(close.iloc[-11])-1)*100;ret20=(price/float(close.iloc[-21])-1)*100
+    rising20=m20>float(ma20.iloc[-6]);cross=(ma20>ma60)&(ma20.shift(1)<=ma60.shift(1))
+    recent_cross=bool(cross.tail(10).fillna(False).any());breakout=price>=prior_high and previous<prior_high
+    base_volume=volume.iloc[-21:-1].dropna();recent_volume=volume.tail(3).dropna()
+    volume_ratio=float(recent_volume.max()/base_volume.mean()) if len(base_volume) and base_volume.mean()>0 and len(recent_volume) else 1.0
+    score=(20 if price>m20 else 0)+(15 if rising20 else 0)+(15 if price>m60 else 0)
+    score+=15 if recent_cross else 0;score+=20 if breakout else (8 if price>=prior_high*.98 else 0)
+    score+=15 if volume_ratio>=1.5 else (8 if volume_ratio>=1.1 else 0)
+    late=gap20>15 or ret20>35 or ret10>25
+    if gap20>12:score-=20
+    if ret10>25:score-=15
+    score=max(0,min(100,round(score,1)))
+    if late:return None
+    if score>=75 and gap20<=8:label,action="🟢 상승초입","1차 분할 검토"
+    elif score>=60:label,action="🟡 돌파확인","종가·거래량 확인"
+    elif price>m60 and rising20:label,action="🔵 준비구간","20일 고점 돌파 대기"
+    else:return None
+    buy1=min(price,max(m20,prior_high*.995)) if label.startswith("🟢") else max(m20,prior_high*.99)
+    buy2=m20*1.01;low10=float(close.tail(10).min());stop=min(price*.97,max(m20*.96,low10*.98))
+    return {"종목":name,"코드":code,"시장":market,"단계":label,"시점점수":score,"현재가":round(price),
+            "1차매수":round(buy1),"2차눌림":round(buy2),"손절참고":round(stop),"돌파기준":round(prior_high),
+            "거래량배수":round(volume_ratio,2),"20일선이격":round(gap20,1),"평균거래대금":avg_value,"행동":action}
+
+
+def _scan_yahoo_market(universe):
+    found=[];records=universe[["종목코드","종목명","시장"]].astype(str).to_dict("records")
+    for start in range(0,len(records),120):
+        chunk=records[start:start+120]
+        symbols=tuple(_symbol(x["종목코드"],x["시장"]) for x in chunk)
+        batch=_download_yahoo_chunk(symbols)
+        for row,symbol in zip(chunk,symbols):
+            result=_score_yahoo_candidate(str(row["종목코드"]).zfill(6),row["종목명"],row["시장"],_yahoo_frame(batch,symbol))
+            if result:found.append(result)
+    found=sorted(found,key=lambda x:(0 if x["단계"].startswith("🟢") else (1 if x["단계"].startswith("🟡") else 2),-x["시점점수"],-x["평균거래대금"]))
+    return found,f"Yahoo 일괄시세 fallback · KOSPI/KOSDAQ {len(records):,}개 분석"
+
+
+@st.cache_data(ttl=1800,show_spinner=False)
 def _scan_all_market(universe_rows):
-    if stock is None:return [],"pykrx를 불러오지 못했습니다."
     universe=pd.DataFrame(list(universe_rows),columns=["종목코드","종목명","시장"])
+    if stock is None:return _scan_yahoo_market(universe)
     try:
         history,base_date=collect_krx_ohlcv(stock,sessions=70,max_calendar_days=120)
-    except Exception as exc:
-        return [],f"KRX 전종목 수집 실패: {exc}"
-    if history.empty:return [],"KRX 전종목 가격자료가 없습니다."
+    except Exception:
+        history=pd.DataFrame();base_date=None
+    if history.empty:return _scan_yahoo_market(universe)
     names=universe.copy();names["종목코드"]=names["종목코드"].astype(str).str.zfill(6)
     names=names.drop_duplicates("종목코드").set_index("종목코드")
     found=[]
