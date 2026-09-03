@@ -106,6 +106,8 @@ def _timing(row):
     second=m20*1.01
     low10=float(close.tail(10).min())
     stop=min(price*.97,max(m20*.96,low10*.98))
+    if label.startswith("🟢") and price>stop and first*.98<=price<=first*1.02:
+        label,action="🟣 1차 매수구간","1차 분할매수 가능 구간"
     chart=pd.DataFrame({"종가":close,"20일선":ma20,"60일선":ma60})
     if m120 is not None:chart["120일선"]=ma120
     return {
