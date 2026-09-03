@@ -32,6 +32,7 @@ def _headers():
     return headers
 
 
+@st.cache_data(ttl=30,show_spinner=False)
 def _load_watchlist():
     try:
         response=requests.get(WATCH_API,headers=_headers(),params={"ref":BRANCH},timeout=15)
@@ -48,6 +49,7 @@ def _save_watchlist(rows,sha):
     if sha:payload["sha"]=sha
     response=requests.put(WATCH_API,headers=_headers(),json=payload,timeout=20)
     if response.status_code not in (200,201):raise RuntimeError(f"관찰목록 저장 실패: HTTP {response.status_code}")
+    _load_watchlist.clear()
 
 
 def _symbol(code,market):
@@ -273,7 +275,6 @@ def _promote_buy_candidates(scan):
         return f"개인 관찰목록 자동 추가 실패: {exc}"
 
 
-@st.fragment
 def _render_watchlist_detail(results):
     selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
     item=results[[f"{x['name']} ({x['ticker']})" for x in results].index(selected)]
