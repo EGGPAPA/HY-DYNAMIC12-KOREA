@@ -254,6 +254,25 @@ def _send_rise_scan_alerts(scan):
         return f"카카오 알림 실패: {exc}"
 
 
+def _promote_buy_candidates(scan):
+    candidates=[x for x in scan if str(x.get("단계","")).startswith("🟢")][:5]
+    if not candidates:return None
+    try:
+        rows,sha=_load_watchlist()
+        existing={str(row.get("ticker","")).zfill(6) for row in rows}
+        additions=[]
+        for item in candidates:
+            code=str(item.get("코드","")).zfill(6)
+            if code in existing:continue
+            additions.append({"ticker":code,"name":item.get("종목") or code,"market":item.get("시장","KOSPI")})
+            existing.add(code)
+        if not additions:return "상승초입 상위 5개가 이미 개인 관찰목록에 있습니다."
+        _save_watchlist(rows+additions,sha)
+        return "개인 관찰목록 자동 추가 완료 · "+", ".join(item["name"] for item in additions)
+    except Exception as exc:
+        return f"개인 관찰목록 자동 추가 실패: {exc}"
+
+
 def render_rise_timing_watchlist(universe=None):
     st.subheader("📍 전종목 상승시점 검색")
     st.caption("통합매수판정과 완전히 분리해 KOSPI·KOSDAQ 전 종목에서 상승초입과 돌파확인 후보를 찾습니다.")
@@ -265,12 +284,17 @@ def render_rise_timing_watchlist(universe=None):
             scan,message=_scan_all_market(universe_rows)
             st.session_state["rise_all_scan"]=scan;st.session_state["rise_all_scan_message"]=message
             st.session_state["rise_kakao_notice"]=_send_rise_scan_alerts(scan) if scan else None
+            st.session_state["rise_promote_notice"]=_promote_buy_candidates(scan) if scan else None
             status.update(label=f"전종목 상승시점 검색 완료 · {len(scan):,}개 후보",state="complete")
     scan=st.session_state.get("rise_all_scan",[])
     kakao_notice=st.session_state.pop("rise_kakao_notice",None)
     if kakao_notice:
         if "완료" in kakao_notice:st.success(kakao_notice)
         else:st.warning(kakao_notice)
+    promote_notice=st.session_state.pop("rise_promote_notice",None)
+    if promote_notice:
+        if "완료" in promote_notice or "이미" in promote_notice:st.success(promote_notice)
+        else:st.warning(promote_notice)
     if scan:
         green=[x for x in scan if str(x["단계"]).startswith("🟢")]
         yellow=[x for x in scan if str(x["단계"]).startswith("🟡")]
