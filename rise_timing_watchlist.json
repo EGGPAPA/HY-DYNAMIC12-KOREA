@@ -23,5 +23,30 @@
     "ticker": "001210",
     "name": "금호전기",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "004020",
+    "name": "현대제철",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "011780",
+    "name": "금호석유화학",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "139130",
+    "name": "iM금융지주",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "000815",
+    "name": "삼성화재우",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "001120",
+    "name": "LX인터내셔널",
+    "market": "KOSPI"
   }
 ]
