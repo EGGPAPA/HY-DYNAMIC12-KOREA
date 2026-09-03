@@ -238,9 +238,9 @@
     "ticker": "257720",
     "name": "실리콘투",
     "market": "KOSDAQ",
-    "status": "closed",
-    "average_price": 52200,
-    "quantity": 0,
+    "status": "holding",
+    "average_price": 52200.0,
+    "quantity": 22.0,
     "purchases": [
       {
         "price": 52200,
@@ -257,10 +257,10 @@
       {
         "price": 44812,
         "quantity": 39,
-        "average_cost": 52200,
-        "realized_pnl": -288132,
+        "average_cost": 52200.0,
+        "realized_pnl": -288132.0,
         "realized_return_pct": -14.153256704980844,
-        "net_realized_pnl": -291321,
+        "net_realized_pnl": -291321.0,
         "net_realized_return_pct": -14.3077591774491,
         "fee": 262,
         "tax": 2622,
@@ -270,23 +270,22 @@
         "executed_at": "2026-09-03T05:49:27.474830+00:00"
       },
       {
-        "price": 48400,
-        "quantity": 61,
-        "average_cost": 52200,
-        "realized_pnl": -231800,
-        "realized_return_pct": -7.279693486590033,
-        "net_realized_pnl": -237150,
-        "net_realized_return_pct": -7.446592716751897,
-        "fee": 443,
-        "tax": 4429,
-        "buy_fee": 478,
+        "price": 48129.0,
+        "quantity": 39.0,
+        "average_cost": 52200.0,
+        "realized_pnl": -158769.0,
+        "realized_return_pct": -7.798850574712645,
+        "net_realized_pnl": -162172.0,
+        "net_realized_return_pct": -7.9648151740701,
+        "fee": 282,
+        "tax": 2816,
+        "buy_fee": 305,
         "reason": "손절",
         "memo": "손절못함",
         "executed_at": "2026-09-03T05:51:43.592213+00:00"
       }
     ],
-    "enabled": false,
-    "updated_at": "2026-09-03T05:51:43.592213+00:00",
-    "closed_at": "2026-09-03T05:51:43.592213+00:00"
+    "enabled": true,
+    "updated_at": "2026-09-03T05:51:43.592213+00:00"
   }
 ]
