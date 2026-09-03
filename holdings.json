@@ -238,9 +238,9 @@
     "ticker": "257720",
     "name": "실리콘투",
     "market": "KOSDAQ",
-    "status": "holding",
+    "status": "closed",
     "average_price": 52200.0,
-    "quantity": 39.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 52200.0,
@@ -328,9 +328,25 @@
         "reason": "손절",
         "memo": "손절못함",
         "executed_at": "2026-09-03T05:51:43.592213+00:00"
+      },
+      {
+        "price": 48400.0,
+        "quantity": 100.0,
+        "average_cost": 52200.0,
+        "realized_pnl": -380000.0,
+        "realized_return_pct": -7.279693486590033,
+        "net_realized_pnl": -388769.0,
+        "net_realized_return_pct": -7.4465650075860275,
+        "fee": 726,
+        "tax": 7260,
+        "buy_fee": 783,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-09-03T05:53:24.294981+00:00"
       }
     ],
-    "enabled": true,
-    "updated_at": "2026-09-03T05:51:43.592213+00:00"
+    "enabled": false,
+    "updated_at": "2026-09-03T05:53:24.294981+00:00",
+    "closed_at": "2026-09-03T05:53:24.294981+00:00"
   }
 ]
