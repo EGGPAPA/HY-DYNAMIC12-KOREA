@@ -29,7 +29,20 @@ def format_trade_input(key,unit):
     else:st.session_state[key]=f"{compact_quantity(value)}주"
 @st.cache_data(ttl=60*60*24,show_spinner=False)
 def holding_symbol_master():
-    df=_load_backtest_universe().copy()
+    """Load symbol metadata without importing app.py or executing Streamlit widgets."""
+    frames=[]
+    try:
+        from pykrx import stock as krx_stock
+        for market in ("KOSPI","KOSDAQ"):
+            codes=krx_stock.get_market_ticker_list(market=market)
+            frames.extend({"종목코드":str(code).zfill(6),"종목명":krx_stock.get_market_ticker_name(code),"시장":market} for code in codes)
+    except Exception:
+        frames=[]
+    if frames:
+        df=pd.DataFrame(frames)
+    else:
+        try:df=pd.read_csv("korea_universe.csv",dtype={"종목코드":str})
+        except Exception:return pd.DataFrame(columns=["종목코드","종목명","시장"])
     required={"종목코드","종목명","시장"}
     if df.empty or not required.issubset(df.columns):return pd.DataFrame(columns=list(required))
     df=df[list(required)].dropna(subset=["종목코드","종목명"])
