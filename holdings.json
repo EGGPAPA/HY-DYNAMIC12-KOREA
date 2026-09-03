@@ -198,9 +198,9 @@
     "ticker": "403870",
     "name": "HPSP",
     "market": "KOSDAQ",
-    "status": "holding",
+    "status": "closed",
     "average_price": 50400.0,
-    "quantity": 100.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 50400.0,
@@ -213,9 +213,26 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-08-31T05:05:05.029779+00:00"
+    "sales": [
+      {
+        "price": 49950.0,
+        "quantity": 100.0,
+        "average_cost": 50400.0,
+        "realized_pnl": -45000.0,
+        "realized_return_pct": -0.8928571428571397,
+        "net_realized_pnl": -53997.0,
+        "net_realized_return_pct": -1.071208366364093,
+        "fee": 749,
+        "tax": 7492,
+        "buy_fee": 756,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-09-03T05:48:55.144762+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-03T05:48:55.144762+00:00",
+    "closed_at": "2026-09-03T05:48:55.144762+00:00"
   },
   {
     "ticker": "257720",
