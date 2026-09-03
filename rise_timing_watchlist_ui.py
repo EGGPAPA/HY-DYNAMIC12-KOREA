@@ -273,6 +273,16 @@ def _promote_buy_candidates(scan):
         return f"개인 관찰목록 자동 추가 실패: {exc}"
 
 
+@st.fragment
+def _render_watchlist_detail(results):
+    selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
+    item=results[[f"{x['name']} ({x['ticker']})" for x in results].index(selected)]
+    a,b,c,d=st.columns(4);a.metric("현재 단계",item["label"]);b.metric("시점점수",f"{item['score']:.0f}점");c.metric("1차 매수 참고",_won(item["buy1"]));d.metric("손절 참고",_won(item["stop"]))
+    st.info(f"행동: **{item['action']}** · 돌파 기준 {_won(item['breakout'])} · 2차 눌림 참고 {_won(item['buy2'])}")
+    st.line_chart(item["chart"],height=360)
+    st.caption("참고 가격은 20일선·최근 20일 고점·최근 저점을 이용한 기술적 기준이며 실제 주문 전 기업 실적과 공시를 별도로 확인하세요.")
+
+
 def render_rise_timing_watchlist(universe=None):
     st.subheader("📍 전종목 상승시점 검색")
     st.caption("통합매수판정과 완전히 분리해 KOSPI·KOSDAQ 전 종목에서 상승초입과 돌파확인 후보를 찾습니다.")
@@ -329,12 +339,7 @@ def render_rise_timing_watchlist(universe=None):
             "거래량 배수":x["volume_ratio"],"20일선 이격":f"{x['gap20']:+.1f}%","행동":x["action"],
         } for x in results])
         st.dataframe(display,use_container_width=True,hide_index=True)
-        selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results])
-        item=results[[f"{x['name']} ({x['ticker']})" for x in results].index(selected)]
-        a,b,c,d=st.columns(4);a.metric("현재 단계",item["label"]);b.metric("시점점수",f"{item['score']:.0f}점");c.metric("1차 매수 참고",_won(item["buy1"]));d.metric("손절 참고",_won(item["stop"]))
-        st.info(f"행동: **{item['action']}** · 돌파 기준 {_won(item['breakout'])} · 2차 눌림 참고 {_won(item['buy2'])}")
-        st.line_chart(item["chart"],height=360)
-        st.caption("참고 가격은 20일선·최근 20일 고점·최근 저점을 이용한 기술적 기준이며 실제 주문 전 기업 실적과 공시를 별도로 확인하세요.")
+        _render_watchlist_detail(results)
 
     with st.expander("관찰종목 추가·삭제"):
         c1,c2,c3=st.columns([1,2,1])
