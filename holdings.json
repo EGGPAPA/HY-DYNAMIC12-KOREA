@@ -153,19 +153,29 @@
     "name": "한미사이언스",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 44600.0,
-    "quantity": 22.0,
+    "average_price": 48374.7572815534,
+    "quantity": 103.0,
     "purchases": [
       {
         "price": 44600.0,
         "quantity": 22.0,
         "executed_at": "2026-08-31T02:56:48.452769+00:00",
         "source": "신규매수"
+      },
+      {
+        "price": 49400.0,
+        "quantity": 81.0,
+        "fee": 600,
+        "tax": 0,
+        "reason": "통합 적극매수",
+        "memo": "",
+        "executed_at": "2026-09-03T00:26:04.272296+00:00",
+        "source": "추가매수"
       }
     ],
     "sales": [],
     "enabled": true,
-    "updated_at": "2026-08-31T02:56:48.452769+00:00"
+    "updated_at": "2026-09-03T00:26:04.272296+00:00"
   },
   {
     "ticker": "403870",
