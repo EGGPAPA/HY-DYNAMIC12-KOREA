@@ -23,5 +23,30 @@
     "ticker": "001120",
     "name": "LX인터내셔널",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "003530",
+    "name": "한화투자증권",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "158430",
+    "name": "아톤",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "035510",
+    "name": "신세계 I&C",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "035890",
+    "name": "서희건설",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "003550",
+    "name": "LG",
+    "market": "KOSPI"
   }
 ]
