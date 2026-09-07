@@ -48,5 +48,30 @@
     "ticker": "003550",
     "name": "LG",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "375500",
+    "name": "DL이앤씨",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "004990",
+    "name": "롯데지주",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "041930",
+    "name": "SY동아",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "071090",
+    "name": "하이스틸",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "000220",
+    "name": "유유제약",
+    "market": "KOSPI"
   }
 ]
