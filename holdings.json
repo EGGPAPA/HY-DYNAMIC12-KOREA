@@ -355,9 +355,9 @@
     "ticker": "088350",
     "name": "한화생명",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 5880.0,
-    "quantity": 850.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 5880.0,
@@ -370,8 +370,25 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-09-08T01:14:06.817389+00:00"
+    "sales": [
+      {
+        "price": 5890.0,
+        "quantity": 850.0,
+        "average_cost": 5880.0,
+        "realized_pnl": 8500.0,
+        "realized_return_pct": 0.1700680272108901,
+        "net_realized_pnl": -511.0,
+        "net_realized_return_pct": -0.010222555638909727,
+        "fee": 751,
+        "tax": 7510,
+        "buy_fee": 750,
+        "reason": "기타",
+        "memo": "",
+        "executed_at": "2026-09-08T05:28:07.346725+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-08T05:28:07.346725+00:00",
+    "closed_at": "2026-09-08T05:28:07.346725+00:00"
   }
 ]
