@@ -30,6 +30,7 @@ except Exception:
     stock = None
     PYKRX_OK = False
 
+# deployment refresh: 2026-09-09 export-chart compatibility fix
 st.set_page_config(page_title="HY DYNAMIC12 · 한국주식 실전선별", page_icon="🇰🇷", layout="wide")
 
 SEOUL = ZoneInfo("Asia/Seoul")
