@@ -889,27 +889,38 @@ def _render_export_details(exports, kospi_frame):
             safe_chart["기준월"] = pd.to_datetime(safe_chart["기준월"], errors="coerce").dt.tz_localize(None)
             safe_chart["전년동월대비"] = pd.to_numeric(safe_chart["전년동월대비"], errors="coerce")
             safe_chart = safe_chart.dropna(subset=["기준월", "전년동월대비"])
-            try:
-                line = (
-                    alt.Chart(safe_chart)
-                    .mark_line(strokeWidth=2)
-                    .encode(
-                        x=alt.X("기준월:T", title="기준월", axis=alt.Axis(format="%Y-%m", tickCount=12, labelAngle=-45)),
-                        y=alt.Y("전년동월대비:Q", title="작년 동월 대비(%)"),
-                        color=alt.Color("항목:N", title="항목"),
-                        tooltip=[
-                            alt.Tooltip("기준월:T", title="기준월", format="%Y-%m"),
-                            alt.Tooltip("항목:N", title="항목"),
-                            alt.Tooltip("전년동월대비:Q", title="증감률", format="+.1f"),
-                        ],
-                    )
-                    .properties(height=430)
-                )
-                st.altair_chart(line, use_container_width=True)
-            except Exception:
-                fallback = safe_chart.pivot_table(index="기준월", columns="항목", values="전년동월대비", aggfunc="last").sort_index()
-                st.warning("차트 호환 문제로 같은 수치를 월별 표로 표시합니다.")
-                st.dataframe(fallback.tail(60), use_container_width=True)
+            # Streamlit 1.45 + Altair/Vega 호환 오류를 피하기 위해 의존성 없는 SVG로 직접 그린다.
+            pivot = safe_chart.pivot_table(index="기준월", columns="항목", values="전년동월대비", aggfunc="last").sort_index()
+            if not pivot.empty:
+                width,height,left,right,top,bottom=1000,430,62,24,35,48
+                values=pd.to_numeric(pivot.stack(),errors="coerce").dropna()
+                ymin=float(values.min()) if not values.empty else -1.0
+                ymax=float(values.max()) if not values.empty else 1.0
+                ymin=min(ymin,0.0);ymax=max(ymax,0.0)
+                pad=max((ymax-ymin)*.08,1.0);ymin-=pad;ymax+=pad
+                dates=list(pivot.index);count=max(len(dates)-1,1)
+                x=lambda i:left+i*(width-left-right)/count
+                y=lambda v:top+(ymax-float(v))*(height-top-bottom)/(ymax-ymin)
+                colors=["#4da3ff","#ff5b5b","#42d392","#ffb84d","#b794f4","#38bdf8","#f472b6"]
+                parts=[f'<svg viewBox="0 0 {width} {height}" width="100%" role="img" aria-label="수출동향과 KOSPI 전년동월대비 선 그래프" style="background:#111923;border:1px solid #344050;border-radius:8px">']
+                zero_y=y(0);parts.append(f'<line x1="{left}" y1="{zero_y:.1f}" x2="{width-right}" y2="{zero_y:.1f}" stroke="#7b8794" stroke-dasharray="5 5"/>')
+                for grid_value in np.linspace(ymin,ymax,5):
+                    gy=y(grid_value);parts.append(f'<line x1="{left}" y1="{gy:.1f}" x2="{width-right}" y2="{gy:.1f}" stroke="#263241" stroke-width="1"/>')
+                    parts.append(f'<text x="{left-8}" y="{gy+4:.1f}" text-anchor="end" fill="#aab2bf" font-size="12">{grid_value:+.0f}%</text>')
+                for idx,column in enumerate(pivot.columns):
+                    series=pivot[column].dropna();points=[]
+                    for dt,value in series.items():
+                        pos=dates.index(dt);points.append(f"{x(pos):.1f},{y(value):.1f}")
+                    if len(points)>=2:
+                        color=colors[idx%len(colors)];parts.append(f'<polyline points="{" ".join(points)}" fill="none" stroke="{color}" stroke-width="2.3"/>')
+                        lx=left+(idx%4)*225;ly=18+(idx//4)*17;parts.append(f'<line x1="{lx}" y1="{ly}" x2="{lx+18}" y2="{ly}" stroke="{color}" stroke-width="3"/><text x="{lx+24}" y="{ly+4}" fill="#dbe4ee" font-size="12">{column}</text>')
+                if dates:
+                    parts.append(f'<text x="{left}" y="{height-16}" fill="#aab2bf" font-size="12">{dates[0].strftime("%Y-%m")}</text>')
+                    parts.append(f'<text x="{width-right}" y="{height-16}" text-anchor="end" fill="#aab2bf" font-size="12">{dates[-1].strftime("%Y-%m")}</text>')
+                parts.append("</svg>")
+                st.markdown("".join(parts),unsafe_allow_html=True)
+            else:
+                st.info("선택한 기간에 표시할 수치가 없습니다.")
         else:
             st.info("선택한 기간에 표시할 월별 수출 통계가 없습니다.")
 
