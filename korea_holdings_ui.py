@@ -204,10 +204,10 @@ def render_trade_editor(rows):
 def render_buy_trade_editor(rows):
     options=[x for x in _trade_edit_options(rows) if x["side"]=="매수"]
     if not options:return
-    with st.expander("✏️ 등록한 매수종목 수정",expanded=False):
-        st.caption("잘못 입력한 종목·체결가·수량·사유·메모를 고치면 보유수량과 평균매수가도 자동으로 다시 계산됩니다.")
+    with st.expander("✏️ 등록한 매수종목 수정·삭제",expanded=False):
+        st.caption("잘못 입력한 매수내역을 수정하거나 삭제할 수 있습니다. 저장 후 보유수량과 평균매수가는 자동으로 다시 계산됩니다.")
         labels=[x["label"] for x in options]
-        selected_label=st.selectbox("수정할 매수 내역",labels,key="kr_buy_edit_select")
+        selected_label=st.selectbox("수정·삭제할 매수 내역",labels,key="kr_buy_edit_select")
         selected=options[labels.index(selected_label)]
         source_row=next((r for r in rows if str(r.get("ticker","")).zfill(6)==selected["ticker"] and
                          any(str(x.get("executed_at",""))==selected["executed_at"] for x in r.get("purchases",[]) or [])),None)
@@ -215,20 +215,46 @@ def render_buy_trade_editor(rows):
         trade=next(x for x in source_row.get("purchases",[]) if str(x.get("executed_at",""))==selected["executed_at"])
         try:trade_date=datetime.fromisoformat(selected["executed_at"].replace("Z","+00:00")).date()
         except Exception:trade_date=datetime.now(timezone.utc).date()
-        with st.form("kr_buy_trade_edit_form"):
+        edit_key="".join(ch for ch in selected["executed_at"] if ch.isalnum())[-24:] or selected["ticker"]
+        with st.form(f"kr_buy_trade_edit_form_{edit_key}"):
             a,b,c=st.columns([1,2,1])
-            new_code=a.text_input("종목코드",value=str(source_row.get("ticker","")).zfill(6))
-            new_name=b.text_input("종목명",value=str(source_row.get("name") or ""))
+            new_code=a.text_input("종목코드",value=str(source_row.get("ticker","")).zfill(6),key=f"kr_edit_code_{edit_key}")
+            new_name=b.text_input("종목명",value=str(source_row.get("name") or ""),key=f"kr_edit_name_{edit_key}")
             markets=["KOSPI","KOSDAQ"];old_market=str(source_row.get("market","KOSPI")).upper()
-            new_market=c.selectbox("시장",markets,index=1 if "KOSDAQ" in old_market else 0)
+            new_market=c.selectbox("시장",markets,index=1 if "KOSDAQ" in old_market else 0,key=f"kr_edit_market_{edit_key}")
             d,e,f=st.columns(3)
-            new_date=d.date_input("체결일",value=trade_date)
-            new_price_text=e.text_input("실제 체결 매수가",value=won(trade.get("price")),help="예: 198,500원")
-            new_qty_text=f.text_input("매수 체결수",value=f"{compact_quantity(trade.get('quantity'))}주",help="예: 25주")
-            new_reason=st.text_input("매수 사유",value=str(trade.get("reason") or trade.get("source") or "매수"))
-            new_memo=st.text_input("매수 메모",value=str(trade.get("memo") or ""))
-            edit_ok=st.form_submit_button("✅ 매수 내역 수정 저장",type="primary",use_container_width=True)
-        if edit_ok:
+            new_date=d.date_input("체결일",value=trade_date,key=f"kr_edit_date_{edit_key}")
+            new_price_text=e.text_input("실제 체결 매수가",value=won(trade.get("price")),help="예: 198,500원",key=f"kr_edit_price_{edit_key}")
+            new_qty_text=f.text_input("매수 체결수",value=f"{compact_quantity(trade.get('quantity'))}주",help="예: 25주",key=f"kr_edit_qty_{edit_key}")
+            new_reason=st.text_input("매수 사유",value=str(trade.get("reason") or trade.get("source") or "매수"),key=f"kr_edit_reason_{edit_key}")
+            new_memo=st.text_input("매수 메모",value=str(trade.get("memo") or ""),key=f"kr_edit_memo_{edit_key}")
+            confirm_delete=st.checkbox("이 매수 내역을 삭제합니다",key=f"kr_edit_delete_confirm_{edit_key}")
+            left,right=st.columns([3,1])
+            edit_ok=left.form_submit_button("✅ 매수 내역 수정 저장",type="primary",use_container_width=True)
+            delete_ok=right.form_submit_button("🗑️ 선택 내역 삭제",use_container_width=True)
+        if delete_ok:
+            if not confirm_delete:st.error("삭제하려면 ‘이 매수 내역을 삭제합니다’를 먼저 선택하세요.")
+            else:
+                try:
+                    latest,sha=load_holdings();target_row=None;target_trade=None
+                    for candidate in latest:
+                        if str(candidate.get("ticker","")).zfill(6)!=selected["ticker"]:continue
+                        match=next((x for x in candidate.get("purchases",[]) or [] if str(x.get("executed_at",""))==selected["executed_at"]),None)
+                        if match is not None:target_row,target_trade=candidate,match;break
+                    if target_row is None:raise ValueError("삭제할 원본 매수내역을 찾지 못했습니다. 화면을 새로고침해 주세요.")
+                    purchases=target_row.get("purchases",[]) or []
+                    target_row["purchases"]=[x for x in purchases if x is not target_trade]
+                    if not target_row["purchases"] and not (target_row.get("sales",[]) or []):
+                        latest.remove(target_row)
+                        notice=f"{target_row.get('name')} ({selected['ticker']})의 마지막 매수내역과 보유종목을 삭제했습니다."
+                    else:
+                        _rebuild_trade_row(target_row)
+                        notice=f"{target_row.get('name')} ({selected['ticker']}) 매수내역을 삭제하고 보유정보를 다시 계산했습니다."
+                    save_holdings(latest,sha,f"Delete Korea buy {selected['ticker']}")
+                    st.session_state["kr_holding_save_notice"]=notice
+                    st.rerun()
+                except Exception as exc:st.error(f"매수내역 삭제 실패: {exc}")
+        elif edit_ok:
             code="".join(ch for ch in new_code if ch.isdigit()).zfill(6)
             price=parse_trade_number(new_price_text);qty=parse_trade_number(new_qty_text)
             if len(code)!=6 or code=="000000":st.error("6자리 종목코드를 확인하세요.")
