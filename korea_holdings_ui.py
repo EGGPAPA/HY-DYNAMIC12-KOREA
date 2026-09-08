@@ -159,9 +159,9 @@ def _replace_trade_date(executed_at,new_date):
 
 
 def render_trade_editor(rows):
-    options=_trade_edit_options(rows)
+    options=[x for x in _trade_edit_options(rows) if x["side"]=="매도"]
     if not options:return
-    st.markdown("#### ✏️ 거래기록 수정")
+    st.markdown("#### ✏️ 매도기록 수정")
     labels=[x["label"] for x in options]
     selected_label=st.selectbox("수정할 거래",labels,key="kr_trade_edit_select")
     selected=options[labels.index(selected_label)]
