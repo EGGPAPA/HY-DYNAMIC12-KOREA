@@ -1184,7 +1184,8 @@ def render_market_environment(market_is_open=False):
         export_markdown=_export_card(exports),
     )
     st.caption("시장가격은 Yahoo Finance 최근 종가 기준이며 장중 시세와 차이가 날 수 있습니다. 수출은 월별 통계 기준입니다.")
-    # Streamlit Cloud의 Altair/Vega 호환 오류가 시장환경 전체를 중단시키지 않도록 상세 차트는 분리한다.\n    st.caption("수출동향 상세 차트는 현재 실행환경 호환 문제로 숨겼습니다. 상단 한국 수출 월별 증감 요약은 정상 반영됩니다.")
+    # Streamlit Cloud의 Altair/Vega 호환 오류가 시장환경 전체를 중단시키지 않도록 상세 차트는 분리한다.
+    st.caption("수출동향 상세 차트는 현재 실행환경 호환 문제로 숨겼습니다. 상단 한국 수출 월별 증감 요약은 정상 반영됩니다.")
 
     if not sectors.empty:
         st.markdown("### 주도·부진 업종 평가")
