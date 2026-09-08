@@ -333,15 +333,31 @@ def render_rise_timing_watchlist(universe=None):
         for row in rows:
             result,_=_timing(row)
             if result:results.append(result)
-    results=sorted(results,key=lambda item:item["score"],reverse=True)
+    def _stage_priority(item):
+        label=str(item.get("label",""))
+        if "1차매수구간" in label:return 0
+        if "상승초입" in label:return 1
+        if "돌파확인" in label:return 2
+        if "준비구간" in label:return 3
+        return 4
+    def _buy1_distance(item):
+        price=float(item.get("price",0) or 0);buy1=float(item.get("buy1",0) or 0)
+        return abs(price/buy1-1)*100 if price>0 and buy1>0 else 999
+    results=sorted(results,key=lambda item:(_stage_priority(item),_buy1_distance(item),-float(item.get("volume_ratio",0) or 0),-float(item.get("score",0) or 0)))
     if results:
+        st.info("매수 우선순위: **① 단계 → ② 현재가와 1차 매수가 거리 → ③ 거래량 → ④ 시점점수** 순으로 정렬합니다.")
         display=pd.DataFrame([{
-            "종목":x["name"],"코드":x["ticker"],"단계":x["label"],"시점점수":x["score"],
+            "매수 우선순위":rank,"종목":x["name"],"코드":x["ticker"],"① 단계":x["label"],
+            "② 1차가 거리":f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1",0) or 0)>0 else "-",
+            "③ 거래량 배수":x["volume_ratio"],"④ 시점점수":x["score"],
             "현재가":_won(x["price"]),"1차 매수 참고":_won(x["buy1"]),"2차 눌림 참고":_won(x["buy2"]),
             "손절 참고":_won(x["stop"]),"돌파 기준":_won(x["breakout"]),
-            "거래량 배수":x["volume_ratio"],"20일선 이격":f"{x['gap20']:+.1f}%","행동":x["action"],
-        } for x in results])
-        st.dataframe(display,use_container_width=True,hide_index=True)
+            "20일선 이격":f"{x['gap20']:+.1f}%","행동":x["action"],
+        } for rank,x in enumerate(results,1)])
+        st.dataframe(display,use_container_width=True,hide_index=True,
+                     column_config={"매수 우선순위":st.column_config.NumberColumn(format="%d위"),
+                                    "③ 거래량 배수":st.column_config.NumberColumn(format="%.2f배"),
+                                    "④ 시점점수":st.column_config.NumberColumn(format="%.0f점")})
         _render_watchlist_detail(results)
 
     with st.expander("관찰종목 추가·삭제"):
