@@ -98,5 +98,20 @@
     "ticker": "092790",
     "name": "넥스틸",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "117700",
+    "name": "KODEX 건설",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "139220",
+    "name": "TIGER 200 건설",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "039610",
+    "name": "화성밸브",
+    "market": "KOSDAQ"
   }
 ]
