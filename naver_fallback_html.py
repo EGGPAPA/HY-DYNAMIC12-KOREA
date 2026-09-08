@@ -176,7 +176,7 @@ def get_stock_flow_html(code):
     return None
 
 
-def get_flow_map_html(codes, max_workers=12):
+def get_flow_map_html(codes, max_workers=3):
     """Fetch latest investor flow concurrently for a limited candidate set."""
     uniq = []
     seen = set()
@@ -190,15 +190,23 @@ def get_flow_map_html(codes, max_workers=12):
     if not uniq:
         return out, None
 
-    workers = max(2, min(int(max_workers), 16, len(uniq)))
-    with ThreadPoolExecutor(max_workers=workers) as ex:
-        futures = {ex.submit(get_stock_flow_html, code): code for code in uniq}
-        for fut in as_completed(futures):
-            code = futures[fut]
-            try:
-                row = fut.result()
-            except Exception:
-                row = None
+    workers = max(1, min(int(max_workers), 3, len(uniq)))
+    try:
+        with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="naver-flow") as ex:
+            futures = {ex.submit(get_stock_flow_html, code): code for code in uniq}
+            for fut in as_completed(futures):
+                code = futures[fut]
+                try:
+                    row = fut.result()
+                except Exception:
+                    row = None
+                if row:
+                    out[code] = row
+    except (RuntimeError, OSError):
+        # Streamlit Cloud가 스레드 한도에 도달해도 앱 전체를 중단하지 않는다.
+        # 새 스레드를 만들지 않고 제한된 후보를 순차 조회한다.
+        for code in uniq[:30]:
+            row = get_stock_flow_html(code)
             if row:
                 out[code] = row
 
