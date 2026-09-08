@@ -885,31 +885,31 @@ def _render_export_details(exports, kospi_frame):
             long_chart = pd.DataFrame()
 
         if not long_chart.empty:
-            line = (
-                alt.Chart(long_chart)
-                .mark_line(strokeWidth=2)
-                .encode(
-                    x=alt.X(
-                        "기준월:T",
-                        title="기준월",
-                        axis=alt.Axis(format="%Y-%m", tickCount=12, labelAngle=-45),
-                        scale=alt.Scale(domain=[cutoff.to_pydatetime(), range_end.to_pydatetime()]),
-                    ),
-                    y=alt.Y("전년동월대비:Q", title="작년 동월 대비(%)"),
-                    color=alt.Color("항목:N", title="항목"),
-                    tooltip=[
-                        alt.Tooltip("기준월:T", title="기준월", format="%Y-%m"),
-                        alt.Tooltip("항목:N", title="항목"),
-                        alt.Tooltip("전년동월대비:Q", title="증감률", format="+.1f"),
-                    ],
+            safe_chart = long_chart.copy()
+            safe_chart["기준월"] = pd.to_datetime(safe_chart["기준월"], errors="coerce").dt.tz_localize(None)
+            safe_chart["전년동월대비"] = pd.to_numeric(safe_chart["전년동월대비"], errors="coerce")
+            safe_chart = safe_chart.dropna(subset=["기준월", "전년동월대비"])
+            try:
+                line = (
+                    alt.Chart(safe_chart)
+                    .mark_line(strokeWidth=2)
+                    .encode(
+                        x=alt.X("기준월:T", title="기준월", axis=alt.Axis(format="%Y-%m", tickCount=12, labelAngle=-45)),
+                        y=alt.Y("전년동월대비:Q", title="작년 동월 대비(%)"),
+                        color=alt.Color("항목:N", title="항목"),
+                        tooltip=[
+                            alt.Tooltip("기준월:T", title="기준월", format="%Y-%m"),
+                            alt.Tooltip("항목:N", title="항목"),
+                            alt.Tooltip("전년동월대비:Q", title="증감률", format="+.1f"),
+                        ],
+                    )
+                    .properties(height=430)
                 )
-                .properties(height=430)
-                .interactive()
-            )
-            zero = alt.Chart(pd.DataFrame({"기준선": [0]})).mark_rule(
-                color="#888", strokeDash=[4, 4]
-            ).encode(y="기준선:Q")
-            st.altair_chart(line + zero, use_container_width=True)
+                st.altair_chart(line, use_container_width=True)
+            except Exception:
+                fallback = safe_chart.pivot_table(index="기준월", columns="항목", values="전년동월대비", aggfunc="last").sort_index()
+                st.warning("차트 호환 문제로 같은 수치를 월별 표로 표시합니다.")
+                st.dataframe(fallback.tail(60), use_container_width=True)
         else:
             st.info("선택한 기간에 표시할 월별 수출 통계가 없습니다.")
 
