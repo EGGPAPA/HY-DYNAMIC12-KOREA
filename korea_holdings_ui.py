@@ -200,6 +200,60 @@ def render_trade_editor(rows):
             except Exception as exc:st.error(f"거래기록 수정 실패: {exc}")
 
 
+
+def render_buy_trade_editor(rows):
+    options=[x for x in _trade_edit_options(rows) if x["side"]=="매수"]
+    if not options:return
+    with st.expander("✏️ 등록한 매수종목 수정",expanded=False):
+        st.caption("잘못 입력한 종목·체결가·수량·사유·메모를 고치면 보유수량과 평균매수가도 자동으로 다시 계산됩니다.")
+        labels=[x["label"] for x in options]
+        selected_label=st.selectbox("수정할 매수 내역",labels,key="kr_buy_edit_select")
+        selected=options[labels.index(selected_label)]
+        source_row=next((r for r in rows if str(r.get("ticker","")).zfill(6)==selected["ticker"] and
+                         any(str(x.get("executed_at",""))==selected["executed_at"] for x in r.get("purchases",[]) or [])),None)
+        if source_row is None:return
+        trade=next(x for x in source_row.get("purchases",[]) if str(x.get("executed_at",""))==selected["executed_at"])
+        try:trade_date=datetime.fromisoformat(selected["executed_at"].replace("Z","+00:00")).date()
+        except Exception:trade_date=datetime.now(timezone.utc).date()
+        with st.form("kr_buy_trade_edit_form"):
+            a,b,c=st.columns([1,2,1])
+            new_code=a.text_input("종목코드",value=str(source_row.get("ticker","")).zfill(6))
+            new_name=b.text_input("종목명",value=str(source_row.get("name") or ""))
+            markets=["KOSPI","KOSDAQ"];old_market=str(source_row.get("market","KOSPI")).upper()
+            new_market=c.selectbox("시장",markets,index=1 if "KOSDAQ" in old_market else 0)
+            d,e,f=st.columns(3)
+            new_date=d.date_input("체결일",value=trade_date)
+            new_price_text=e.text_input("실제 체결 매수가",value=won(trade.get("price")),help="예: 198,500원")
+            new_qty_text=f.text_input("매수 체결수",value=f"{compact_quantity(trade.get('quantity'))}주",help="예: 25주")
+            new_reason=st.text_input("매수 사유",value=str(trade.get("reason") or trade.get("source") or "매수"))
+            new_memo=st.text_input("매수 메모",value=str(trade.get("memo") or ""))
+            edit_ok=st.form_submit_button("✅ 매수 내역 수정 저장",type="primary",use_container_width=True)
+        if edit_ok:
+            code="".join(ch for ch in new_code if ch.isdigit()).zfill(6)
+            price=parse_trade_number(new_price_text);qty=parse_trade_number(new_qty_text)
+            if len(code)!=6 or code=="000000":st.error("6자리 종목코드를 확인하세요.")
+            elif not new_name.strip():st.error("종목명을 입력하세요.")
+            elif price<=0 or qty<=0:st.error("체결가격과 수량을 올바르게 입력하세요.")
+            else:
+                try:
+                    latest,sha=load_holdings();target_row=None;target_trade=None
+                    for candidate in latest:
+                        if str(candidate.get("ticker","")).zfill(6)!=selected["ticker"]:continue
+                        match=next((x for x in candidate.get("purchases",[]) or [] if str(x.get("executed_at",""))==selected["executed_at"]),None)
+                        if match is not None:target_row,target_trade=candidate,match;break
+                    if target_row is None:raise ValueError("원본 매수내역을 찾지 못했습니다. 화면을 새로고침해 주세요.")
+                    duplicate=next((x for x in latest if x is not target_row and str(x.get("ticker","")).zfill(6)==code),None)
+                    if duplicate is not None:raise ValueError("변경할 종목코드가 이미 다른 보유내역에 있습니다. 해당 종목의 기존 매수내역을 수정하세요.")
+                    target_row.update({"ticker":code,"name":new_name.strip(),"market":new_market})
+                    target_trade.update({"price":float(price),"quantity":float(qty),"reason":new_reason.strip(),"memo":new_memo.strip(),
+                                         "executed_at":_replace_trade_date(target_trade.get("executed_at"),new_date)})
+                    _rebuild_trade_row(target_row)
+                    save_holdings(latest,sha,f"Edit Korea buy {selected['ticker']} to {code}")
+                    st.session_state["kr_holding_save_notice"]=f"{new_name.strip()} ({code}) 매수내역 수정 완료 · 평균매수가 {won(target_row.get('average_price'))} · 총 {compact_quantity(target_row.get('quantity'))}주"
+                    st.rerun()
+                except Exception as exc:st.error(f"매수내역 수정 실패: {exc}")
+
+
 def render_trade_journal(rows):
     journal=trade_journal_rows(rows)
     with st.expander("📒 보유종목 매매 거래일지",expanded=False):
@@ -523,6 +577,7 @@ def render_holdings_tab():
                 st.rerun()
             except Exception as e:
                 st.error(f"보유종목 저장 실패: {e}")
+    render_buy_trade_editor(rows)
     render_trade_journal(rows)
 
 def _load_backtest_universe():
