@@ -390,5 +390,28 @@
     "enabled": false,
     "updated_at": "2026-09-08T05:28:07.346725+00:00",
     "closed_at": "2026-09-08T05:28:07.346725+00:00"
+  },
+  {
+    "ticker": "108380",
+    "name": "대양전기공업",
+    "market": "KOSDAQ",
+    "status": "holding",
+    "average_price": 18850.0,
+    "quantity": 265.0,
+    "purchases": [
+      {
+        "price": 18850.0,
+        "quantity": 265.0,
+        "fee": 749,
+        "tax": 0,
+        "reason": "1차 분할매수",
+        "memo": "",
+        "executed_at": "2026-09-08T05:39:19.874560+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-09-08T05:39:19.874560+00:00"
   }
 ]
