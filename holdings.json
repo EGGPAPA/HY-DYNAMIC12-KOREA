@@ -413,5 +413,28 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-09-08T05:39:19.874560+00:00"
+  },
+  {
+    "ticker": "071090",
+    "name": "하이스틸",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 3185.0,
+    "quantity": 800.0,
+    "purchases": [
+      {
+        "price": 3185.0,
+        "quantity": 800.0,
+        "fee": 382,
+        "tax": 0,
+        "reason": "1차 분할매수",
+        "memo": "",
+        "executed_at": "2026-09-08T06:05:07.299756+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-09-08T06:05:07.299756+00:00"
   }
 ]
