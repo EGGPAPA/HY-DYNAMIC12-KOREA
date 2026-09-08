@@ -73,5 +73,30 @@
     "ticker": "000220",
     "name": "유유제약",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "039130",
+    "name": "하나투어",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "108380",
+    "name": "대양전기공업",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "226590",
+    "name": "엠디바이스",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "108230",
+    "name": "톱텍",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "092790",
+    "name": "넥스틸",
+    "market": "KOSPI"
   }
 ]
