@@ -45,9 +45,9 @@ REMOTE_ANALYSIS_API = f"https://api.github.com/repos/EGGPAPA/HY-DYNAMIC12-KOREA/
 FINAL_TOP_N = 12
 DEEP_CANDIDATE_COUNT = 120
 YF_CHUNK = 180
-YF_THREADS = 8
-KIS_WORKERS = 4
-FUNDAMENTAL_WORKERS = 8
+YF_THREADS = False
+KIS_WORKERS = 2
+FUNDAMENTAL_WORKERS = 2
 MIN_PRICE = 1000
 MIN_AVG_VALUE = 2_000_000_000
 
@@ -338,7 +338,7 @@ def download_chunk(symbols, period="3mo"):
     if not symbols:
         return pd.DataFrame()
     try:
-        return yf.download(tickers=list(symbols), period=period, interval="1d", auto_adjust=True, group_by="ticker", threads=YF_THREADS, progress=False)
+        return yf.download(tickers=list(symbols), period=period, interval="1d", auto_adjust=True, group_by="ticker", threads=False, progress=False)
     except Exception:
         return pd.DataFrame()
 
@@ -497,10 +497,16 @@ def get_candidate_kis_prices(codes):
         try:return code,get_kis_price(code)
         except Exception:return code,None
 
-    with ThreadPoolExecutor(max_workers=KIS_WORKERS) as executor:
-        futures=[executor.submit(fetch,code) for code in normalized[1:]]
-        for future in as_completed(futures):
-            code,price=future.result()
+    remaining=normalized[1:]
+    try:
+        with ThreadPoolExecutor(max_workers=KIS_WORKERS,thread_name_prefix="kis-price") as executor:
+            futures=[executor.submit(fetch,code) for code in remaining]
+            for future in as_completed(futures):
+                code,price=future.result()
+                if price is not None and float(price)>0:prices[code]=float(price)
+    except (RuntimeError,OSError):
+        for code in remaining:
+            code,price=fetch(code)
             if price is not None and float(price)>0:prices[code]=float(price)
     return prices
 
@@ -514,10 +520,14 @@ def get_candidate_fundamentals(candidates):
         try:return code,fundamental_score(code,market)
         except Exception:return code,50.0
 
-    with ThreadPoolExecutor(max_workers=FUNDAMENTAL_WORKERS) as executor:
-        futures=[executor.submit(fetch,item) for item in items]
-        for future in as_completed(futures):
-            code,score=future.result();scores[code]=score
+    try:
+        with ThreadPoolExecutor(max_workers=FUNDAMENTAL_WORKERS,thread_name_prefix="fundamental") as executor:
+            futures=[executor.submit(fetch,item) for item in items]
+            for future in as_completed(futures):
+                code,score=future.result();scores[code]=score
+    except (RuntimeError,OSError):
+        for item in items:
+            code,score=fetch(item);scores[code]=score
     return scores
 
 
@@ -926,4 +936,3 @@ with tabs[6]:
     render_individual_stock_ma5_backtest(universe)
 
 st.caption("역할 분리: TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 전략검증=백테스트/OOS · 실제 체결/평균단가/수익률은 사이드바의 보유종목 관리에서 확인")
-
