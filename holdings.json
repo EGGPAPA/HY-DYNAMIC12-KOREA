@@ -294,19 +294,9 @@
     "name": "삼성전자우",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 109175.0,
-    "quantity": 50.0,
+    "average_price": 198500.0,
+    "quantity": 25.0,
     "purchases": [
-      {
-        "price": 19850.0,
-        "quantity": 25.0,
-        "fee": 74,
-        "tax": 0,
-        "reason": "통합 적극매수",
-        "memo": "",
-        "executed_at": "2026-09-08T00:44:20.022896+00:00",
-        "source": "신규매수"
-      },
       {
         "price": 198500.0,
         "quantity": 25.0,
