@@ -340,12 +340,12 @@
     "name": "한화생명",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 850.0,
-    "quantity": 5880.0,
+    "average_price": 5880.0,
+    "quantity": 850.0,
     "purchases": [
       {
-        "price": 850.0,
-        "quantity": 5880.0,
+        "price": 5880.0,
+        "quantity": 850.0,
         "fee": 750,
         "tax": 0,
         "reason": "통합 적극매수",
