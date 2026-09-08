@@ -14,7 +14,7 @@ import yfinance as yf
 import requests
 from monthly_ma5_ui import render_monthly_ma5_tab, scan_monthly_ma5, _monthly_batch
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
-from market_environment import render_market_environment
+from market_environment_v2 import render_market_environment
 from wealth_jump_ui import render_wealth_jump_tab
 from wealth_jump_ui import get_market_cap_data, get_flow_data
 from pension_manager_ui import _load_pension, _auto_price
