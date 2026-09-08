@@ -8,6 +8,7 @@ import streamlit as st
 import yfinance as yf
 from krx_kis_pipeline import collect_krx_ohlcv
 from korea_holdings_ui import kakao_ready, send_kakao_message
+from korea_live_price import get_live_price, price_source_label
 
 try:
     from pykrx import stock
@@ -277,6 +278,64 @@ def _promote_buy_candidates(scan):
         return f"개인 관찰목록 자동 추가 실패: {exc}"
 
 
+def _stage_priority(item):
+    label=str(item.get("label",""))
+    if "1차매수구간" in label:return 0
+    if "상승초입" in label:return 1
+    if "돌파확인" in label:return 2
+    if "준비구간" in label:return 3
+    return 4
+
+
+def _buy1_distance(item):
+    price=float(item.get("live_price",item.get("price",0)) or 0);buy1=float(item.get("buy1",0) or 0)
+    return abs(price/buy1-1)*100 if price>0 and buy1>0 else 999
+
+
+def _combined_buy_timing(item):
+    label=str(item.get("label",""));price=float(item.get("live_price",item.get("price",0)) or 0);buy1=float(item.get("buy1",0) or 0)
+    volume=float(item.get("volume_ratio",0) or 0);score=float(item.get("score",0) or 0)
+    signed_gap=(price/buy1-1)*100 if price>0 and buy1>0 else 999
+    distance=abs(signed_gap)
+    if "1차매수구간" in label:
+        if distance<=1.5 and volume>=1.0 and score>=80:return "🟢 지금 1차 분할매수"
+        if distance<=3.0:return "🟡 매수가 근접 · 분할대기"
+        return "🟠 1차가 접근 대기"
+    if "상승초입" in label:
+        if distance<=1.5 and volume>=1.2 and score>=85:return "🟢 1차 분할매수 가능"
+        if signed_gap>3:return "🟡 눌림목 도달 대기"
+        return "🔵 지지 확인 후 매수"
+    if "돌파확인" in label:
+        if 0<=signed_gap<=3 and volume>=1.5 and score>=80:return "🟡 돌파 지지 확인 후 소량"
+        return "🔴 추격매수 금지 · 눌림대기"
+    return "⚪ 관찰 · 아직 매수 아님"
+
+
+@st.fragment(run_every="10s")
+def _render_live_watchlist(results):
+    live_results=[]
+    for original in results:
+        item=dict(original)
+        live=get_live_price(item["ticker"],item.get("market","KOSPI"))
+        item["live_price"]=float(live) if live is not None else float(item.get("price",0) or 0)
+        live_results.append(item)
+    live_results=sorted(live_results,key=lambda item:(_stage_priority(item),_buy1_distance(item),-float(item.get("volume_ratio",0) or 0),-float(item.get("score",0) or 0)))
+    st.info("매수 우선순위: **① 단계 → ② 실시간 현재가와 1차 매수가 거리 → ③ 거래량 → ④ 시점점수** 순으로 정렬합니다.")
+    display=pd.DataFrame([{
+        "매수 우선순위":rank,"종합 매수 타이밍":_combined_buy_timing(x),"종목":x["name"],"코드":x["ticker"],"① 단계":x["label"],
+        "② 1차가 거리":f"{(float(x['live_price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1",0) or 0)>0 else "-",
+        "③ 거래량 배수":x["volume_ratio"],"④ 시점점수":x["score"],
+        "실시간 현재가":_won(x["live_price"]),"1차 매수 참고":_won(x["buy1"]),"2차 눌림 참고":_won(x["buy2"]),
+        "손절 참고":_won(x["stop"]),"돌파 기준":_won(x["breakout"]),
+        "20일선 이격":f"{x['gap20']:+.1f}%","행동":x["action"],
+    } for rank,x in enumerate(live_results,1)])
+    st.dataframe(display,use_container_width=True,hide_index=True,
+                 column_config={"매수 우선순위":st.column_config.NumberColumn(format="%d위"),
+                                "③ 거래량 배수":st.column_config.NumberColumn(format="%.2f배"),
+                                "④ 시점점수":st.column_config.NumberColumn(format="%.0f점")})
+    st.caption(f"현재가 자동 갱신: 10초 · {price_source_label()}")
+
+
 def _render_watchlist_detail(results):
     selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
     item=results[[f"{x['name']} ({x['ticker']})" for x in results].index(selected)]
@@ -333,48 +392,9 @@ def render_rise_timing_watchlist(universe=None):
         for row in rows:
             result,_=_timing(row)
             if result:results.append(result)
-    def _stage_priority(item):
-        label=str(item.get("label",""))
-        if "1차매수구간" in label:return 0
-        if "상승초입" in label:return 1
-        if "돌파확인" in label:return 2
-        if "준비구간" in label:return 3
-        return 4
-    def _buy1_distance(item):
-        price=float(item.get("price",0) or 0);buy1=float(item.get("buy1",0) or 0)
-        return abs(price/buy1-1)*100 if price>0 and buy1>0 else 999
-    def _combined_buy_timing(item):
-        label=str(item.get("label",""));price=float(item.get("price",0) or 0);buy1=float(item.get("buy1",0) or 0)
-        volume=float(item.get("volume_ratio",0) or 0);score=float(item.get("score",0) or 0)
-        signed_gap=(price/buy1-1)*100 if price>0 and buy1>0 else 999
-        distance=abs(signed_gap)
-        if "1차매수구간" in label:
-            if distance<=1.5 and volume>=1.0 and score>=80:return "🟢 지금 1차 분할매수"
-            if distance<=3.0:return "🟡 매수가 근접 · 분할대기"
-            return "🟠 1차 매수가 접근 대기"
-        if "상승초입" in label:
-            if distance<=1.5 and volume>=1.2 and score>=85:return "🟢 1차 분할매수 가능"
-            if signed_gap>3:return "🟡 눌림목 도달 대기"
-            return "🔵 지지 확인 후 매수"
-        if "돌파확인" in label:
-            if 0<=signed_gap<=3 and volume>=1.5 and score>=80:return "🟡 돌파 지지 확인 후 소량"
-            return "🔴 추격매수 금지 · 눌림대기"
-        return "⚪ 관찰 · 아직 매수 아님"
     results=sorted(results,key=lambda item:(_stage_priority(item),_buy1_distance(item),-float(item.get("volume_ratio",0) or 0),-float(item.get("score",0) or 0)))
     if results:
-        st.info("매수 우선순위: **① 단계 → ② 현재가와 1차 매수가 거리 → ③ 거래량 → ④ 시점점수** 순으로 정렬합니다.")
-        display=pd.DataFrame([{
-            "매수 우선순위":rank,"종합 매수 타이밍":_combined_buy_timing(x),"종목":x["name"],"코드":x["ticker"],"① 단계":x["label"],
-            "② 1차가 거리":f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1",0) or 0)>0 else "-",
-            "③ 거래량 배수":x["volume_ratio"],"④ 시점점수":x["score"],
-            "현재가":_won(x["price"]),"1차 매수 참고":_won(x["buy1"]),"2차 눌림 참고":_won(x["buy2"]),
-            "손절 참고":_won(x["stop"]),"돌파 기준":_won(x["breakout"]),
-            "20일선 이격":f"{x['gap20']:+.1f}%","행동":x["action"],
-        } for rank,x in enumerate(results,1)])
-        st.dataframe(display,use_container_width=True,hide_index=True,
-                     column_config={"매수 우선순위":st.column_config.NumberColumn(format="%d위"),
-                                    "③ 거래량 배수":st.column_config.NumberColumn(format="%.2f배"),
-                                    "④ 시점점수":st.column_config.NumberColumn(format="%.0f점")})
+        _render_live_watchlist(results)
         _render_watchlist_detail(results)
 
     with st.expander("관찰종목 추가·삭제"):
