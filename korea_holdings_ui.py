@@ -487,7 +487,10 @@ def holding_snapshot(active):
     details=[];view=[];price_alerts=[]
     for row in active:
         purchases=normalized_purchases(row)
-        quantity,cost,average=calc_position(purchases)
+        purchase_quantity,purchase_cost,purchase_average=calc_position(purchases)
+        quantity=float(row.get("quantity",purchase_quantity) or 0)
+        average=float(row.get("average_price",purchase_average) or 0)
+        cost=average*quantity
         price,source=get_current_price(str(row.get("ticker","")).zfill(6),row.get("market","KOSPI"))
         value=price*quantity if price else None
         profit=value-cost if value is not None else None
@@ -566,7 +569,7 @@ def render_holdings_tab():
             if sell_price<=0 or sell_qty<=0:st.error("매도가와 매도 체결수를 입력하세요. 예: 23,200원 / 35주")
             elif sell_qty>float(sq):st.error(f"보유수량 {compact_quantity(sq)}주를 초과해 매도할 수 없습니다.")
             else:
-                rows,sha=load_holdings();idx,old=find_active(rows,str(sr.get("ticker","")));ps=normalized_purchases(old);oq,ocost,oavg=calc_position(ps);sell_qty=min(float(sell_qty),oq);realized=(float(sell_price)-oavg)*sell_qty;now=datetime.now(timezone.utc).isoformat();sell_amount=float(sell_price)*sell_qty;fee,tax=trade_costs("sell",sell_amount,old.get("market","KOSPI"));buy_fee=trade_costs("buy",oavg*sell_qty,old.get("market","KOSPI"))[0];net_realized=realized-fee-tax-buy_fee;net_rate=net_realized/(oavg*sell_qty+buy_fee)*100 if oavg else 0;sales=old.get("sales",[]) if isinstance(old.get("sales",[]),list) else [];sales.append({"price":float(sell_price),"quantity":sell_qty,"average_cost":oavg,"realized_pnl":realized,"realized_return_pct":(float(sell_price)/oavg-1)*100 if oavg else 0,"net_realized_pnl":net_realized,"net_realized_return_pct":net_rate,"fee":fee,"tax":tax,"buy_fee":buy_fee,"reason":sell_reason,"memo":sell_memo,"executed_at":now});remain=oq-sell_qty;old["sales"]=sales;old["quantity"]=remain;old["updated_at"]=now
+                rows,sha=load_holdings();idx,old=find_active(rows,str(sr.get("ticker","")));ps=normalized_purchases(old);pq,pcost,pavg=calc_position(ps);oq=float(old.get("quantity",pq) or 0);oavg=float(old.get("average_price",pavg) or 0);ocost=oavg*oq;sell_qty=min(float(sell_qty),oq);realized=(float(sell_price)-oavg)*sell_qty;now=datetime.now(timezone.utc).isoformat();sell_amount=float(sell_price)*sell_qty;fee,tax=trade_costs("sell",sell_amount,old.get("market","KOSPI"));buy_fee=trade_costs("buy",oavg*sell_qty,old.get("market","KOSPI"))[0];net_realized=realized-fee-tax-buy_fee;net_rate=net_realized/(oavg*sell_qty+buy_fee)*100 if oavg else 0;sales=old.get("sales",[]) if isinstance(old.get("sales",[]),list) else [];sales.append({"price":float(sell_price),"quantity":sell_qty,"average_cost":oavg,"realized_pnl":realized,"realized_return_pct":(float(sell_price)/oavg-1)*100 if oavg else 0,"net_realized_pnl":net_realized,"net_realized_return_pct":net_rate,"fee":fee,"tax":tax,"buy_fee":buy_fee,"reason":sell_reason,"memo":sell_memo,"executed_at":now});remain=oq-sell_qty;old["sales"]=sales;old["quantity"]=remain;old["updated_at"]=now
                 if remain<=0:old.update({"quantity":0,"status":"closed","enabled":False,"closed_at":now})
                 rows[idx]=old;save_holdings(rows,sha,f"Register Korea sell {sr.get('ticker')}");st.success(f"매도 등록 완료 · 순실현손익 {won(net_realized)} · 순수익률 {net_rate:+.2f}%" + (" · 전량매도 완료" if remain<=0 else f" · 잔여 {remain:g}주"));st.rerun()
     else:st.info("현재 등록된 보유종목이 없습니다.")
@@ -597,7 +600,7 @@ def render_holdings_tab():
                 if old is None:
                     ps=[trade];nq,_,na=calc_position(ps);rows.append({"ticker":code,"name":name or code,"market":market,"status":"holding","average_price":na,"quantity":nq,"purchases":ps,"sales":[],"enabled":True,"updated_at":now})
                 else:
-                    ps=normalized_purchases(old)+[trade];nq,_,na=calc_position(ps);old.update({"name":name or old.get("name"),"market":market,"average_price":na,"quantity":nq,"purchases":ps,"updated_at":now});rows[idx]=old
+                    ps=normalized_purchases(old)+[trade];old.update({"name":name or old.get("name"),"market":market,"purchases":ps,"updated_at":now});_rebuild_trade_row(old);nq=float(old.get("quantity",0) or 0);na=float(old.get("average_price",0) or 0);rows[idx]=old
                 save_holdings(rows,sha,f"Update Korea holding {code}")
                 st.session_state["kr_holding_save_notice"]=f"{name or code} ({code}) 저장 완료 · 평균매수가 {won(na)} · 총 {nq:g}주"
                 st.rerun()
