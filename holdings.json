@@ -311,5 +311,28 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-09-08T00:45:15.043827+00:00"
+  },
+  {
+    "ticker": "035510",
+    "name": "신세계 I&C",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 13719.0,
+    "quantity": 365.0,
+    "purchases": [
+      {
+        "price": 13719.0,
+        "quantity": 365.0,
+        "fee": 751,
+        "tax": 0,
+        "reason": "기타",
+        "memo": "",
+        "executed_at": "2026-09-08T01:12:01.043937+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-09-08T01:12:01.043937+00:00"
   }
 ]
