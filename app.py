@@ -1,3 +1,4 @@
+import base64
 import json
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
@@ -10,6 +11,7 @@ import streamlit as st
 from nav_labels import inject_sidebar_labels
 from theme_styles import inject_theme
 import yfinance as yf
+import requests
 from monthly_ma5_ui import render_monthly_ma5_tab, scan_monthly_ma5, _monthly_batch
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 from market_environment import render_market_environment
@@ -38,6 +40,8 @@ FLOW_FILE = Path("investor_flow.csv")
 EXPORT_FILE = Path("export_history.csv")
 WATCHLIST_FILE = DATA_DIR / "korea_watchlist.json"
 ANALYSIS_FILE = DATA_DIR / "korea_analysis.json"
+REMOTE_ANALYSIS_PATH = "data/korea_analysis_snapshot.json"
+REMOTE_ANALYSIS_API = f"https://api.github.com/repos/EGGPAPA/HY-DYNAMIC12-KOREA/contents/{REMOTE_ANALYSIS_PATH}"
 FINAL_TOP_N = 12
 DEEP_CANDIDATE_COUNT = 120
 YF_CHUNK = 180
@@ -91,6 +95,41 @@ def load_json(path, default):
     return default
 
 
+def _github_headers():
+    headers={"Accept":"application/vnd.github+json","X-GitHub-Api-Version":"2022-11-28","Cache-Control":"no-cache"}
+    try:token=str(st.secrets.get("GITHUB_PAT","")).strip()
+    except Exception:token=""
+    if token:headers["Authorization"]=f"Bearer {token}"
+    return headers
+
+
+@st.cache_data(ttl=60,show_spinner=False)
+def load_remote_analysis():
+    try:
+        response=requests.get(REMOTE_ANALYSIS_API,headers=_github_headers(),params={"ref":"main"},timeout=15)
+        if response.status_code!=200:return {}
+        payload=response.json()
+        return json.loads(base64.b64decode(payload["content"]).decode("utf-8"))
+    except Exception:return {}
+
+
+def save_remote_analysis(snapshot):
+    try:
+        headers=_github_headers()
+        if "Authorization" not in headers:return False
+        current=requests.get(REMOTE_ANALYSIS_API,headers=headers,params={"ref":"main"},timeout=15)
+        sha=current.json().get("sha") if current.status_code==200 else None
+        encoded=base64.b64encode(json.dumps(snapshot,ensure_ascii=False,indent=2,default=_json_default).encode("utf-8")).decode()
+        payload={"message":"Save daily Korea market analysis","content":encoded,"branch":"main"}
+        if sha:payload["sha"]=sha
+        response=requests.put(REMOTE_ANALYSIS_API,headers=headers,json=payload,timeout=30)
+        if response.status_code in (200,201):
+            load_remote_analysis.clear()
+            return True
+    except Exception:pass
+    return False
+
+
 @st.cache_resource
 def shared_daily_analysis():
     """Process-wide snapshot reused by new browser sessions on the same Streamlit instance."""
@@ -111,6 +150,7 @@ def remember_daily_analysis():
         "full_update_mode":st.session_state.get("full_update_mode","오늘 저장 결과"),
     }
     state=shared_daily_analysis();state.clear();state.update(snapshot)
+    save_remote_analysis(snapshot)
 
 
 def restore_daily_analysis():
@@ -120,13 +160,17 @@ def restore_daily_analysis():
     if state.get("rows") and str(state.get("saved_date",""))>=target:
         snapshot=dict(state)
     else:
-        rows=load_json(ANALYSIS_FILE,[])
-        if not rows or not ANALYSIS_FILE.exists():return False
-        saved_at=datetime.fromtimestamp(ANALYSIS_FILE.stat().st_mtime,SEOUL)
-        if saved_at.strftime("%Y%m%d")<target:return False
-        snapshot={"saved_date":saved_at.strftime("%Y%m%d"),"rows":rows,"analysis_at":saved_at.strftime("%Y-%m-%d %H:%M:%S KST"),
-                  "universe_source":"오늘 저장된 분석","screen_source":"저장 결과","kr_regime":"중립장",
-                  "full_update_at":saved_at.strftime("%Y-%m-%d %H:%M:%S KST"),"full_update_mode":"오늘 저장 결과"}
+        remote=load_remote_analysis()
+        if remote.get("rows") and str(remote.get("saved_date",""))>=target:
+            snapshot=remote
+        else:
+            rows=load_json(ANALYSIS_FILE,[])
+            if not rows or not ANALYSIS_FILE.exists():return False
+            saved_at=datetime.fromtimestamp(ANALYSIS_FILE.stat().st_mtime,SEOUL)
+            if saved_at.strftime("%Y%m%d")<target:return False
+            snapshot={"saved_date":saved_at.strftime("%Y%m%d"),"rows":rows,"analysis_at":saved_at.strftime("%Y-%m-%d %H:%M:%S KST"),
+                      "universe_source":"오늘 저장된 분석","screen_source":"저장 결과","kr_regime":"중립장",
+                      "full_update_at":saved_at.strftime("%Y-%m-%d %H:%M:%S KST"),"full_update_mode":"오늘 저장 결과"}
         state.clear();state.update(snapshot)
     st.session_state.update({
         "kr_rows":snapshot["rows"],"analysis_at":snapshot.get("analysis_at","확인 불가"),
@@ -796,7 +840,11 @@ with tabs[0]:
 with tabs[1]:
     st.subheader("🔎 KOSPI + KOSDAQ 전체시장 분석")
     st.info("개별주식 후보 선별용입니다. KRX를 우선 사용하고, KRX가 막히면 네이버 금융 전체 종목목록·투자자동향으로 보완합니다.")
-    if st.button("① 전체시장 자동분석 실행", type="primary", use_container_width=True):
+    today_ready=bool(st.session_state.get("kr_rows"))
+    force_analysis=st.checkbox("오늘 저장 결과를 무시하고 다시 분석",value=False,key="force_market_analysis") if today_ready else False
+    if today_ready and not force_analysis:
+        st.success("오늘 분석 결과를 불러왔습니다. 전체시장 재분석 없이 아래 결과를 사용합니다.")
+    if st.button("① 전체시장 자동분석 실행", type="primary", use_container_width=True,disabled=today_ready and not force_analysis):
         universe, uni_source = get_full_universe()
         if universe.empty:
             st.error("KOSPI/KOSDAQ 종목목록을 가져오지 못했습니다.")
