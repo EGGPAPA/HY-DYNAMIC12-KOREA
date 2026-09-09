@@ -1,5 +1,6 @@
 import base64
 import json
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
 
 import pandas as pd
@@ -373,38 +374,10 @@ def _decision_action(item, rank):
 
 
 @st.fragment(run_every="10s")
-def _render_live_prices(results):
-    price_rows = []
-    for rank, item in enumerate(results, 1):
-        live = get_live_price(item["ticker"], item.get("market", "KOSPI"))
-        price = float(live) if live is not None else float(item.get("price", 0) or 0)
-        base = float(item.get("price", 0) or 0)
-        change = (price / base - 1) * 100 if price > 0 and base > 0 else 0
-        price_rows.append({
-            "순위": rank,
-            "종목": item["name"],
-            "실시간 현재가": _won(price),
-            "기준가 대비": f"{change:+.2f}%",
-        })
-    st.markdown("#### 💹 실시간 현재가")
-    st.dataframe(
-        pd.DataFrame(price_rows),
-        use_container_width=True,
-        hide_index=True,
-        column_config={"순위": st.column_config.NumberColumn(format="%d위")},
-    )
-    st.caption(f"이 가격 영역만 10초마다 갱신 · {price_source_label()}")
-
-
 def _render_live_watchlist(results):
-    # 순위·행동·기술지표는 스캔 결과로 고정하고 실시간 가격만 별도 fragment에서 갱신합니다.
-    stable_results = []
-    for original in results:
-        item = dict(original)
-        item["live_price"] = float(item.get("price", 0) or 0)
-        stable_results.append(item)
+    # 순위·행동·지표는 조사 결과로 고정하고 같은 표의 현재가 값만 갱신합니다.
     stable_results = sorted(
-        stable_results,
+        [dict(item) for item in results],
         key=lambda item: (
             _stage_priority(item),
             _buy1_distance(item),
@@ -412,18 +385,31 @@ def _render_live_watchlist(results):
             -float(item.get("score", 0) or 0),
         ),
     )
-    st.info("순위·행동은 조사 시점에 고정됩니다. 아래 실시간 현재가 영역만 10초마다 바뀝니다.")
+
+    def fetch_price(item):
+        live = get_live_price(item["ticker"], item.get("market", "KOSPI"))
+        return float(live) if live is not None else float(item.get("price", 0) or 0)
+
+    # 순차 조회로 화면이 오래 흐려지지 않도록 현재가를 동시에 조회합니다.
+    workers = max(1, min(8, len(stable_results)))
+    with ThreadPoolExecutor(max_workers=workers) as executor:
+        live_prices = list(executor.map(fetch_price, stable_results))
+
     display_rows = []
-    for rank, x in enumerate(stable_results, 1):
-        decision, checks = _decision_action(x, rank)
+    for rank, (x, live_price) in enumerate(zip(stable_results, live_prices), 1):
+        decision_item = dict(x)
+        decision_item["live_price"] = float(x.get("price", 0) or 0)
+        decision, checks = _decision_action(decision_item, rank)
         display_rows.append({
             "매수 우선순위": rank, "행동": decision, "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
             "② 1차가 거리": f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1", 0) or 0) > 0 else "-",
             "③ 거래량 배수": x["volume_ratio"], "④ 시점점수": x["score"],
-            "판정 기준가": _won(x["price"]), "1차 매수 참고": _won(x["buy1"]), "2차 눌림 참고": _won(x["buy2"]),
+            "실시간 현재가": _won(live_price), "1차 매수 참고": _won(x["buy1"]), "2차 눌림 참고": _won(x["buy2"]),
             "손절 참고": _won(x["stop"]), "돌파 기준": _won(x["breakout"]),
             "20일선 이격": f"{x['gap20']:+.1f}%", "7조건 확인": checks, "기술적 참고": x["action"],
         })
+
+    st.info("순위·행동·단계는 조사 시점에 고정되며, 이 표 안의 실시간 현재가만 10초마다 갱신됩니다.")
     st.dataframe(
         pd.DataFrame(display_rows),
         use_container_width=True,
@@ -434,7 +420,7 @@ def _render_live_watchlist(results):
             "④ 시점점수": st.column_config.NumberColumn(format="%.0f점"),
         },
     )
-    _render_live_prices(stable_results)
+    st.caption(f"현재가 10초 갱신 · {price_source_label()}")
 
 def _render_watchlist_detail(results):
     selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
