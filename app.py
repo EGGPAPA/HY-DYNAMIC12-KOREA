@@ -843,12 +843,21 @@ if st.session_state.pop("daily_analysis_restored",False):
     st.success("오늘 저장된 분석 결과를 자동으로 불러왔습니다. 다시 분석하지 않아도 각 탭에서 바로 확인할 수 있습니다.")
 st.caption("같은 날에는 저장 결과를 자동 재사용합니다. 가격만 갱신하려면 빠른 업데이트, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 사용하세요.")
 
-tabs = st.tabs(["🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 현재 5개월선 돌파", "📍 상승시점 관찰", "📈 과거 성과 검증"])
+view_options = ["🏠 시작", "🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 현재 5개월선 돌파", "📍 상승시점 관찰", "📈 과거 성과 검증"]
+selected_view = st.radio(
+    "화면 선택",
+    view_options,
+    horizontal=True,
+    key="hy_selected_view",
+    label_visibility="collapsed",
+)
 
-with tabs[0]:
+if selected_view == "🏠 시작":
+    st.info("확인할 화면을 선택하세요. 선택한 화면 하나만 불러오므로 접속할 때 전체 분석이 자동 실행되지 않습니다.")
+elif selected_view == "🌐 시장환경":
     render_market_environment(market_is_open=market_open())
 
-with tabs[1]:
+elif selected_view == "🔎 전체시장 분석":
     st.subheader("🔎 KOSPI + KOSDAQ 전체시장 분석")
     st.info("개별주식 후보 선별용입니다. KRX를 우선 사용하고, KRX가 막히면 네이버 금융 전체 종목목록·투자자동향으로 보완합니다.")
     today_ready=bool(st.session_state.get("kr_rows"))
@@ -877,7 +886,7 @@ with tabs[1]:
             finally:
                 bar.empty()
 
-with tabs[2]:
+elif selected_view == "🏆 TOP12":
     st.subheader("🏆 TOP12 개별주식 후보")
     st.info(
         "1차 매수가 갭 기준 · 0~3%: 현재가 부근 1차 매수 가능 · "
@@ -918,22 +927,23 @@ with tabs[2]:
         else:
             st.warning("현재 적극매수 종목이 없습니다. TOP12 후보는 추적만 하고 억지로 선정하지 않습니다.")
 
-with tabs[3]:
+elif selected_view == "🚀 부의 점프":
     render_wealth_jump_tab(
         st.session_state.get("kr_rows", []),
         regime=st.session_state.get("kr_regime", "중립장"),
         analysis_at=st.session_state.get("analysis_at", "확인 불가"),
     )
 
-with tabs[4]:
+elif selected_view == "🔥 현재 5개월선 돌파":
     render_monthly_ma5_tab()
 
-with tabs[5]:
+elif selected_view == "📍 상승시점 관찰":
     rise_universe, _ = get_full_universe()
     render_rise_timing_watchlist(rise_universe)
 
-with tabs[6]:
+elif selected_view == "📈 과거 성과 검증":
     universe, _ = get_full_universe()
     render_individual_stock_ma5_backtest(universe)
+
 
 st.caption("역할 분리: TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 전략검증=백테스트/OOS · 실제 체결/평균단가/수익률은 사이드바의 보유종목 관리에서 확인")
