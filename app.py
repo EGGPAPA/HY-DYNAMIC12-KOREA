@@ -30,7 +30,13 @@ except Exception:
     stock = None
     PYKRX_OK = False
 
-# deployment refresh: 2026-09-09 export-chart compatibility fix
+# 다른 페이지의 이전 실행이 st.dataframe을 덮어쓴 채 남아 있으면 원본 출력기로 복구합니다.
+_streamlit_main = getattr(st, "_main", None)
+_streamlit_dataframe = getattr(_streamlit_main, "dataframe", None)
+if callable(_streamlit_dataframe):
+    st.dataframe = _streamlit_dataframe
+
+# deployment refresh: 2026-09-09 dataframe recursion recovery
 st.set_page_config(page_title="HY DYNAMIC12 · 한국주식 실전선별", page_icon="🇰🇷", layout="wide")
 
 SEOUL = ZoneInfo("Asia/Seoul")
