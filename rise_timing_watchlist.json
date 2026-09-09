@@ -123,5 +123,15 @@
     "ticker": "004090",
     "name": "한국석유",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "056090",
+    "name": "시지메드텍",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "059090",
+    "name": "미코",
+    "market": "KOSDAQ"
   }
 ]
