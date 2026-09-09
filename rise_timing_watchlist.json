@@ -113,5 +113,15 @@
     "ticker": "039610",
     "name": "화성밸브",
     "market": "KOSDAQ"
+  },
+  {
+    "ticker": "051600",
+    "name": "한전KPS",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "004090",
+    "name": "한국석유",
+    "market": "KOSPI"
   }
 ]
