@@ -311,6 +311,67 @@ def _combined_buy_timing(item):
     return "⚪ 관찰 · 아직 매수 아님"
 
 
+@st.cache_resource
+def _buy_decision_history():
+    return {}
+
+
+def _decision_action(item, rank):
+    label = str(item.get("label", ""))
+    price = float(item.get("live_price", item.get("price", 0)) or 0)
+    close_price = float(item.get("price", 0) or 0)
+    buy1 = float(item.get("buy1", 0) or 0)
+    stop = float(item.get("stop", 0) or 0)
+    breakout = float(item.get("breakout", 0) or 0)
+    volume = float(item.get("volume_ratio", 0) or 0)
+    score = float(item.get("score", 0) or 0)
+
+    gap = (price / buy1 - 1) * 100 if price > 0 and buy1 > 0 else 999
+    risk = (price - stop) / price * 100 if price > 0 and stop > 0 else 999
+    stage_ok = "1차매수구간" in label or "매수 가능" in label
+    gap_ok = -1 <= gap <= 3
+    volume_ok = volume >= 1.5
+    score_ok = score >= 85
+    close_ok = close_price >= breakout > 0
+    risk_ok = 0 <= risk <= 7
+    top_ok = rank <= 20
+
+    # 동일 조건이 2회 연속 확인되거나 서로 다른 2거래일에 확인됐는지 기록합니다.
+    code = str(item.get("ticker", ""))
+    today = datetime.now().strftime("%Y-%m-%d")
+    core_ok = stage_ok and gap_ok and volume_ok and score_ok and close_ok and risk_ok and top_ok
+    history = _buy_decision_history()
+    state = history.setdefault(code, {"consecutive": 0, "dates": []})
+    state["consecutive"] = int(state.get("consecutive", 0)) + 1 if core_ok else 0
+    dates = list(state.get("dates", []))
+    if core_ok and today not in dates:
+        dates.append(today)
+    state["dates"] = dates[-10:]
+    persistence_ok = state["consecutive"] >= 2 or len(state["dates"]) >= 2
+
+    passed = sum([stage_ok, gap_ok, volume_ok, score_ok, close_ok, persistence_ok, risk_ok])
+    if core_ok and persistence_ok:
+        action = "🟢 7조건 충족 · 1차 분할매수 검토"
+    elif stage_ok and gap_ok and volume_ok and score_ok and close_ok and risk_ok:
+        action = "🟡 6조건 충족 · 연속 확인 대기"
+    elif stage_ok and gap_ok and risk_ok:
+        action = f"🟡 매수가 근접 · 조건 {passed}/7"
+    elif gap > 3:
+        action = f"🟠 눌림 대기 · 1차가 대비 {gap:+.1f}%"
+    elif not risk_ok:
+        action = f"🔴 손절 위험 {risk:.1f}% · 매수 제외"
+    else:
+        action = f"🔵 관찰 유지 · 조건 {passed}/7"
+
+    checks = (
+        f"단계 {'✓' if stage_ok else '×'} · 가격거리 {'✓' if gap_ok else '×'} · "
+        f"거래량 {'✓' if volume_ok else '×'} · 점수 {'✓' if score_ok else '×'} · "
+        f"종가돌파 {'✓' if close_ok else '×'} · 지속성 {'✓' if persistence_ok else '×'} · "
+        f"손절위험 {'✓' if risk_ok else '×'}"
+    )
+    return action, checks
+
+
 @st.fragment(run_every="10s")
 def _render_live_watchlist(results):
     live_results=[]
@@ -320,15 +381,19 @@ def _render_live_watchlist(results):
         item["live_price"]=float(live) if live is not None else float(item.get("price",0) or 0)
         live_results.append(item)
     live_results=sorted(live_results,key=lambda item:(_stage_priority(item),_buy1_distance(item),-float(item.get("volume_ratio",0) or 0),-float(item.get("score",0) or 0)))
-    st.info("매수 우선순위: **① 단계 → ② 실시간 현재가와 1차 매수가 거리 → ③ 거래량 → ④ 시점점수** 순으로 정렬합니다.")
-    display=pd.DataFrame([{
-        "매수 우선순위":rank,"종합 매수 타이밍":_combined_buy_timing(x),"종목":x["name"],"코드":x["ticker"],"① 단계":x["label"],
-        "② 1차가 거리":f"{(float(x['live_price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1",0) or 0)>0 else "-",
-        "③ 거래량 배수":x["volume_ratio"],"④ 시점점수":x["score"],
-        "실시간 현재가":_won(x["live_price"]),"1차 매수 참고":_won(x["buy1"]),"2차 눌림 참고":_won(x["buy2"]),
-        "손절 참고":_won(x["stop"]),"돌파 기준":_won(x["breakout"]),
-        "20일선 이격":f"{x['gap20']:+.1f}%","행동":x["action"],
-    } for rank,x in enumerate(live_results,1)])
+    st.info("행동 종합판정: **단계 · 1차가 거리(-1~+3%) · 거래량(1.5배+) · 시점점수(85점+) · 종가돌파 · 2회 지속 · 손절위험(7% 이내)**")
+    display_rows=[]
+    for rank,x in enumerate(live_results,1):
+        decision,checks=_decision_action(x,rank)
+        display_rows.append({
+            "매수 우선순위":rank,"행동":decision,"종목":x["name"],"코드":x["ticker"],"① 단계":x["label"],
+            "② 1차가 거리":f"{(float(x['live_price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1",0) or 0)>0 else "-",
+            "③ 거래량 배수":x["volume_ratio"],"④ 시점점수":x["score"],
+            "실시간 현재가":_won(x["live_price"]),"1차 매수 참고":_won(x["buy1"]),"2차 눌림 참고":_won(x["buy2"]),
+            "손절 참고":_won(x["stop"]),"돌파 기준":_won(x["breakout"]),
+            "20일선 이격":f"{x['gap20']:+.1f}%","7조건 확인":checks,"기술적 참고":x["action"],
+        })
+    display=pd.DataFrame(display_rows)
     st.dataframe(display,use_container_width=True,hide_index=True,
                  column_config={"매수 우선순위":st.column_config.NumberColumn(format="%d위"),
                                 "③ 거래량 배수":st.column_config.NumberColumn(format="%.2f배"),
