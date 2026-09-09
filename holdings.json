@@ -309,9 +309,9 @@
     "ticker": "005935",
     "name": "삼성전자우",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 198500.0,
-    "quantity": 25.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 198500.0,
@@ -324,9 +324,26 @@
         "source": "추가매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-09-08T00:45:15.043827+00:00"
+    "sales": [
+      {
+        "price": 197504.0,
+        "quantity": 25.0,
+        "average_cost": 198500.0,
+        "realized_pnl": -24900.0,
+        "realized_return_pct": -0.5017632241813619,
+        "net_realized_pnl": -33791.0,
+        "net_realized_return_pct": -0.6808248798568033,
+        "fee": 741,
+        "tax": 7406,
+        "buy_fee": 744,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-09-09T00:17:53.017443+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-09T00:17:53.017443+00:00",
+    "closed_at": "2026-09-09T00:17:53.017443+00:00"
   },
   {
     "ticker": "035510",
