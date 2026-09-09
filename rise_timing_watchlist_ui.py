@@ -20,6 +20,9 @@ REPO="EGGPAPA/HY-DYNAMIC12-KOREA"
 BRANCH="main"
 WATCH_PATH="rise_timing_watchlist.json"
 WATCH_API=f"https://api.github.com/repos/{REPO}/contents/{WATCH_PATH}"
+LIVE_STATE_PATH="data/rise_timing_live.json"
+LIVE_STATE_API=f"https://api.github.com/repos/{REPO}/contents/{LIVE_STATE_PATH}"
+LIVE_STATE_BRANCH="monitor-state"
 
 
 def _secret(name,default=""):
@@ -43,6 +46,22 @@ def _load_watchlist():
         return rows,data.get("sha")
     except Exception as exc:
         return [],None
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _load_background_state():
+    try:
+        response = requests.get(
+            LIVE_STATE_API,
+            headers=_headers(),
+            params={"ref": LIVE_STATE_BRANCH, "_": int(datetime.now().timestamp() // 30)},
+            timeout=10,
+        )
+        response.raise_for_status()
+        payload = response.json()
+        return json.loads(base64.b64decode(payload["content"]).decode("utf-8"))
+    except Exception:
+        return {}
 
 
 def _save_watchlist(rows,sha):
@@ -390,6 +409,9 @@ def _render_live_watchlist(results):
         live = get_live_price(item["ticker"], item.get("market", "KOSPI"))
         return float(live) if live is not None else float(item.get("price", 0) or 0)
 
+    background = _load_background_state()
+    background_map = {str(x.get("ticker", "")).zfill(6): x for x in background.get("items", [])}
+
     # 순차 조회로 화면이 오래 흐려지지 않도록 현재가를 동시에 조회합니다.
     workers = max(1, min(8, len(stable_results)))
     with ThreadPoolExecutor(max_workers=workers) as executor:
@@ -400,6 +422,12 @@ def _render_live_watchlist(results):
         decision_item = dict(x)
         decision_item["live_price"] = float(x.get("price", 0) or 0)
         decision, checks = _decision_action(decision_item, rank)
+        monitored = background_map.get(str(x.get("ticker", "")).zfill(6), {})
+        if monitored.get("action"):
+            decision = monitored["action"]
+            check_map = monitored.get("checks", {})
+            check_names = [("단계", "stage"), ("가격거리", "gap"), ("거래량", "volume"), ("점수", "score"), ("종가돌파", "close"), ("지속성", "persistence"), ("손절위험", "risk")]
+            checks = " · ".join(f"{name} {'✓' if check_map.get(key) else '×'}" for name, key in check_names)
         display_rows.append({
             "매수 우선순위": rank, "행동": decision, "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
             "② 1차가 거리": f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1", 0) or 0) > 0 else "-",
@@ -420,7 +448,8 @@ def _render_live_watchlist(results):
             "④ 시점점수": st.column_config.NumberColumn(format="%.0f점"),
         },
     )
-    st.caption(f"현재가 10초 갱신 · {price_source_label()}")
+    updated_at = str(background.get("updated_at") or "아직 실행 전")
+    st.caption(f"현재가 10초 갱신 · 행동판정 15분 갱신 · 최근 서버 조사: {updated_at} · {price_source_label()}")
 
 def _render_watchlist_detail(results):
     selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
