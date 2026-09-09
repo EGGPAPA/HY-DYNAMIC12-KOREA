@@ -133,5 +133,10 @@
     "ticker": "059090",
     "name": "미코",
     "market": "KOSDAQ"
+  },
+  {
+    "ticker": "139250",
+    "name": "TIGER 200 에너지화학",
+    "market": "KOSPI"
   }
 ]
