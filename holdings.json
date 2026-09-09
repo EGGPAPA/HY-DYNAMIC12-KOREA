@@ -453,5 +453,28 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-09-08T06:05:07.299756+00:00"
+  },
+  {
+    "ticker": "139220",
+    "name": "TIGER 200건설",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 8530.0,
+    "quantity": 580.0,
+    "purchases": [
+      {
+        "price": 8530.0,
+        "quantity": 580.0,
+        "fee": 742,
+        "tax": 0,
+        "reason": "1차 분할매수",
+        "memo": "",
+        "executed_at": "2026-09-09T00:19:32.981946+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-09-09T00:19:32.981946+00:00"
   }
 ]
