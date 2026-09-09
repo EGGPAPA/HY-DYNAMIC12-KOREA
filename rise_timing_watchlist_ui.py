@@ -373,33 +373,68 @@ def _decision_action(item, rank):
 
 
 @st.fragment(run_every="10s")
-def _render_live_watchlist(results):
-    live_results=[]
-    for original in results:
-        item=dict(original)
-        live=get_live_price(item["ticker"],item.get("market","KOSPI"))
-        item["live_price"]=float(live) if live is not None else float(item.get("price",0) or 0)
-        live_results.append(item)
-    live_results=sorted(live_results,key=lambda item:(_stage_priority(item),_buy1_distance(item),-float(item.get("volume_ratio",0) or 0),-float(item.get("score",0) or 0)))
-    st.info("행동 종합판정: **단계 · 1차가 거리(-1~+3%) · 거래량(1.5배+) · 시점점수(85점+) · 종가돌파 · 2회 지속 · 손절위험(7% 이내)**")
-    display_rows=[]
-    for rank,x in enumerate(live_results,1):
-        decision,checks=_decision_action(x,rank)
-        display_rows.append({
-            "매수 우선순위":rank,"행동":decision,"종목":x["name"],"코드":x["ticker"],"① 단계":x["label"],
-            "② 1차가 거리":f"{(float(x['live_price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1",0) or 0)>0 else "-",
-            "③ 거래량 배수":x["volume_ratio"],"④ 시점점수":x["score"],
-            "실시간 현재가":_won(x["live_price"]),"1차 매수 참고":_won(x["buy1"]),"2차 눌림 참고":_won(x["buy2"]),
-            "손절 참고":_won(x["stop"]),"돌파 기준":_won(x["breakout"]),
-            "20일선 이격":f"{x['gap20']:+.1f}%","7조건 확인":checks,"기술적 참고":x["action"],
+def _render_live_prices(results):
+    price_rows = []
+    for rank, item in enumerate(results, 1):
+        live = get_live_price(item["ticker"], item.get("market", "KOSPI"))
+        price = float(live) if live is not None else float(item.get("price", 0) or 0)
+        base = float(item.get("price", 0) or 0)
+        change = (price / base - 1) * 100 if price > 0 and base > 0 else 0
+        price_rows.append({
+            "순위": rank,
+            "종목": item["name"],
+            "실시간 현재가": _won(price),
+            "기준가 대비": f"{change:+.2f}%",
         })
-    display=pd.DataFrame(display_rows)
-    st.dataframe(display,use_container_width=True,hide_index=True,
-                 column_config={"매수 우선순위":st.column_config.NumberColumn(format="%d위"),
-                                "③ 거래량 배수":st.column_config.NumberColumn(format="%.2f배"),
-                                "④ 시점점수":st.column_config.NumberColumn(format="%.0f점")})
-    st.caption(f"현재가 자동 갱신: 10초 · {price_source_label()}")
+    st.markdown("#### 💹 실시간 현재가")
+    st.dataframe(
+        pd.DataFrame(price_rows),
+        use_container_width=True,
+        hide_index=True,
+        column_config={"순위": st.column_config.NumberColumn(format="%d위")},
+    )
+    st.caption(f"이 가격 영역만 10초마다 갱신 · {price_source_label()}")
 
+
+def _render_live_watchlist(results):
+    # 순위·행동·기술지표는 스캔 결과로 고정하고 실시간 가격만 별도 fragment에서 갱신합니다.
+    stable_results = []
+    for original in results:
+        item = dict(original)
+        item["live_price"] = float(item.get("price", 0) or 0)
+        stable_results.append(item)
+    stable_results = sorted(
+        stable_results,
+        key=lambda item: (
+            _stage_priority(item),
+            _buy1_distance(item),
+            -float(item.get("volume_ratio", 0) or 0),
+            -float(item.get("score", 0) or 0),
+        ),
+    )
+    st.info("순위·행동은 조사 시점에 고정됩니다. 아래 실시간 현재가 영역만 10초마다 바뀝니다.")
+    display_rows = []
+    for rank, x in enumerate(stable_results, 1):
+        decision, checks = _decision_action(x, rank)
+        display_rows.append({
+            "매수 우선순위": rank, "행동": decision, "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
+            "② 1차가 거리": f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1", 0) or 0) > 0 else "-",
+            "③ 거래량 배수": x["volume_ratio"], "④ 시점점수": x["score"],
+            "판정 기준가": _won(x["price"]), "1차 매수 참고": _won(x["buy1"]), "2차 눌림 참고": _won(x["buy2"]),
+            "손절 참고": _won(x["stop"]), "돌파 기준": _won(x["breakout"]),
+            "20일선 이격": f"{x['gap20']:+.1f}%", "7조건 확인": checks, "기술적 참고": x["action"],
+        })
+    st.dataframe(
+        pd.DataFrame(display_rows),
+        use_container_width=True,
+        hide_index=True,
+        column_config={
+            "매수 우선순위": st.column_config.NumberColumn(format="%d위"),
+            "③ 거래량 배수": st.column_config.NumberColumn(format="%.2f배"),
+            "④ 시점점수": st.column_config.NumberColumn(format="%.0f점"),
+        },
+    )
+    _render_live_prices(stable_results)
 
 def _render_watchlist_detail(results):
     selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
