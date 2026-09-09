@@ -1,0 +1,40 @@
+name: Rise timing 15-minute monitor
+
+on:
+  schedule:
+    - cron: "*/15 0-6 * * 1-5"
+  workflow_dispatch:
+    inputs:
+      force_run:
+        description: "Run outside Korean market hours for testing"
+        required: false
+        default: false
+        type: boolean
+
+permissions:
+  contents: write
+
+concurrency:
+  group: rise-timing-monitor
+  cancel-in-progress: true
+
+jobs:
+  monitor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+      KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+      KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+      FORCE_RUN: ${{ inputs.force_run || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install monitor dependencies
+        run: pip install "pandas>=2.0" "yfinance>=0.2.40" "requests>=2.31"
+      - name: Monitor personal rise-timing watchlist
+        run: python scripts/monitor_rise_watchlist.py
