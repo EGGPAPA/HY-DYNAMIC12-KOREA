@@ -138,5 +138,15 @@
     "ticker": "139250",
     "name": "TIGER 200 에너지화학",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "465330",
+    "name": "RISE 2차전지TOP10",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "117460",
+    "name": "KODEX 에너지화학",
+    "market": "KOSPI"
   }
 ]
