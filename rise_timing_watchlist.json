@@ -148,5 +148,20 @@
     "ticker": "117460",
     "name": "KODEX 에너지화학",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "051910",
+    "name": "LG화학",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "499660",
+    "name": "TIGER CD금리플러스액티브(합성)",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "077360",
+    "name": "덕산하이메탈",
+    "market": "KOSDAQ"
   }
 ]
