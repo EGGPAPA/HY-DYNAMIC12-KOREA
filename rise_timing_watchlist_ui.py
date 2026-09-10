@@ -452,8 +452,8 @@ def _render_live_watchlist(results):
     refreshed_at = pd.Timestamp.now(tz="Asia/Seoul").strftime("%H:%M:%S")
     source = price_source_label()
     st.caption(f"현재가 조회 {refreshed_at} KST · 10초 갱신 · 행동판정 15분 갱신 · 최근 서버 조사: {updated_at} · {source}")
-    if "지연 시세" in source:
-        st.warning("KIS 실시간 시세가 연결되지 않아 Yahoo 지연 시세를 표시 중입니다. 이 경우 장중 가격이 즉시 변하지 않을 수 있습니다.")
+    if "시세 없음" in source:
+        st.warning("KIS 인증정보가 없거나 연결에 실패해 실시간 현재가를 가져오지 못했습니다. Yahoo 가격으로 대체하지 않습니다.")
 
 def _render_watchlist_detail(results):
     selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
