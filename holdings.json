@@ -169,9 +169,9 @@
     "ticker": "008930",
     "name": "한미사이언스",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 48374.7572815534,
-    "quantity": 63.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 44600,
@@ -205,10 +205,26 @@
         "reason": "2차 익절",
         "memo": "",
         "executed_at": "2026-09-08T01:17:06.050478+00:00"
+      },
+      {
+        "price": 52300.0,
+        "quantity": 63.0,
+        "average_cost": 48374.7572815534,
+        "realized_pnl": 247290.29126213578,
+        "realized_return_pct": 8.114237546662384,
+        "net_realized_pnl": 241397.29126213578,
+        "net_realized_return_pct": 7.919685306431267,
+        "fee": 494,
+        "tax": 4942,
+        "buy_fee": 457,
+        "reason": "1차 익절",
+        "memo": "",
+        "executed_at": "2026-09-10T01:19:03.587566+00:00"
       }
     ],
-    "enabled": true,
-    "updated_at": "2026-09-08T01:17:06.050478+00:00"
+    "enabled": false,
+    "updated_at": "2026-09-10T01:19:03.587566+00:00",
+    "closed_at": "2026-09-10T01:19:03.587566+00:00"
   },
   {
     "ticker": "403870",
