@@ -483,9 +483,9 @@
     "ticker": "071090",
     "name": "하이스틸",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 3185.0,
-    "quantity": 800.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 3185.0,
@@ -498,9 +498,26 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-09-08T06:05:07.299756+00:00"
+    "sales": [
+      {
+        "price": 3400.0,
+        "quantity": 800.0,
+        "average_cost": 3185.0,
+        "realized_pnl": 172000.0,
+        "realized_return_pct": 6.75039246467819,
+        "net_realized_pnl": 167130.0,
+        "net_realized_return_pct": 6.5582789393426895,
+        "fee": 408,
+        "tax": 4080,
+        "buy_fee": 382,
+        "reason": "1차 익절",
+        "memo": "",
+        "executed_at": "2026-09-10T02:00:22.258246+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-10T02:00:22.258246+00:00",
+    "closed_at": "2026-09-10T02:00:22.258246+00:00"
   },
   {
     "ticker": "139220",
