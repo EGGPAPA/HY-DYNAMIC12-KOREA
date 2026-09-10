@@ -405,14 +405,16 @@ def _render_live_watchlist(results):
         ),
     )
 
+    refresh_slot = int(pd.Timestamp.now(tz="Asia/Seoul").timestamp() // 10)
+
     def fetch_price(item):
-        live = get_live_price(item["ticker"], item.get("market", "KOSPI"))
+        live = get_live_price(item["ticker"], item.get("market", "KOSPI"), refresh_slot)
         return float(live) if live is not None else float(item.get("price", 0) or 0)
 
     background = _load_background_state()
     background_map = {str(x.get("ticker", "")).zfill(6): x for x in background.get("items", [])}
 
-    # 순차 조회로 화면이 오래 흐려지지 않도록 현재가를 동시에 조회합니다.
+    # 10초 구간마다 새 캐시 키로 KIS 현재가를 다시 조회합니다.
     workers = max(1, min(8, len(stable_results)))
     with ThreadPoolExecutor(max_workers=workers) as executor:
         live_prices = list(executor.map(fetch_price, stable_results))
