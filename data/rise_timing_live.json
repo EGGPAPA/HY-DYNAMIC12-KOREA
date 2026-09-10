@@ -1,1 +1,996 @@
-{"updated_at": null, "items": [], "history": {}}
+{
+  "updated_at": "2026-09-10T13:15:19.657552+09:00",
+  "interval_minutes": 15,
+  "items": [
+    {
+      "ticker": "004020",
+      "name": "현대제철",
+      "market": "KOSPI",
+      "price": 33350,
+      "daily_price": 33350,
+      "label": "🟡 돌파확인",
+      "score": 81,
+      "volume_ratio": 1.33,
+      "buy1": 33314,
+      "stop": 29302,
+      "breakout": 33650,
+      "gap": 0.11,
+      "risk": 12.14,
+      "checks": {
+        "stage": false,
+        "gap": true,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "011780",
+      "name": "금호석유화학",
+      "market": "KOSPI",
+      "price": 126200,
+      "daily_price": 126200,
+      "label": "🔵 준비구간",
+      "score": 50,
+      "volume_ratio": 1.01,
+      "buy1": 131769,
+      "stop": 121324,
+      "breakout": 133100,
+      "gap": -4.23,
+      "risk": 3.86,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "139130",
+      "name": "iM금융지주",
+      "market": "KOSPI",
+      "price": 18190,
+      "daily_price": 18190,
+      "label": "🟡 돌파확인",
+      "score": 65,
+      "volume_ratio": 1.1,
+      "buy1": 18860,
+      "stop": 17644,
+      "breakout": 19050,
+      "gap": -3.55,
+      "risk": 3.0,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "000815",
+      "name": "삼성화재우",
+      "market": "KOSPI",
+      "price": 418500,
+      "daily_price": 418500,
+      "label": "🔵 준비구간",
+      "score": 45,
+      "volume_ratio": 0.6,
+      "buy1": 437085,
+      "stop": 405945,
+      "breakout": 441500,
+      "gap": -4.25,
+      "risk": 3.0,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "001120",
+      "name": "LX인터내셔널",
+      "market": "KOSPI",
+      "price": 40800,
+      "daily_price": 40800,
+      "label": "🟣 1차매수구간",
+      "score": 81,
+      "volume_ratio": 1.31,
+      "buy1": 40248,
+      "stop": 37828,
+      "breakout": 40450,
+      "gap": 1.37,
+      "risk": 7.28,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": false,
+        "score": false,
+        "close": true,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 손절 위험 7.3% · 매수 제외"
+    },
+    {
+      "ticker": "003530",
+      "name": "한화투자증권",
+      "market": "KOSPI",
+      "price": 4815,
+      "daily_price": 4815,
+      "label": "🔵 준비구간",
+      "score": 45,
+      "volume_ratio": 0.54,
+      "buy1": 5049,
+      "stop": 4628,
+      "breakout": 5100,
+      "gap": -4.63,
+      "risk": 3.89,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "158430",
+      "name": "아톤",
+      "market": "KOSDAQ",
+      "price": 4595,
+      "daily_price": 4595,
+      "label": "🔵 준비구간",
+      "score": 45,
+      "volume_ratio": 0.78,
+      "buy1": 4802,
+      "stop": 4425,
+      "breakout": 4850,
+      "gap": -4.3,
+      "risk": 3.7,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "035510",
+      "name": "신세계 I&C",
+      "market": "KOSPI",
+      "price": 15880,
+      "daily_price": 15880,
+      "label": "🔴 급등·추격금지",
+      "score": 68,
+      "volume_ratio": 4.55,
+      "buy1": 15988,
+      "stop": 13189,
+      "breakout": 16150,
+      "gap": -0.68,
+      "risk": 16.94,
+      "checks": {
+        "stage": false,
+        "gap": true,
+        "volume": true,
+        "score": false,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (2/7)"
+    },
+    {
+      "ticker": "035890",
+      "name": "서희건설",
+      "market": "KOSDAQ",
+      "price": 2375,
+      "daily_price": 2375,
+      "label": "🟣 1차매수구간",
+      "score": 80,
+      "volume_ratio": 2.47,
+      "buy1": 2375,
+      "stop": 2156,
+      "breakout": 2440,
+      "gap": 0.0,
+      "risk": 9.22,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": false,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (3/7)"
+    },
+    {
+      "ticker": "003550",
+      "name": "LG",
+      "market": "KOSPI",
+      "price": 117300,
+      "daily_price": 117300,
+      "label": "🔵 준비구간",
+      "score": 58,
+      "volume_ratio": 1.24,
+      "buy1": 123255,
+      "stop": 113781,
+      "breakout": 124500,
+      "gap": -4.83,
+      "risk": 3.0,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "375500",
+      "name": "DL이앤씨",
+      "market": "KOSPI",
+      "price": 81300,
+      "daily_price": 81300,
+      "label": "🟡 돌파확인",
+      "score": 73,
+      "volume_ratio": 2.07,
+      "buy1": 80388,
+      "stop": 70435,
+      "breakout": 81200,
+      "gap": 1.13,
+      "risk": 13.36,
+      "checks": {
+        "stage": false,
+        "gap": true,
+        "volume": true,
+        "score": false,
+        "close": true,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 손절 위험 13.4% · 매수 제외"
+    },
+    {
+      "ticker": "004990",
+      "name": "롯데지주",
+      "market": "KOSPI",
+      "price": 24950,
+      "daily_price": 24950,
+      "label": "🟡 돌파확인",
+      "score": 73,
+      "volume_ratio": 1.06,
+      "buy1": 24602,
+      "stop": 23422,
+      "breakout": 24850,
+      "gap": 1.42,
+      "risk": 6.12,
+      "checks": {
+        "stage": false,
+        "gap": true,
+        "volume": false,
+        "score": false,
+        "close": true,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🟠 거래량 확인 대기 · 조건 3/7"
+    },
+    {
+      "ticker": "041930",
+      "name": "SY동아",
+      "market": "KOSDAQ",
+      "price": 5180,
+      "daily_price": 5180,
+      "label": "🟡 돌파확인",
+      "score": 73,
+      "volume_ratio": 0.67,
+      "buy1": 5168,
+      "stop": 4758,
+      "breakout": 5220,
+      "gap": 0.24,
+      "risk": 8.15,
+      "checks": {
+        "stage": false,
+        "gap": true,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 추격 금지 · 조건 1/7"
+    },
+    {
+      "ticker": "071090",
+      "name": "하이스틸",
+      "market": "KOSPI",
+      "price": 3315,
+      "daily_price": 3315,
+      "label": "🟢 상승초입",
+      "score": 88,
+      "volume_ratio": 8.16,
+      "buy1": 3244,
+      "stop": 2999,
+      "breakout": 3260,
+      "gap": 2.2,
+      "risk": 9.54,
+      "checks": {
+        "stage": false,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": true,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 손절 위험 9.5% · 매수 제외"
+    },
+    {
+      "ticker": "000220",
+      "name": "유유제약",
+      "market": "KOSPI",
+      "price": 3870,
+      "daily_price": 3870,
+      "label": "🟡 돌파확인",
+      "score": 73,
+      "volume_ratio": 1.16,
+      "buy1": 3915,
+      "stop": 3729,
+      "breakout": 3955,
+      "gap": -1.16,
+      "risk": 3.65,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "039130",
+      "name": "하나투어",
+      "market": "KOSPI",
+      "price": 32700,
+      "daily_price": 32700,
+      "label": "🟣 1차매수구간",
+      "score": 80,
+      "volume_ratio": 2.45,
+      "buy1": 32700,
+      "stop": 31719,
+      "breakout": 34350,
+      "gap": 0.0,
+      "risk": 3.0,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "108380",
+      "name": "대양전기공업",
+      "market": "KOSDAQ",
+      "price": 18620,
+      "daily_price": 18620,
+      "label": "🟣 1차매수구간",
+      "score": 81,
+      "volume_ratio": 1.18,
+      "buy1": 18606,
+      "stop": 17412,
+      "breakout": 18700,
+      "gap": 0.07,
+      "risk": 6.49,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (3/7)"
+    },
+    {
+      "ticker": "226590",
+      "name": "엠디바이스",
+      "market": "KOSDAQ",
+      "price": 13260,
+      "daily_price": 13260,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 2.46,
+      "buy1": 13204,
+      "stop": 11941,
+      "breakout": 13270,
+      "gap": 0.43,
+      "risk": 9.95,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "108230",
+      "name": "톱텍",
+      "market": "KOSDAQ",
+      "price": 3265,
+      "daily_price": 3265,
+      "label": "🟡 돌파확인",
+      "score": 65,
+      "volume_ratio": 0.42,
+      "buy1": 3351,
+      "stop": 3053,
+      "breakout": 3385,
+      "gap": -2.57,
+      "risk": 6.5,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": false,
+        "score": false,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (1/7)"
+    },
+    {
+      "ticker": "092790",
+      "name": "넥스틸",
+      "market": "KOSPI",
+      "price": 14430,
+      "daily_price": 14430,
+      "label": "🟡 돌파확인",
+      "score": 68,
+      "volume_ratio": 16.32,
+      "buy1": 13177,
+      "stop": 12358,
+      "breakout": 13310,
+      "gap": 9.51,
+      "risk": 14.36,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": true,
+        "score": false,
+        "close": true,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 추격 금지 · 조건 2/7"
+    },
+    {
+      "ticker": "117700",
+      "name": "KODEX 건설",
+      "market": "KOSPI",
+      "price": 7165,
+      "daily_price": 7165,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 2.24,
+      "buy1": 7165,
+      "stop": 6515,
+      "breakout": 7305,
+      "gap": 0.0,
+      "risk": 9.07,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "139220",
+      "name": "TIGER 200 건설",
+      "market": "KOSPI",
+      "price": 8115,
+      "daily_price": 8115,
+      "label": "🟣 1차매수구간",
+      "score": 80,
+      "volume_ratio": 1.9,
+      "buy1": 8115,
+      "stop": 7442,
+      "breakout": 8310,
+      "gap": 0.0,
+      "risk": 8.29,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": false,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (3/7)"
+    },
+    {
+      "ticker": "039610",
+      "name": "화성밸브",
+      "market": "KOSDAQ",
+      "price": 6120,
+      "daily_price": 6120,
+      "label": "🟡 돌파확인",
+      "score": 88,
+      "volume_ratio": 4.73,
+      "buy1": 6118,
+      "stop": 5409,
+      "breakout": 6180,
+      "gap": 0.03,
+      "risk": 11.62,
+      "checks": {
+        "stage": false,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (3/7)"
+    },
+    {
+      "ticker": "051600",
+      "name": "한전KPS",
+      "market": "KOSPI",
+      "price": 47600,
+      "daily_price": 47600,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 1.85,
+      "buy1": 47600,
+      "stop": 44232,
+      "breakout": 48450,
+      "gap": 0.0,
+      "risk": 7.08,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "004090",
+      "name": "한국석유",
+      "market": "KOSPI",
+      "price": 13080,
+      "daily_price": 13080,
+      "label": "🔴 급등·추격금지",
+      "score": 68,
+      "volume_ratio": 46.29,
+      "buy1": 11434,
+      "stop": 10947,
+      "breakout": 11550,
+      "gap": 14.39,
+      "risk": 16.31,
+      "checks": {
+        "stage": false,
+        "gap": false,
+        "volume": true,
+        "score": false,
+        "close": true,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 추격 금지 · 조건 2/7"
+    },
+    {
+      "ticker": "056090",
+      "name": "시지메드텍",
+      "market": "KOSDAQ",
+      "price": 1190,
+      "daily_price": 1190,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 4.56,
+      "buy1": 1190,
+      "stop": 1116,
+      "breakout": 1200,
+      "gap": 0.0,
+      "risk": 6.2,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (5/7)"
+    },
+    {
+      "ticker": "059090",
+      "name": "미코",
+      "market": "KOSDAQ",
+      "price": 19810,
+      "daily_price": 19810,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 2.22,
+      "buy1": 19741,
+      "stop": 17889,
+      "breakout": 19840,
+      "gap": 0.35,
+      "risk": 9.7,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "139250",
+      "name": "TIGER 200 에너지화학",
+      "market": "KOSPI",
+      "price": 18890,
+      "daily_price": 18890,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 4.27,
+      "buy1": 18890,
+      "stop": 17211,
+      "breakout": 19080,
+      "gap": 0.0,
+      "risk": 8.89,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "465330",
+      "name": "RISE 2차전지TOP10",
+      "market": "KOSPI",
+      "price": 11890,
+      "daily_price": 11890,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 2.09,
+      "buy1": 11890,
+      "stop": 10912,
+      "breakout": 12020,
+      "gap": 0.0,
+      "risk": 8.22,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "117460",
+      "name": "KODEX 에너지화학",
+      "market": "KOSPI",
+      "price": 14670,
+      "daily_price": 14670,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 2.7,
+      "buy1": 14670,
+      "stop": 13415,
+      "breakout": 14860,
+      "gap": 0.0,
+      "risk": 8.56,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "051910",
+      "name": "LG화학",
+      "market": "KOSPI",
+      "price": 283500,
+      "daily_price": 283500,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 1.83,
+      "buy1": 283500,
+      "stop": 263620,
+      "breakout": 287000,
+      "gap": 0.0,
+      "risk": 7.01,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    },
+    {
+      "ticker": "499660",
+      "name": "TIGER CD금리플러스액티브(합성)",
+      "market": "KOSPI",
+      "price": 1001395,
+      "daily_price": 1001395,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 1.5,
+      "buy1": 1001386,
+      "stop": 971353,
+      "breakout": 1002580,
+      "gap": 0.0,
+      "risk": 3.0,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": true,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (5/7)"
+    },
+    {
+      "ticker": "077360",
+      "name": "덕산하이메탈",
+      "market": "KOSDAQ",
+      "price": 10590,
+      "daily_price": 10590,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 1.91,
+      "buy1": 10467,
+      "stop": 9551,
+      "breakout": 10520,
+      "gap": 1.17,
+      "risk": 9.82,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": true,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 손절 위험 9.8% · 매수 제외"
+    },
+    {
+      "ticker": "305720",
+      "name": "KODEX 2차전지산업",
+      "market": "KOSPI",
+      "price": 15280,
+      "daily_price": 15280,
+      "label": "🟣 1차매수구간",
+      "score": 88,
+      "volume_ratio": 2.09,
+      "buy1": 15280,
+      "stop": 14186,
+      "breakout": 15505,
+      "gap": 0.0,
+      "risk": 7.16,
+      "checks": {
+        "stage": true,
+        "gap": true,
+        "volume": true,
+        "score": true,
+        "close": false,
+        "risk": false,
+        "persistence": false
+      },
+      "action": "🔴 종가 돌파 실패 · 매수 제외 (4/7)"
+    }
+  ],
+  "history": {
+    "004020": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "011780": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "139130": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "000815": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "001120": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "003530": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "158430": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "035510": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "035890": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "003550": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "375500": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "004990": {
+      "consecutive": 1,
+      "dates": [
+        "2026-09-10"
+      ]
+    },
+    "041930": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "071090": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "000220": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "039130": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "108380": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "226590": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "108230": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "092790": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "117700": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "139220": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "039610": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "051600": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "004090": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "056090": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "059090": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "139250": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "465330": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "117460": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "051910": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "499660": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "077360": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "305720": {
+      "consecutive": 0,
+      "dates": []
+    }
+  }
+}
