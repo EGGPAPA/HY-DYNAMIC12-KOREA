@@ -119,7 +119,7 @@ def send_kakao(items):
     }, timeout=15)
     token = token_response.json().get("access_token")
     if not token: return
-    lines = ["[HY DYNAMIC12 상승시점 알림]", "🟢 7조건 충족 종목"]
+    lines = ["[HY DYNAMIC12 상승시점 알림]", "필수조건을 통과한 신규 매수검토 종목"]
     for x in items:
         lines.append(f"{x['name']}({x['ticker']}) 현재 {x['price']:,}원 / 1차 {x['buy1']:,}원 / {x['score']:.0f}점")
     text = "\n".join(lines)
@@ -136,7 +136,7 @@ def main():
     rows = json.loads(WATCH_FILE.read_text(encoding="utf-8"))
     previous, sha = load_state()
     history = previous.get("history", {})
-    prior_green = {x["ticker"] for x in previous.get("items", []) if str(x.get("action", "")).startswith("🟢")}
+    prior_actionable = {x["ticker"] for x in previous.get("items", []) if str(x.get("action", "")).startswith("🟢") or "5/7 충족" in str(x.get("action", ""))}
     items = []
     for row in rows:
         try: item = analyze(row)
@@ -178,10 +178,11 @@ def main():
             item["action"] = f"🔵 관찰 유지 · 조건 {passed}/7"
         items.append(item)
     state = {"updated_at": now.isoformat(), "interval_minutes": 15, "items": items, "history": history}
-    new_green = [x for x in items if x["action"].startswith("🟢") and x["ticker"] not in prior_green]
-    if new_green: send_kakao(new_green)
+    actionable = [x for x in items if x["action"].startswith("🟢") or "5/7 충족" in x["action"]]
+    new_actionable = [x for x in actionable if x["ticker"] not in prior_actionable]
+    if new_actionable: send_kakao(new_actionable)
     save_state(state, sha)
-    print(f"Updated {len(items)} watch items; new green alerts={len(new_green)}")
+    print(f"Updated {len(items)} watch items; new actionable alerts={len(new_actionable)}")
 
 
 if __name__ == "__main__":
