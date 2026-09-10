@@ -122,12 +122,9 @@ def get_yahoo_price(code, market):
 
 @st.cache_data(ttl=3, show_spinner=False)
 def get_live_price(code, market):
-    """KIS 현재가를 우선 사용하고 실패 시 Yahoo Finance로 폴백합니다."""
-    price = get_kis_price(code)
-    if price is not None:
-        return price
-    return get_yahoo_price(code, market)
+    """실시간 화면은 한국투자증권 KIS 현재가만 사용합니다."""
+    return get_kis_price(code)
 
 
 def price_source_label():
-    return "한국투자증권 KIS 실시간 시세" if kis_ready() else "Yahoo Finance 지연 시세 (KIS 키 미설정)"
+    return "한국투자증권 KIS 실시간 시세" if kis_ready() else "KIS 인증정보 미설정 · 시세 없음"
