@@ -121,8 +121,8 @@ def get_yahoo_price(code, market):
 
 
 @st.cache_data(ttl=3, show_spinner=False)
-def get_live_price(code, market):
-    """실시간 화면은 한국투자증권 KIS 현재가만 사용합니다."""
+def get_live_price(code, market, refresh_slot=None):
+    """실시간 화면은 한국투자증권 KIS 현재가만 사용합니다. refresh_slot은 10초마다 캐시를 갱신합니다."""
     return get_kis_price(code)
 
 
