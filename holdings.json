@@ -365,9 +365,9 @@
     "ticker": "035510",
     "name": "신세계 I&C",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 13719.0,
-    "quantity": 265.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 13719.0,
@@ -395,10 +395,26 @@
         "reason": "1차 익절",
         "memo": "",
         "executed_at": "2026-09-09T06:20:39.334098+00:00"
+      },
+      {
+        "price": 15980.0,
+        "quantity": 265.0,
+        "average_cost": 13719.0,
+        "realized_pnl": 599165.0,
+        "realized_return_pct": 16.480793060718703,
+        "net_realized_pnl": 591633.0,
+        "net_realized_return_pct": 16.271176651778838,
+        "fee": 635,
+        "tax": 6352,
+        "buy_fee": 545,
+        "reason": "1차 익절",
+        "memo": "",
+        "executed_at": "2026-09-10T01:42:16.409314+00:00"
       }
     ],
-    "enabled": true,
-    "updated_at": "2026-09-09T06:20:39.334098+00:00"
+    "enabled": false,
+    "updated_at": "2026-09-10T01:42:16.409314+00:00",
+    "closed_at": "2026-09-10T01:42:16.409314+00:00"
   },
   {
     "ticker": "088350",
