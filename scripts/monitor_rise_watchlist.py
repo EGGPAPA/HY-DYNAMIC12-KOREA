@@ -145,21 +145,37 @@ def main():
             continue
         if not item: continue
         code = item["ticker"]
-        core = all(item["checks"].values())
+        stable = item["checks"]["gap"] and item["checks"]["close"] and item["checks"]["risk"]
         h = history.setdefault(code, {"consecutive": 0, "dates": []})
-        h["consecutive"] = int(h.get("consecutive", 0)) + 1 if core else 0
+        h["consecutive"] = int(h.get("consecutive", 0)) + 1 if stable else 0
         today = now.strftime("%Y-%m-%d")
         dates = list(h.get("dates", []))
-        if core and today not in dates: dates.append(today)
+        if stable and today not in dates: dates.append(today)
         h["dates"] = dates[-10:]
         persistent = h["consecutive"] >= 2 or len(h["dates"]) >= 2
         item["checks"]["persistence"] = persistent
         passed = sum(item["checks"].values())
-        if core and persistent: item["action"] = "🟢 7조건 충족 · 1차 분할매수 검토"
-        elif core: item["action"] = "🟡 6조건 충족 · 연속 확인 대기"
-        elif item["gap"] > 3: item["action"] = f"🟠 눌림 대기 · {item['gap']:+.1f}%"
-        elif not item["checks"]["risk"]: item["action"] = f"🔴 손절 위험 {item['risk']:.1f}% · 매수 제외"
-        else: item["action"] = f"🔵 관찰 유지 · 조건 {passed}/7"
+        mandatory = item["checks"]["gap"] and item["checks"]["volume"] and item["checks"]["close"] and item["checks"]["risk"]
+        if item["gap"] > 7 or (item["gap"] > 0 and item["volume_ratio"] < 1.0):
+            item["action"] = f"🔴 추격 금지 · 조건 {passed}/7"
+        elif not item["checks"]["close"]:
+            item["action"] = f"🔴 종가 돌파 실패 · 매수 제외 ({passed}/7)"
+        elif not item["checks"]["risk"]:
+            item["action"] = f"🔴 손절 위험 {item['risk']:.1f}% · 매수 제외"
+        elif item["gap"] > 3:
+            item["action"] = f"🟠 눌림 대기 · {item['gap']:+.1f}%"
+        elif not item["checks"]["volume"]:
+            item["action"] = f"🟠 거래량 확인 대기 · 조건 {passed}/7"
+        elif mandatory and passed == 7 and item["score"] >= 90:
+            item["action"] = "🟢 7/7 즉시 검토 · 1차 분할매수"
+        elif mandatory and passed == 7:
+            item["action"] = "🟢 7/7 충족 · 1차 분할매수 검토"
+        elif mandatory and passed == 6:
+            item["action"] = "🟢 6/7 충족 · 소규모 1차 매수"
+        elif mandatory and passed == 5:
+            item["action"] = "🟡 5/7 충족 · 계획의 10~20% 시험매수"
+        else:
+            item["action"] = f"🔵 관찰 유지 · 조건 {passed}/7"
         items.append(item)
     state = {"updated_at": now.isoformat(), "interval_minutes": 15, "items": items, "history": history}
     new_green = [x for x in items if x["action"].startswith("🟢") and x["ticker"] not in prior_green]
