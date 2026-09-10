@@ -168,5 +168,10 @@
     "ticker": "305720",
     "name": "KODEX 2차전지산업",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "005490",
+    "name": "POSCO홀딩스",
+    "market": "KOSPI"
   }
 ]
