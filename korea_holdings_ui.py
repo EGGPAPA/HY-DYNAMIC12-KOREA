@@ -9,6 +9,7 @@ import streamlit as st
 import yfinance as yf
 from monthly_ma5_ui import render_monthly_ma5_tab
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
+from korea_live_price import get_kis_price as shared_get_kis_price, kis_ready as shared_kis_ready
 
 REPO="EGGPAPA/HY-DYNAMIC12-KOREA";BRANCH="main";HOLDINGS_PATH="holdings.json";API_URL=f"https://api.github.com/repos/{REPO}/contents/{HOLDINGS_PATH}";KIS_BASE_URL="https://openapi.koreainvestment.com:9443"
 def won(v):
@@ -372,19 +373,23 @@ def find_active(rows,code):
     for i,row in enumerate(rows):
         if str(row.get("ticker","")).zfill(6)==c and str(row.get("status","holding")).lower()!="closed":return i,row
     return None,None
-def kis_ready():return bool(secret_value("KIS_APP_KEY") and secret_value("KIS_APP_SECRET"))
-@st.cache_data(ttl=60*60*20,show_spinner=False)
-def kis_access_token(k,s):
-    try:
-        r=requests.post(f"{KIS_BASE_URL}/oauth2/tokenP",json={"grant_type":"client_credentials","appkey":k,"appsecret":s},timeout=10);return r.json().get("access_token") if r.ok else None
-    except:return None
-@st.cache_data(ttl=3,show_spinner=False)
+def kis_ready():
+    return shared_kis_ready()
+
+
+@st.cache_resource(show_spinner=False)
+def _last_kis_prices():
+    return {}
+
+
 def get_kis_price(code):
-    k=secret_value("KIS_APP_KEY");s=secret_value("KIS_APP_SECRET");t=kis_access_token(k,s) if k and s else None
-    if not t:return None
-    try:
-        r=requests.get(f"{KIS_BASE_URL}/uapi/domestic-stock/v1/quotations/inquire-price",headers={"authorization":f"Bearer {t}","appkey":k,"appsecret":s,"tr_id":"FHKST01010100","custtype":"P"},params={"FID_COND_MRKT_DIV_CODE":"J","FID_INPUT_ISCD":str(code).zfill(6)},timeout=10);v=(r.json().get("output") or {}).get("stck_prpr");return float(v) if r.ok and v and float(v)>0 else None
-    except:return None
+    price = shared_get_kis_price(str(code).zfill(6))
+    if price is not None:
+        _last_kis_prices()[str(code).zfill(6)] = float(price)
+        return float(price)
+    return _last_kis_prices().get(str(code).zfill(6))
+
+
 def yf_symbol(code,market):return f"{str(code).zfill(6)}.{'KQ' if str(market).upper()=='KOSDAQ' else 'KS'}"
 @st.cache_data(ttl=60,show_spinner=False)
 def get_yahoo_price(code,market):
@@ -392,8 +397,13 @@ def get_yahoo_price(code,market):
         h=yf.Ticker(yf_symbol(code,market)).history(period="5d",interval="1d",auto_adjust=False);s=pd.to_numeric(h["Close"],errors="coerce").dropna();return float(s.iloc[-1]) if not s.empty else None
     except:return None
 def get_current_price(code,market):
-    p=get_kis_price(code)
-    return (p,"KIS") if p is not None else (None,"KIS 시세 없음")
+    normalized=str(code).zfill(6)
+    fresh=shared_get_kis_price(normalized)
+    if fresh is not None:
+        _last_kis_prices()[normalized]=float(fresh)
+        return float(fresh),"KIS"
+    previous=_last_kis_prices().get(normalized)
+    return (previous,"KIS 최근값") if previous is not None else (None,"KIS 연결 실패")
 def normalized_purchases(row):
     ps=row.get("purchases")
     if isinstance(ps,list) and ps:return [p for p in ps if float(p.get("price",0) or 0)>0 and float(p.get("quantity",0) or 0)>0]
