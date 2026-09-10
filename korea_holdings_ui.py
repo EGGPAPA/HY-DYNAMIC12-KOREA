@@ -393,8 +393,7 @@ def get_yahoo_price(code,market):
     except:return None
 def get_current_price(code,market):
     p=get_kis_price(code)
-    if p is not None:return p,"KIS"
-    p=get_yahoo_price(code,market);return (p,"Yahoo") if p is not None else (None,"없음")
+    return (p,"KIS") if p is not None else (None,"KIS 시세 없음")
 def normalized_purchases(row):
     ps=row.get("purchases")
     if isinstance(ps,list) and ps:return [p for p in ps if float(p.get("price",0) or 0)>0 and float(p.get("quantity",0) or 0)>0]
@@ -560,7 +559,7 @@ def render_live_holding_detail(row):
     refreshed=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%H:%M:%S")
     st.caption(f"시세 출처: {src} · 최근 조회 {refreshed} KST · 10초 자동 갱신")
     if src != "KIS":
-        st.warning("KIS 실시간 시세를 받지 못해 Yahoo 지연 시세를 표시 중입니다.")
+        st.warning("KIS 실시간 시세를 받지 못했습니다. 인증정보와 API 연결 상태를 확인하세요.")
 
 
 def render_holdings_tab():
@@ -570,7 +569,7 @@ def render_holdings_tab():
     try:rows,sha=load_holdings()
     except Exception as e:st.error(str(e));rows,sha=[],None
     active=[x for x in rows if str(x.get("status","holding")).lower()!="closed" and x.get("enabled",True)]
-    c1,c2,c3=st.columns(3);c1.metric("보유종목",len(active));c2.metric("GitHub 저장","준비됨" if github_pat() else "PAT 미설정");c3.metric("시세","KIS 우선" if kis_ready() else "Yahoo")
+    c1,c2,c3=st.columns(3);c1.metric("보유종목",len(active));c2.metric("GitHub 저장","준비됨" if github_pat() else "PAT 미설정");c3.metric("시세","KIS 전용" if kis_ready() else "KIS 미설정")
     details=[]
     if active:
         render_live_holdings_table(active)
