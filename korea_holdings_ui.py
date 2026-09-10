@@ -510,7 +510,7 @@ def holding_snapshot(active):
         } for key,event,level,alert_action,reached in levels if reached)
         view.append({
             "종목코드":row.get("ticker"),"종목명":row.get("name"),"시장":row.get("market"),
-            "평균매수가":won(average),"수량":compact_quantity(quantity),"현재가":won(price),
+            "평균매수가":won(average),"수량":compact_quantity(quantity),"현재가":won(price),"시세출처":source,
             "평가금액":won(value),"수익금":won(profit),
             "수익률":f"{return_rate:+.2f}%" if return_rate is not None else "-",
             "손절(-3%)":won(stop),"1차(+15%)":won(take1),"2차(+20%)":won(take2),"3차(+25%)":won(take3),
@@ -564,7 +564,7 @@ def render_live_holding_detail(row):
 
 
 def render_holdings_tab():
-    st.subheader("💼 보유종목 관리");st.caption("상단 보유종목 표의 현재가·평가손익만 10초마다 자동 갱신합니다. 나머지 화면은 그대로 유지됩니다.")
+    st.subheader("💼 보유종목 관리");st.caption("보유종목 표와 선택 종목의 현재가·평가손익·수익률을 10초마다 자동 갱신합니다.")
     notice=st.session_state.pop("kr_holding_save_notice",None)
     if notice:st.success(notice)
     try:rows,sha=load_holdings()
