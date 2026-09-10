@@ -378,7 +378,7 @@ def kis_access_token(k,s):
     try:
         r=requests.post(f"{KIS_BASE_URL}/oauth2/tokenP",json={"grant_type":"client_credentials","appkey":k,"appsecret":s},timeout=10);return r.json().get("access_token") if r.ok else None
     except:return None
-@st.cache_data(ttl=10,show_spinner=False)
+@st.cache_data(ttl=3,show_spinner=False)
 def get_kis_price(code):
     k=secret_value("KIS_APP_KEY");s=secret_value("KIS_APP_SECRET");t=kis_access_token(k,s) if k and s else None
     if not t:return None
@@ -526,6 +526,8 @@ def render_live_holdings_table(active):
     profit_cols=[col for col in ("수익금","수익률") if col in view_df.columns]
     styled_view=view_df.style.map(profit_text_color,subset=profit_cols) if profit_cols else view_df
     st.dataframe(styled_view,use_container_width=True,hide_index=True)
+    refreshed=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%H:%M:%S")
+    st.caption(f"보유종목 실시간 평가 최근 조회: {refreshed} KST")
     if kakao_ready():
         today=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%Y-%m-%d")
         state_key=f"holding_price_alerts_{today}"
@@ -541,6 +543,26 @@ def render_live_holdings_table(active):
                 st.session_state["holding_price_alert_error"]=str(exc)
 
 
+@st.fragment(run_every="10s")
+def render_live_holding_detail(row):
+    details, _, _ = holding_snapshot([row])
+    if not details:
+        return
+    r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act = details[0]
+    st.markdown(f"### 🧠 {r.get('name')} 종합판단")
+    m1,m2,m3,m4=st.columns(4)
+    m1.metric("현재가",won(p));m2.metric("평균매수가",won(avg))
+    m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-")
+    st.info(f"현재 판단: **{state} · {act}**")
+    st.markdown("#### 🎯 실전 가격 가이드")
+    g1,g2,g3,g4=st.columns(4)
+    g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d))
+    refreshed=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%H:%M:%S")
+    st.caption(f"시세 출처: {src} · 최근 조회 {refreshed} KST · 10초 자동 갱신")
+    if src != "KIS":
+        st.warning("KIS 실시간 시세를 받지 못해 Yahoo 지연 시세를 표시 중입니다.")
+
+
 def render_holdings_tab():
     st.subheader("💼 보유종목 관리");st.caption("상단 보유종목 표의 현재가·평가손익만 10초마다 자동 갱신합니다. 나머지 화면은 그대로 유지됩니다.")
     notice=st.session_state.pop("kr_holding_save_notice",None)
@@ -554,7 +576,7 @@ def render_holdings_tab():
         render_live_holdings_table(active)
         details,_,_=holding_snapshot(active)
         labels=[f"{x[0].get('name')} ({str(x[0].get('ticker','')).zfill(6)})" for x in details];selected=st.selectbox("🔎 평가할 보유종목",labels);x=details[labels.index(selected)];r,q,cost,avg,p,src,val,pnl,ret,s,a,b,d,state,act=x
-        st.markdown(f"### 🧠 {r.get('name')} 종합판단");m1,m2,m3,m4=st.columns(4);m1.metric("현재가",won(p));m2.metric("평균매수가",won(avg));m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-");st.info(f"현재 판단: **{state} · {act}**");st.markdown("#### 🎯 실전 가격 가이드");g1,g2,g3,g4=st.columns(4);g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d));st.caption(f"시세 출처: {src} · 선택한 보유종목 기준 자동 평가")
+        render_live_holding_detail(r)
         render_holding_assessment(r,p)
         st.markdown("### 💸 매도 체결 등록")
         sell_labels=[f"{z[0].get('name')} ({str(z[0].get('ticker','')).zfill(6)})" for z in details]
