@@ -359,27 +359,37 @@ def _decision_action(item, rank):
     # 동일 조건이 2회 연속 확인되거나 서로 다른 2거래일에 확인됐는지 기록합니다.
     code = str(item.get("ticker", ""))
     today = datetime.now().strftime("%Y-%m-%d")
-    core_ok = stage_ok and gap_ok and volume_ok and score_ok and close_ok and risk_ok and top_ok
+    # 지속성은 가격·종가·손절·상위권이 유지되는지를 기준으로 누적합니다.
+    stable_ok = top_ok and gap_ok and close_ok and risk_ok
     history = _buy_decision_history()
     state = history.setdefault(code, {"consecutive": 0, "dates": []})
-    state["consecutive"] = int(state.get("consecutive", 0)) + 1 if core_ok else 0
+    state["consecutive"] = int(state.get("consecutive", 0)) + 1 if stable_ok else 0
     dates = list(state.get("dates", []))
-    if core_ok and today not in dates:
+    if stable_ok and today not in dates:
         dates.append(today)
     state["dates"] = dates[-10:]
     persistence_ok = state["consecutive"] >= 2 or len(state["dates"]) >= 2
 
     passed = sum([stage_ok, gap_ok, volume_ok, score_ok, close_ok, persistence_ok, risk_ok])
-    if core_ok and persistence_ok:
-        action = "🟢 7조건 충족 · 1차 분할매수 검토"
-    elif stage_ok and gap_ok and volume_ok and score_ok and close_ok and risk_ok:
-        action = "🟡 6조건 충족 · 연속 확인 대기"
-    elif stage_ok and gap_ok and risk_ok:
-        action = f"🟡 매수가 근접 · 조건 {passed}/7"
-    elif gap > 3:
-        action = f"🟠 눌림 대기 · 1차가 대비 {gap:+.1f}%"
+    mandatory_ok = gap_ok and volume_ok and close_ok and risk_ok
+    if gap > 7 or (gap > 0 and volume < 1.0):
+        action = f"🔴 추격 금지 · 조건 {passed}/7"
+    elif not close_ok:
+        action = f"🔴 종가 돌파 실패 · 매수 제외 ({passed}/7)"
     elif not risk_ok:
         action = f"🔴 손절 위험 {risk:.1f}% · 매수 제외"
+    elif gap > 3:
+        action = f"🟠 눌림 대기 · 1차가 대비 {gap:+.1f}%"
+    elif not volume_ok:
+        action = f"🟠 거래량 확인 대기 · 조건 {passed}/7"
+    elif mandatory_ok and passed == 7 and score >= 90:
+        action = "🟢 7/7 즉시 검토 · 1차 분할매수"
+    elif mandatory_ok and passed == 7:
+        action = "🟢 7/7 충족 · 1차 분할매수 검토"
+    elif mandatory_ok and passed == 6:
+        action = "🟢 6/7 충족 · 소규모 1차 매수"
+    elif mandatory_ok and passed == 5:
+        action = "🟡 5/7 충족 · 계획의 10~20% 시험매수"
     else:
         action = f"🔵 관찰 유지 · 조건 {passed}/7"
 
