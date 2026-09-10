@@ -449,7 +449,7 @@ def _render_live_watchlist(results):
             "20일선 이격": f"{x['gap20']:+.1f}%", "7조건 확인": checks, "기술적 참고": x["action"],
         })
 
-    st.info("순위·행동·단계는 조사 시점에 고정되며, 이 표 안의 실시간 현재가만 10초마다 갱신됩니다.")
+    st.info("순위·단계는 조사 시점에 고정 · 가격거리·거래량·종가돌파·손절위험은 필수 · 7/7 정상 분할 · 6/7 소규모 1차 · 5/7은 필수조건 충족 시 10~20% 시험매수")
     st.dataframe(
         pd.DataFrame(display_rows),
         use_container_width=True,
