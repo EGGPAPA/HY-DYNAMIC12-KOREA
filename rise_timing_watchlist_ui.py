@@ -399,7 +399,15 @@ def _decision_action(item, rank):
         f"종가돌파 {'✓' if close_ok else '×'} · 지속성 {'✓' if persistence_ok else '×'} · "
         f"손절위험 {'✓' if risk_ok else '×'}"
     )
-    return action, checks
+    mandatory_count = sum([gap_ok, volume_ok, close_ok, risk_ok])
+    auxiliary_count = sum([stage_ok, score_ok, persistence_ok])
+    mandatory_label = "🟢 필수 4/4 충족" if mandatory_count == 4 else (
+        "🟠 필수 3/4 확인" if mandatory_count == 3 else f"🔴 필수 {mandatory_count}/4 제외"
+    )
+    auxiliary_label = "🟢 보조 3/3" if auxiliary_count == 3 else (
+        "🟡 보조 2/3" if auxiliary_count == 2 else f"🔵 보조 {auxiliary_count}/3"
+    )
+    return action, checks, mandatory_label, auxiliary_label
 
 
 @st.fragment(run_every="10s")
@@ -433,15 +441,20 @@ def _render_live_watchlist(results):
     for rank, (x, live_price) in enumerate(zip(stable_results, live_prices), 1):
         decision_item = dict(x)
         decision_item["live_price"] = float(x.get("price", 0) or 0)
-        decision, checks = _decision_action(decision_item, rank)
+        decision, checks, mandatory_label, auxiliary_label = _decision_action(decision_item, rank)
         monitored = background_map.get(str(x.get("ticker", "")).zfill(6), {})
         if monitored.get("action"):
             decision = monitored["action"]
             check_map = monitored.get("checks", {})
             check_names = [("단계", "stage"), ("가격거리", "gap"), ("거래량", "volume"), ("점수", "score"), ("종가돌파", "close"), ("지속성", "persistence"), ("손절위험", "risk")]
             checks = " · ".join(f"{name} {'✓' if check_map.get(key) else '×'}" for name, key in check_names)
+            mandatory_count = sum(bool(check_map.get(key)) for key in ("gap", "volume", "close", "risk"))
+            auxiliary_count = sum(bool(check_map.get(key)) for key in ("stage", "score", "persistence"))
+            mandatory_label = "🟢 필수 4/4 충족" if mandatory_count == 4 else ("🟠 필수 3/4 확인" if mandatory_count == 3 else f"🔴 필수 {mandatory_count}/4 제외")
+            auxiliary_label = "🟢 보조 3/3" if auxiliary_count == 3 else ("🟡 보조 2/3" if auxiliary_count == 2 else f"🔵 보조 {auxiliary_count}/3")
         display_rows.append({
-            "매수 우선순위": rank, "행동": decision, "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
+            "매수 우선순위": rank, "필수조건": mandatory_label, "행동": decision, "보조조건": auxiliary_label,
+            "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
             "② 1차가 거리": f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1", 0) or 0) > 0 else "-",
             "③ 거래량 배수": x["volume_ratio"], "④ 시점점수": x["score"],
             "실시간 현재가": _won(live_price), "1차 매수 참고": _won(x["buy1"]), "2차 눌림 참고": _won(x["buy2"]),
@@ -449,7 +462,7 @@ def _render_live_watchlist(results):
             "20일선 이격": f"{x['gap20']:+.1f}%", "7조건 확인": checks, "기술적 참고": x["action"],
         })
 
-    st.info("순위·단계는 조사 시점에 고정 · 가격거리·거래량·종가돌파·손절위험은 필수 · 7/7 정상 분할 · 6/7 소규모 1차 · 5/7은 필수조건 충족 시 10~20% 시험매수")
+    st.info("🟢 필수 4/4 충족 종목만 매수 검토 대상입니다. 보조조건(단계·점수·지속성)은 별도로 표시하므로 최종 매수 여부는 직접 판단할 수 있습니다.")
     st.dataframe(
         pd.DataFrame(display_rows),
         use_container_width=True,
