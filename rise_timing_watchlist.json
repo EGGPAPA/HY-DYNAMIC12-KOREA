@@ -173,5 +173,10 @@
     "ticker": "005490",
     "name": "POSCO홀딩스",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "039030",
+    "name": "이오테크닉스",
+    "market": "KOSDAQ"
   }
 ]
