@@ -412,12 +412,12 @@ def calc_position(ps):
     q=sum(float(p["quantity"]) for p in ps);c=sum(float(p["price"])*float(p["quantity"]) for p in ps);return q,c,c/q if q else 0
 def sell_guide(avg,current):
     if avg<=0:return None,None,None,None,"판단불가","평균매수가 확인"
-    s,a,b,c=avg*.97,avg*1.15,avg*1.20,avg*1.25
+    s,a,b,c=avg*.97,avg*1.10,avg*1.15,avg*1.20
     if current is None:state,act="시세없음","현재가 갱신 필요"
     elif current<=s:state,act="🔴 손절선 이탈","손절/비중축소 검토"
-    elif current>=c:state,act="🟣 3차 익절 구간","+25% 이상 · 분할익절/추세보유"
-    elif current>=b:state,act="🔵 2차 익절 구간","+20% 이상 · 추가익절 검토"
-    elif current>=a:state,act="🟡 1차 익절 구간","+15% 이상 · 일부익절 검토"
+    elif current>=c:state,act="🟣 3차 익절 구간","+20% 이상 · 분할익절/추세보유"
+    elif current>=b:state,act="🔵 2차 익절 구간","+15% 이상 · 추가익절 검토"
+    elif current>=a:state,act="🟡 1차 익절 구간","+10% 이상 · 일부익절 검토"
     else:state,act="🟢 보유 구간","보유 유지"
     return s,a,b,c,state,act
 
@@ -509,9 +509,9 @@ def holding_snapshot(active):
         code=str(row.get("ticker","")).zfill(6);name=row.get("name") or code
         levels=[
             ("stop","🔴 손절선 이탈",stop,"손절/비중축소 검토",price<=stop),
-            ("take15","🟡 1차(+15%) 도달",take1,"일부익절 검토",price>=take1),
-            ("take20","🔵 2차(+20%) 도달",take2,"추가익절 검토",price>=take2),
-            ("take25","🟣 3차(+25%) 도달",take3,"분할익절/추세보유",price>=take3),
+            ("take10","🟡 1차(+10%) 도달",take1,"일부익절 검토",price>=take1),
+            ("take15","🔵 2차(+15%) 도달",take2,"추가익절 검토",price>=take2),
+            ("take20","🟣 3차(+20%) 도달",take3,"분할익절/추세보유",price>=take3),
         ] if price is not None else []
         price_alerts.extend({
             "id":f"{code}:{key}","code":code,"name":name,"event":event,
@@ -522,7 +522,7 @@ def holding_snapshot(active):
             "평균매수가":won(average),"수량":compact_quantity(quantity),"현재가":won(price),"시세출처":source,
             "평가금액":won(value),"수익금":won(profit),
             "수익률":f"{return_rate:+.2f}%" if return_rate is not None else "-",
-            "손절(-3%)":won(stop),"1차(+15%)":won(take1),"2차(+20%)":won(take2),"3차(+25%)":won(take3),
+            "손절(-3%)":won(stop),"1차(+10%)":won(take1),"2차(+15%)":won(take2),"3차(+20%)":won(take3),
             "상태":state,"매도판단":action,
         })
     return details,view,price_alerts
