@@ -410,12 +410,28 @@ def _decision_action(item, rank):
     return action, checks, mandatory_label, auxiliary_label
 
 
+def _mandatory_condition_count(item):
+    price = float(item.get("price", 0) or 0)
+    buy1 = float(item.get("buy1", 0) or 0)
+    stop = float(item.get("stop", 0) or 0)
+    breakout = float(item.get("breakout", 0) or 0)
+    gap = (price / buy1 - 1) * 100 if price > 0 and buy1 > 0 else 999
+    risk = (price - stop) / price * 100 if price > 0 and stop > 0 else 999
+    return sum([
+        -1 <= gap <= 3,
+        float(item.get("volume_ratio", 0) or 0) >= 1.5,
+        price >= breakout > 0,
+        0 <= risk <= 7,
+    ])
+
+
 @st.fragment(run_every="10s")
 def _render_live_watchlist(results):
     # 순위·행동·지표는 조사 결과로 고정하고 같은 표의 현재가 값만 갱신합니다.
     stable_results = sorted(
         [dict(item) for item in results],
         key=lambda item: (
+            -_mandatory_condition_count(item),
             _stage_priority(item),
             _buy1_distance(item),
             -float(item.get("volume_ratio", 0) or 0),
