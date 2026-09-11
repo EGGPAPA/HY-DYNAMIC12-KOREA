@@ -35,6 +35,11 @@ def analyze(row):
     volume = pd.to_numeric(frame["Volume"], errors="coerce").reindex(close.index)
     if len(close) < 65:
         return None
+    valid_volume = volume.dropna()
+    latest_date = pd.Timestamp(close.index[-1]).tz_localize(None).normalize()
+    today = pd.Timestamp.now(tz="Asia/Seoul").tz_localize(None).normalize()
+    if valid_volume.empty or float(valid_volume.iloc[-1]) <= 0 or (today - latest_date).days > 7:
+        return None
     daily_price = float(close.iloc[-1])
     try:
         live = yf.Ticker(symbol(row)).fast_info.get("last_price")
