@@ -90,11 +90,24 @@ def _won(value):
     except Exception:return "-"
 
 
+def _has_recent_trading(close, volume):
+    try:
+        latest_volume = pd.to_numeric(volume, errors="coerce").dropna()
+        if latest_volume.empty or float(latest_volume.iloc[-1]) <= 0:
+            return False
+        latest_date = pd.Timestamp(close.index[-1]).tz_localize(None).normalize()
+        today = pd.Timestamp.now(tz="Asia/Seoul").tz_localize(None).normalize()
+        return (today - latest_date).days <= 7
+    except Exception:
+        return False
+
+
 def _timing(row):
     history=_history(row["ticker"],row.get("market","KOSPI"))
     if len(history)<65:return None,history
     close=pd.to_numeric(history["Close"],errors="coerce").dropna()
     volume=pd.to_numeric(history.get("Volume"),errors="coerce").reindex(close.index)
+    if not _has_recent_trading(close,volume):return None,history
     ma20=close.rolling(20).mean();ma60=close.rolling(60).mean();ma120=close.rolling(120).mean()
     price=float(close.iloc[-1]);m20=float(ma20.iloc[-1]);m60=float(ma60.iloc[-1])
     m120=float(ma120.iloc[-1]) if len(close)>=120 and pd.notna(ma120.iloc[-1]) else None
@@ -159,7 +172,7 @@ def _score_yahoo_candidate(code,name,market,history):
     if history is None or len(history)<65:return None
     close=pd.to_numeric(history.get("Close"),errors="coerce").dropna()
     volume=pd.to_numeric(history.get("Volume"),errors="coerce").reindex(close.index)
-    if len(close)<65:return None
+    if len(close)<65 or not _has_recent_trading(close,volume):return None
     price=float(close.iloc[-1]);avg_value=float((close*volume).tail(20).mean())
     if price<1000 or avg_value<500_000_000:return None
     ma20=close.rolling(20).mean();ma60=close.rolling(60).mean()
@@ -220,7 +233,7 @@ def _scan_all_market(universe_rows):
         close=pd.to_numeric(group["종가"],errors="coerce").dropna()
         volume=pd.to_numeric(group["거래량"],errors="coerce").reindex(close.index)
         value=pd.to_numeric(group["거래대금"],errors="coerce").reindex(close.index).fillna(0)
-        if len(close)<65:continue
+        if len(close)<65 or volume.dropna().empty or float(volume.dropna().iloc[-1])<=0:continue
         price=float(close.iloc[-1]);avg_value=float(value.tail(20).mean())
         if price<1000 or avg_value<500_000_000:continue
         ma20=close.rolling(20).mean();ma60=close.rolling(60).mean()
