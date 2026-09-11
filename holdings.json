@@ -564,8 +564,8 @@
     "name": "신세계 I&C",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 16040.0,
-    "quantity": 7.0,
+    "average_price": 15994.071661237786,
+    "quantity": 307.0,
     "purchases": [
       {
         "price": 16040.0,
@@ -576,11 +576,21 @@
         "memo": "",
         "executed_at": "2026-09-10T21:53:15.100845+00:00",
         "source": "신규매수"
+      },
+      {
+        "price": 15993.0,
+        "quantity": 300.0,
+        "fee": 720,
+        "tax": 0,
+        "reason": "눌림목 매수",
+        "memo": "",
+        "executed_at": "2026-09-11T00:19:07.567056+00:00",
+        "source": "추가매수"
       }
     ],
     "sales": [],
     "enabled": true,
-    "updated_at": "2026-09-10T21:53:15.100845+00:00"
+    "updated_at": "2026-09-11T00:19:07.567056+00:00"
   },
   {
     "ticker": "092790",
