@@ -469,7 +469,7 @@ def _render_live_watchlist(results):
             mandatory_label = "🟢 필수 4/4 충족" if mandatory_count == 4 else ("🟠 필수 3/4 확인" if mandatory_count == 3 else f"🔴 필수 {mandatory_count}/4 제외")
             auxiliary_label = "🟢 보조 3/3" if auxiliary_count == 3 else ("🟡 보조 2/3" if auxiliary_count == 2 else f"🔵 보조 {auxiliary_count}/3")
         display_rows.append({
-            "매수 우선순위": rank, "필수조건": mandatory_label, "행동": decision, "보조조건": auxiliary_label,
+            "매수 우선순위": rank, "필수조건": mandatory_label, "보조조건": auxiliary_label,
             "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
             "② 1차가 거리": f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1", 0) or 0) > 0 else "-",
             "③ 거래량 배수": x["volume_ratio"], "④ 시점점수": x["score"],
