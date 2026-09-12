@@ -188,5 +188,10 @@
     "ticker": "105560",
     "name": "KB금융",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "403870",
+    "name": "HPSP",
+    "market": "KOSDAQ"
   }
 ]
