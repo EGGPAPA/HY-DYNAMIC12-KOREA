@@ -507,12 +507,14 @@ def holding_snapshot(active):
         stop,take1,take2,take3,state,action=sell_guide(average,price)
         details.append((row,quantity,cost,average,price,source,value,profit,return_rate,stop,take1,take2,take3,state,action))
         code=str(row.get("ticker","")).zfill(6);name=row.get("name") or code
+        reference5=average*1.05 if average>0 else None
         levels=[
             ("stop","🔴 손절선 이탈",stop,"손절/비중축소 검토",price<=stop),
+            ("reference5","🔔 참고(+5%) 도달",reference5,"수익률 +5% 도달 · 참고용",price>=reference5),
             ("take10","🟡 1차(+10%) 도달",take1,"일부익절 검토",price>=take1),
             ("take15","🔵 2차(+15%) 도달",take2,"추가익절 검토",price>=take2),
             ("take20","🟣 3차(+20%) 도달",take3,"분할익절/추세보유",price>=take3),
-        ] if price is not None else []
+        ] if price is not None and average>0 and quantity>0 and source=="KIS" else []
         price_alerts.extend({
             "id":f"{code}:{key}","code":code,"name":name,"event":event,
             "price":price,"level":level,"average":average,"return":return_rate,"action":alert_action,
@@ -522,7 +524,7 @@ def holding_snapshot(active):
             "평균매수가":won(average),"수량":compact_quantity(quantity),"현재가":won(price),"시세출처":source,
             "평가금액":won(value),"수익금":won(profit),
             "수익률":f"{return_rate:+.2f}%" if return_rate is not None else "-",
-            "손절(-3%)":won(stop),"1차(+10%)":won(take1),"2차(+15%)":won(take2),"3차(+20%)":won(take3),
+            "손절(-3%)":won(stop),"참고(+5%)":won(reference5),"1차(+10%)":won(take1),"2차(+15%)":won(take2),"3차(+20%)":won(take3),
             "상태":state,"매도판단":action,
         })
     return details,view,price_alerts
@@ -537,19 +539,14 @@ def render_live_holdings_table(active):
     st.dataframe(styled_view,use_container_width=True,hide_index=True)
     refreshed=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%H:%M:%S")
     st.caption(f"보유종목 실시간 평가 최근 조회: {refreshed} KST")
-    if kakao_ready():
-        today=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%Y-%m-%d")
-        state_key=f"holding_price_alerts_{today}"
-        sent=set(st.session_state.get(state_key,[]))
-        fresh=[item for item in price_alerts if item["id"] not in sent]
-        if fresh:
-            try:
-                send_kakao_message(holding_price_alert_message(fresh))
-                sent.update(item["id"] for item in fresh)
-                st.session_state[state_key]=sorted(sent)
-                st.session_state.pop("holding_price_alert_error",None)
-            except Exception as exc:
-                st.session_state["holding_price_alert_error"]=str(exc)
+    reference_alerts=[item for item in price_alerts if item["id"].endswith(":reference5")]
+    if reference_alerts:
+        st.info("🔔 +5% 참고 도달: " + " · ".join(
+            f"{item['name']} {item['return']:+.2f}% (참고가 {won(item['level'])})"
+            for item in reference_alerts))
+    st.caption("+5%는 평균매수가 대비 수수료·세금 전 참고선입니다. 화면 시세는 KIS, 서버 알림은 Yahoo 5분봉을 사용하여 값이 다를 수 있습니다.")
+    st.caption("카카오 서버 알림: 화면·PC를 꺼도 평일 정규장에 약 10분 간격으로 확인합니다. 같은 종목·단계는 하루 한 번 전송하며 실행·시세가 지연될 수 있습니다.")
+
 
 
 @st.fragment(run_every="10s")
@@ -564,8 +561,8 @@ def render_live_holding_detail(row):
     m3.metric("평가손익",won(pnl));m4.metric("수익률",f"{ret:+.2f}%" if ret is not None else "-")
     st.info(f"현재 판단: **{state} · {act}**")
     st.markdown("#### 🎯 실전 가격 가이드")
-    g1,g2,g3,g4=st.columns(4)
-    g1.metric("손절 기준",won(s));g2.metric("1차 익절",won(a));g3.metric("2차 익절",won(b));g4.metric("3차 익절",won(d))
+    g1,g2,g3,g4,g5=st.columns(5)
+    g1.metric("손절 기준",won(s));g2.metric("참고(+5%)",won(avg*1.05) if avg>0 else "-");g3.metric("1차 익절",won(a));g4.metric("2차 익절",won(b));g5.metric("3차 익절",won(d))
     refreshed=(datetime.now(timezone.utc)+pd.Timedelta(hours=9)).strftime("%H:%M:%S")
     st.caption(f"시세 출처: {src} · 최근 조회 {refreshed} KST · 10초 자동 갱신")
     if src != "KIS":
