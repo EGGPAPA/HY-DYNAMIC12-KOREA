@@ -7,6 +7,8 @@ import yfinance as yf
 from itertools import product
 import json
 from pathlib import Path
+import requests
+import xml.etree.ElementTree as ET
 
 inject_theme()
 inject_sidebar_labels()
@@ -78,7 +80,7 @@ def _leader_signals():
                 sources[label]=names[:12];break
     if not sources:
         try:
-            raw=json.loads(Path('data/korea_analysis.json').read_text(encoding='utf-8'))
+            raw=json.loads(Path('data/korea_analysis_snapshot.json').read_text(encoding='utf-8'))
             names=_row_names(raw.get('rows',raw) if isinstance(raw,dict) else raw)
             if names:sources['최근 전체시장 분석']=names[:12]
         except Exception:pass
@@ -91,6 +93,7 @@ def _etf_score(name,leaders,px):
     info=ETF_CANDIDATES[name];holding_norm={_normal_name(x) for x in info['holdings']}
     matched=[x for x in leaders if _normal_name(x) in holding_norm]
     overlap=60*len(set(map(_normal_name,matched)))/max(len(set(map(_normal_name,leaders))),1)
+    _validate_rotation_prices(px,px.index[-1] if len(px) else pd.Timestamp.today())
     momentum=ma_score=0.
     if len(px)>=65:
         momentum=float(np.clip((px.iloc[-1]/px.iloc[-61]-1)*100,-10,20));momentum=(momentum+10)/30*15
@@ -106,6 +109,50 @@ def _score_band(score):
     if score>=15:return '🟡 약한 후보','#ffd166'
     return '🔵 추천 없음','#4da3ff'
 
+
+def _rotation_prices(ticker,start,end):
+    """Fetch fresh daily prices only for rotation; do not reuse cached failures."""
+    begin,finish=pd.Timestamp(start),pd.Timestamp(end)
+    def clean(values):
+        values=pd.to_numeric(values,errors='coerce').dropna()
+        values=values[np.isfinite(values)&(values>0)].copy()
+        values.index=pd.to_datetime(values.index)
+        if values.index.tz is not None:values.index=values.index.tz_localize(None)
+        values=values[~values.index.duplicated(keep='last')].sort_index()
+        return values[(values.index>=begin)&(values.index<=finish)]
+    failures=[]
+    # Use the domestic chart source already used elsewhere in this app.
+    try:
+        response=requests.get('https://fchart.stock.naver.com/sise.nhn',
+            params={'symbol':ticker.split('.')[0],'timeframe':'day','count':300,'requestType':'0'},
+            headers={'User-Agent':'Mozilla/5.0'},timeout=12)
+        response.raise_for_status()
+        records=[]
+        for item in ET.fromstring(response.content).iter('item'):
+            values=item.attrib.get('data','').split('|')
+            if len(values)>=6:records.append((pd.to_datetime(values[0],format='%Y%m%d'),values[4]))
+        px=clean(pd.Series([x[1] for x in records],index=pd.DatetimeIndex([x[0] for x in records]),dtype=object))
+        _validate_rotation_prices(px,finish)
+        return px,'네이버 일봉'
+    except Exception as exc:failures.append('네이버: '+type(exc).__name__)
+    try:
+        frame=yf.download(ticker,start=str(begin.date()),end=str((finish+pd.Timedelta(days=1)).date()),
+            auto_adjust=True,progress=False,threads=False,timeout=12)
+        px=frame['Close']
+        if isinstance(px,pd.DataFrame):px=px.iloc[:,0]
+        px=clean(px)
+        _validate_rotation_prices(px,finish)
+        return px,'Yahoo 수정주가'
+    except Exception as exc:failures.append('Yahoo: '+type(exc).__name__)
+    raise ValueError('가격 데이터 조회 실패 또는 기간 부족 ('+', '.join(failures)+')')
+
+def _validate_rotation_prices(px,end):
+    if len(px)<65 or len(_monthly_from_daily(px))<5:
+        raise ValueError('3개월 추세·MA5 계산에 필요한 가격 데이터 부족')
+    if (pd.Timestamp(end).normalize()-px.index[-1].normalize()).days>10:
+        raise ValueError('최근 가격 데이터가 10일 이상 지연됨')
+
+@st.fragment
 def render_leader_etf_rotation():
     st.divider();st.header('🏆 주도주 포함 ETF 동적 로테이션')
     st.caption('TOP12·부의 점프·5개월선 결과가 바뀌면 ETF 중복도도 다시 계산합니다. 10점 이상 우위가 2회 연속 확인될 때만 교체해 잦은 매매를 줄입니다.')
@@ -119,12 +166,28 @@ def render_leader_etf_rotation():
         st.info('먼저 전체 업데이트를 실행하거나 위 칸에 주도주를 입력하면 ETF 비교가 활성화됩니다.');return
     st.write('평가 주도주: '+', '.join(leaders[:20]))
     if st.button('🔄 주도주 ETF 다시 평가',use_container_width=True):
-        rows=[];eval_end=pd.Timestamp.today();eval_start=eval_end-pd.DateOffset(months=8)
-        with st.spinner('ETF 후보의 중복도와 가격 추세를 비교하는 중...'):
-            for name,info in ETF_CANDIDATES.items():
-                px=load_price(info['ticker'],eval_start.date(),eval_end.date())
+        rows=[];failed=[]
+        eval_end=pd.Timestamp.now(tz='Asia/Seoul').normalize().tz_localize(None)
+        eval_start=eval_end-pd.DateOffset(months=8)
+        progress=st.progress(0,text='새 가격 데이터를 조회합니다...')
+        for index,(name,info) in enumerate(ETF_CANDIDATES.items(),1):
+            progress.progress((index-1)/len(ETF_CANDIDATES),text=f'{index}/{len(ETF_CANDIDATES)} · {name} 조회 중')
+            try:
+                px,source=_rotation_prices(info['ticker'],eval_start.date(),eval_end.date())
                 score,matched,momentum,ma_score=_etf_score(name,leaders,px)
-                rows.append({'ETF':name,'테마':info['theme'],'종합점수':score,'포함 주도주':', '.join(matched) or '-','3개월추세점수':momentum,'MA5점수':ma_score})
+                rows.append({'ETF':name,'테마':info['theme'],'종합점수':score,'포함 주도주':', '.join(matched) or '-',
+                             '3개월추세점수':momentum,'MA5점수':ma_score,'가격기준일':str(px.index[-1].date()),'시세출처':source})
+            except Exception as exc:
+                failed.append(name+': '+str(exc))
+        progress.empty()
+        if failed:
+            st.session_state['leader_etf_pending']=None
+            st.session_state['leader_etf_pending_count']=0
+            st.error('재평가 미완료: '+ ' / '.join(failed))
+            st.info('가격이 없는 ETF를 0점으로 평가하지 않습니다. 연결 복구 후 다시 평가해 주세요. 기존 교체 판단은 갱신하지 않았습니다.')
+            return
+        st.session_state['leader_etf_evaluated_at']=pd.Timestamp.now(tz='Asia/Seoul').strftime('%Y-%m-%d %H:%M:%S KST')
+        st.session_state['leader_etf_leaders']=tuple(leaders)
         result=pd.DataFrame(rows).sort_values(['종합점수','ETF'],ascending=[False,True]).reset_index(drop=True)
         result.insert(3,'추천상태',result['종합점수'].map(lambda x:_score_band(x)[0]))
         st.session_state['leader_etf_result']=result
@@ -146,7 +209,10 @@ def render_leader_etf_rotation():
             if count>=2:st.session_state['leader_etf_current']=best
         st.session_state['leader_etf_pending']=pending;st.session_state['leader_etf_pending_count']=count;st.session_state['leader_etf_verdict']=verdict
     result=st.session_state.get('leader_etf_result')
+    if isinstance(result,pd.DataFrame) and tuple(leaders)!=st.session_state.get('leader_etf_leaders'):
+        st.info('주도주 입력이 바뀌었거나 이전 평가 결과입니다. 다시 평가를 눌러 갱신하세요.');return
     if isinstance(result,pd.DataFrame) and not result.empty:
+        st.success('재평가 완료 · '+st.session_state.get('leader_etf_evaluated_at','')+' · '+str(len(result))+'개 ETF')
         best_name=str(result.iloc[0]['ETF']);best_score=float(result.iloc[0]['종합점수']);band,color=_score_band(best_score)
         shown_name=best_name if best_score>=15 else '추천 없음'
         st.markdown(f"""
