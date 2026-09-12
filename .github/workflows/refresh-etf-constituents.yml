@@ -1,0 +1,38 @@
+name: Refresh domestic ETF constituents
+on:
+  schedule:
+    - cron: '23 23 * * 0-4'
+  workflow_dispatch:
+  push:
+    paths:
+      - 'scripts/refresh_etf_constituents.py'
+      - 'dynamic_etf_candidates.py'
+      - 'tests/test_dynamic_etf_candidates.py'
+      - '.github/workflows/refresh-etf-constituents.yml'
+permissions:
+  contents: write
+concurrency:
+  group: refresh-etf-constituents
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m unittest discover -s tests -p 'test_dynamic_etf_candidates.py'
+      - run: python scripts/refresh_etf_constituents.py
+      - name: Save latest constituent snapshot
+        run: |
+          git add data/etf_constituents.json.gz
+          if git diff --cached --quiet; then exit 0; fi
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'Refresh ETF constituent snapshot [skip ci]'
+          git pull --rebase origin main
+          git push origin HEAD:main

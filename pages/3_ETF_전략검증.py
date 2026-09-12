@@ -7,6 +7,7 @@ import yfinance as yf
 from itertools import product
 import json
 from pathlib import Path
+from dynamic_etf_candidates import load_catalog, select_candidates
 import requests
 import xml.etree.ElementTree as ET
 
@@ -89,8 +90,8 @@ def _leader_signals():
 def _normal_name(name):
     return str(name).upper().replace(' ','').replace('㈜','').replace('주식회사','')
 
-def _etf_score(name,leaders,px):
-    info=ETF_CANDIDATES[name];holding_norm={_normal_name(x) for x in info['holdings']}
+def _etf_score(name,leaders,px,candidates=None):
+    info=(candidates or ETF_CANDIDATES)[name];holding_norm={_normal_name(x) for x in info['holdings']}
     matched=[x for x in leaders if _normal_name(x) in holding_norm]
     overlap=60*len(set(map(_normal_name,matched)))/max(len(set(map(_normal_name,leaders))),1)
     _validate_rotation_prices(px,px.index[-1] if len(px) else pd.Timestamp.today())
@@ -155,43 +156,71 @@ def _validate_rotation_prices(px,end):
 @st.fragment
 def render_leader_etf_rotation():
     st.divider();st.header('🏆 주도주 포함 ETF 동적 로테이션')
-    st.caption('TOP12·부의 점프·5개월선 결과가 바뀌면 ETF 중복도도 다시 계산합니다. 10점 이상 우위가 2회 연속 확인될 때만 교체해 잦은 매매를 줄입니다.')
+    st.caption('TOP12·부의 점프·5개월선 결과가 바뀌면 실제 편입종목을 비교해 ETF 후보 자체를 다시 선정합니다. 10점 이상 우위가 2회 연속 확인될 때만 교체해 잦은 매매를 줄입니다.')
     sources=_leader_signals();detected=[]
     for names in sources.values():detected.extend(names)
     detected=list(dict.fromkeys(detected))
     manual=st.text_input('추가/수정할 주도주 (쉼표 구분)',value='',placeholder='예: 알테오젠, HMM, 금호타이어')
-    leaders=list(dict.fromkeys(detected+[x.strip() for x in manual.split(',') if x.strip()]))
+    manual_only=st.checkbox('입력한 주도주만 비교',value=False,key='leader_etf_manual_only')
+    leaders=list(dict.fromkeys(([] if manual_only else detected)+[x.strip() for x in manual.split(',') if x.strip()]))
     if sources:st.caption('자동 반영: '+' · '.join(f'{k} {len(v)}개' for k,v in sources.items()))
     if not leaders:
         st.info('먼저 전체 업데이트를 실행하거나 위 칸에 주도주를 입력하면 ETF 비교가 활성화됩니다.');return
     st.write('평가 주도주: '+', '.join(leaders[:20]))
+    try:
+        catalog,meta=load_catalog(today=pd.Timestamp.now(tz='Asia/Seoul').date())
+    except Exception as exc:
+        st.error(str(exc));return
+    limit=st.select_slider('자동 선정 후보 수',options=[6,8,12,16,20],value=12,key='leader_etf_candidate_limit')
+    current_code=st.session_state.get('leader_etf_current_code',ETF_CANDIDATES[etf]['ticker'].split('.')[0])
+    candidates,unmatched,matched_count=select_candidates(catalog,leaders,limit,current_code)
+    current=next((name for name,info in candidates.items() if info['code']==current_code),None)
+    if not candidates or not any(info['matched'] for info in candidates.values()):
+        st.warning('현재 주도주를 편입한 ETF가 조회 범위에 없습니다. 주도주 명칭과 자료 기준일을 확인하세요.');return
+    fingerprint=(tuple(sorted(_normal_name(x) for x in leaders)),tuple((v['code'],v['asof'],v['matched_weight']) for v in candidates.values()),current_code)
+    if st.session_state.get('leader_etf_candidate_fingerprint')!=fingerprint:
+        st.session_state['leader_etf_pending']=None
+        st.session_state['leader_etf_pending_count']=0
+    st.session_state['leader_etf_candidate_fingerprint']=fingerprint
+    st.caption(f"편입자료 확인 {len(catalog)}개 / 수집 대상 {meta.get('eligible_count','-')}개 · 주도주 일치 {matched_count}개 → 상위 {limit}개 이내 + 현재 기준 ETF")
+    st.caption('국내 주식형 ETF 중 레버리지·인버스·커버드콜·선물·합성·혼합형은 제외합니다. 편입자료는 평일 매일 갱신하며 10일 초과 자료는 제외합니다.')
+    if meta.get('failed_codes') or meta.get('stale_count'):
+        st.caption(f"편입자료 미확인 {len(meta.get('failed_codes',[]))}개 · 오래된 자료 {meta.get('stale_count',0)}개 제외")
+    if unmatched:st.info('편입 일치 없음: '+', '.join(unmatched))
+    st.markdown('#### 이번 주도주로 자동 선정한 ETF 후보')
+    st.dataframe(pd.DataFrame([{'ETF':name,'종목코드':info['code'],'선정 이유':info['reason'],
+        '포함 주도주':', '.join(info['matched']) or '-','편입자료 기준일':info['asof']} for name,info in candidates.items()]),
+        use_container_width=True,hide_index=True)
+    st.caption('후보 선정: 주도주 일치율 60% + 주도주 합산 편입비중 40%. 후보 변경 후 아래 버튼으로 가격 추세까지 평가합니다.')
     if st.button('🔄 주도주 ETF 다시 평가',use_container_width=True):
         rows=[];failed=[]
         eval_end=pd.Timestamp.now(tz='Asia/Seoul').normalize().tz_localize(None)
         eval_start=eval_end-pd.DateOffset(months=8)
         progress=st.progress(0,text='새 가격 데이터를 조회합니다...')
-        for index,(name,info) in enumerate(ETF_CANDIDATES.items(),1):
-            progress.progress((index-1)/len(ETF_CANDIDATES),text=f'{index}/{len(ETF_CANDIDATES)} · {name} 조회 중')
+        for index,(name,info) in enumerate(candidates.items(),1):
+            progress.progress((index-1)/len(candidates),text=f'{index}/{len(ETF_CANDIDATES)} · {name} 조회 중')
             try:
                 px,source=_rotation_prices(info['ticker'],eval_start.date(),eval_end.date())
-                score,matched,momentum,ma_score=_etf_score(name,leaders,px)
+                score,matched,momentum,ma_score=_etf_score(name,leaders,px,candidates)
                 rows.append({'ETF':name,'테마':info['theme'],'종합점수':score,'포함 주도주':', '.join(matched) or '-',
-                             '3개월추세점수':momentum,'MA5점수':ma_score,'가격기준일':str(px.index[-1].date()),'시세출처':source})
+                             '3개월추세점수':momentum,'MA5점수':ma_score,'가격기준일':str(px.index[-1].date()),'시세출처':source,'주도주 편입비중(%)':info['matched_weight'],'편입자료 기준일':info['asof']})
             except Exception as exc:
                 failed.append(name+': '+str(exc))
         progress.empty()
-        if failed:
+        if not rows or current is None or not any(row['ETF']==current for row in rows):
             st.session_state['leader_etf_pending']=None
             st.session_state['leader_etf_pending_count']=0
-            st.error('재평가 미완료: '+ ' / '.join(failed))
+            st.error('재평가 미완료: '+ (' / '.join(failed) if failed else '현재 기준 ETF의 편입자료를 확인하지 못했습니다.'))
             st.info('가격이 없는 ETF를 0점으로 평가하지 않습니다. 연결 복구 후 다시 평가해 주세요. 기존 교체 판단은 갱신하지 않았습니다.')
             return
+        st.session_state['leader_etf_price_excluded']=failed
         st.session_state['leader_etf_evaluated_at']=pd.Timestamp.now(tz='Asia/Seoul').strftime('%Y-%m-%d %H:%M:%S KST')
         st.session_state['leader_etf_leaders']=tuple(leaders)
+        st.session_state['leader_etf_result_fingerprint']=fingerprint
         result=pd.DataFrame(rows).sort_values(['종합점수','ETF'],ascending=[False,True]).reset_index(drop=True)
         result.insert(3,'추천상태',result['종합점수'].map(lambda x:_score_band(x)[0]))
         st.session_state['leader_etf_result']=result
-        best=result.iloc[0]['ETF'];current=st.session_state.get('leader_etf_current',etf)
+        best=result.iloc[0]['ETF']
         current_score=float(result.loc[result['ETF']==current,'종합점수'].iloc[0]) if current in set(result['ETF']) else 0
         gap=float(result.iloc[0]['종합점수'])-current_score
         pending=st.session_state.get('leader_etf_pending')
@@ -206,18 +235,22 @@ def render_leader_etf_rotation():
         else:
             count=count+1 if pending==best else 1;pending=best
             verdict=f'🟠 {best} 교체 확인 {count}/2회' if count<2 else f'🔴 {best}로 교체 검토'
-            if count>=2:st.session_state['leader_etf_current']=best
+            if count>=2:
+                st.session_state['leader_etf_current']=best
+                st.session_state['leader_etf_current_code']=candidates[best]['code']
         st.session_state['leader_etf_pending']=pending;st.session_state['leader_etf_pending_count']=count;st.session_state['leader_etf_verdict']=verdict
     result=st.session_state.get('leader_etf_result')
-    if isinstance(result,pd.DataFrame) and tuple(leaders)!=st.session_state.get('leader_etf_leaders'):
-        st.info('주도주 입력이 바뀌었거나 이전 평가 결과입니다. 다시 평가를 눌러 갱신하세요.');return
+    if isinstance(result,pd.DataFrame) and fingerprint!=st.session_state.get('leader_etf_result_fingerprint'):
+        st.info('주도주·ETF 후보·편입자료가 바뀌었거나 이전 평가 결과입니다. 다시 평가를 눌러 갱신하세요.');return
     if isinstance(result,pd.DataFrame) and not result.empty:
+        if st.session_state.get('leader_etf_price_excluded'):
+            st.warning('가격자료 부족으로 비교 제외: '+' / '.join(st.session_state['leader_etf_price_excluded']))
         st.success('재평가 완료 · '+st.session_state.get('leader_etf_evaluated_at','')+' · '+str(len(result))+'개 ETF')
         best_name=str(result.iloc[0]['ETF']);best_score=float(result.iloc[0]['종합점수']);band,color=_score_band(best_score)
         shown_name=best_name if best_score>=15 else '추천 없음'
         st.markdown(f"""
         <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:8px 0 14px">
-          <div style="padding:16px;border:1px solid #3b4658;border-radius:12px"><small>현재 기준 ETF</small><div style="font-size:1.45rem;font-weight:700">{st.session_state.get('leader_etf_current',etf)}</div></div>
+          <div style="padding:16px;border:1px solid #3b4658;border-radius:12px"><small>현재 기준 ETF</small><div style="font-size:1.45rem;font-weight:700">{st.session_state.get('leader_etf_current',current or etf)}</div></div>
           <div style="padding:16px;border:2px solid {color};border-radius:12px;background:{color}18"><small>{band}</small><div style="font-size:1.45rem;font-weight:800;color:{color}">{shown_name}</div><div style="font-size:.85rem">최고 후보: {best_name}</div></div>
           <div style="padding:16px;border:2px solid {color};border-radius:12px;background:{color}18"><small>추천 점수</small><div style="font-size:1.8rem;font-weight:800;color:{color}">{best_score:.1f}점</div></div>
         </div>
@@ -226,7 +259,7 @@ def render_leader_etf_rotation():
         verdict=st.session_state.get('leader_etf_verdict','평가 버튼을 눌러 판정을 갱신하세요.')
         st.markdown(f'<div style="padding:12px 14px;border-left:5px solid {color};background:{color}18;border-radius:7px;font-weight:700">{verdict}</div>',unsafe_allow_html=True)
         st.dataframe(result,use_container_width=True,hide_index=True)
-        st.caption('구성종목 목록은 후보 탐색용 기준 목록입니다. 실제 매수 전 운용사 최신 PDF의 편입종목·비중을 확인하세요. 과거 백테스트에는 당시 구성종목만 사용해야 미래정보 편향을 피할 수 있습니다.')
+        st.caption('편입종목은 네이버/FnGuide의 표시 기준일 자료입니다. 실제 매수 전 운용사 최신 PDF의 편입종목·비중을 확인하세요. 과거 백테스트에는 당시 구성종목만 사용해야 미래정보 편향을 피할 수 있습니다.')
 
 @st.cache_data(ttl=1800,show_spinner=False)
 def load_price(ticker,start,end):
