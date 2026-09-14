@@ -667,8 +667,8 @@
     "name": "미코",
     "market": "KOSDAQ",
     "status": "holding",
-    "average_price": 19420.0,
-    "quantity": 256.0,
+    "average_price": 19780.671936758892,
+    "quantity": 506.0,
     "purchases": [
       {
         "price": 19420.0,
@@ -679,10 +679,20 @@
         "memo": "",
         "executed_at": "2026-09-11T03:53:08.617903+00:00",
         "source": "신규매수"
+      },
+      {
+        "price": 20150.0,
+        "quantity": 250.0,
+        "fee": 756,
+        "tax": 0,
+        "reason": "추가매수",
+        "memo": "",
+        "executed_at": "2026-09-14T06:18:40.304717+00:00",
+        "source": "추가매수"
       }
     ],
     "sales": [],
     "enabled": true,
-    "updated_at": "2026-09-11T03:53:08.617903+00:00"
+    "updated_at": "2026-09-14T06:18:40.304717+00:00"
   }
 ]
