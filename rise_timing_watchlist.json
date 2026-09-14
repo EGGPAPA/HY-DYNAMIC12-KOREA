@@ -193,5 +193,10 @@
     "ticker": "403870",
     "name": "HPSP",
     "market": "KOSDAQ"
+  },
+  {
+    "ticker": "086790",
+    "name": "하나금융지주",
+    "market": "KOSPI"
   }
 ]
