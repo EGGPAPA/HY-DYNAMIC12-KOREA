@@ -198,5 +198,30 @@
     "ticker": "086790",
     "name": "하나금융지주",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "030200",
+    "name": "KT",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "323410",
+    "name": "카카오뱅크",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "010120",
+    "name": "LS ELECTRIC",
+    "market": "KOSPI"
+  },
+  {
+    "ticker": "253450",
+    "name": "스튜디오드래곤",
+    "market": "KOSDAQ"
+  },
+  {
+    "ticker": "009540",
+    "name": "HD한국조선해양",
+    "market": "KOSPI"
   }
 ]
