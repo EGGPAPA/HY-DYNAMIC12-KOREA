@@ -694,5 +694,28 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-09-14T06:18:40.304717+00:00"
+  },
+  {
+    "ticker": "051600",
+    "name": "한전KPS",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 47450.0,
+    "quantity": 105.0,
+    "purchases": [
+      {
+        "price": 47450.0,
+        "quantity": 105.0,
+        "fee": 747,
+        "tax": 0,
+        "reason": "1차 분할매수",
+        "memo": "",
+        "executed_at": "2026-09-15T02:44:53.708943+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-09-15T02:44:53.708943+00:00"
   }
 ]
