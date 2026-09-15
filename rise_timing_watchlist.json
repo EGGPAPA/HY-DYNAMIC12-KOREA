@@ -223,5 +223,75 @@
     "ticker": "009540",
     "name": "HD한국조선해양",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "064960",
+    "name": "SNT모티브",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "475400",
+    "name": "씨메스로보틱스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "001500",
+    "name": "현대차증권",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "199820",
+    "name": "제일일렉트릭",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "000400",
+    "name": "롯데손해보험",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "178920",
+    "name": "PI첨단소재",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "024110",
+    "name": "기업은행",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "200670",
+    "name": "휴메딕스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "445090",
+    "name": "에이직랜드",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "046890",
+    "name": "서울반도체",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-14"
   }
 ]
