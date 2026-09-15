@@ -6,6 +6,7 @@ import streamlit as st
 
 from naver_fallback import get_flow_map as get_naver_flow_map
 from naver_fallback import get_market_cap_ranking as get_naver_cap_ranking
+from naver_fallback import completed_daily_date
 from integrated_signal_ui import render_integrated_decision
 from korea_live_price import get_live_price
 
@@ -60,7 +61,7 @@ def _safe_cap_snapshot(date_obj):
     if not PYKRX_OK:
         return pd.DataFrame(), None
     d = _weekday(date_obj)
-    for _ in range(15):
+    for _ in range(3):
         date_s = d.strftime("%Y%m%d")
         frames = []
         for market in ["KOSPI", "KOSDAQ"]:
@@ -76,25 +77,25 @@ def _safe_cap_snapshot(date_obj):
                 x["시가총액"] = pd.to_numeric(x["시가총액"], errors="coerce")
                 frames.append(x[["종목코드", "시가총액"]])
             except Exception:
-                continue
-        if frames:
+                return pd.DataFrame(), None
+        if len(frames) == 2:
             out = pd.concat(frames, ignore_index=True).dropna(subset=["시가총액"])
             if not out.empty:
                 out = out.sort_values("시가총액", ascending=False).reset_index(drop=True)
                 out["현재순위"] = range(1, len(out) + 1)
                 return out, date_s
-        d -= timedelta(days=1)
+        d = _weekday(d - timedelta(days=1))
     return pd.DataFrame(), None
 
 
-@st.cache_data(ttl=3600)
-def get_market_cap_data():
-    today = datetime.now(SEOUL).date()
+@st.cache_data(ttl=900, show_spinner=False)
+def _cached_market_cap_data(day_key):
+    today = completed_daily_date()
     now_df, now_date = _safe_cap_snapshot(today)
-    w4_df, _ = _safe_cap_snapshot(today - timedelta(days=28))
-    w12_df, _ = _safe_cap_snapshot(today - timedelta(days=84))
 
     if not now_df.empty:
+        w4_df, _ = _safe_cap_snapshot(today - timedelta(days=28))
+        w12_df, _ = _safe_cap_snapshot(today - timedelta(days=84))
         out = now_df.copy()
         if not w4_df.empty:
             out = out.merge(w4_df[["종목코드", "현재순위"]].rename(columns={"현재순위": "4주전순위"}), on="종목코드", how="left")
@@ -117,7 +118,7 @@ def get_market_cap_data():
             return round(_clip(50 + d4 * 2.0 + d12 * 0.8 + bonus), 1)
 
         out["시총모멘텀점수"] = out.apply(score, axis=1)
-        return out, {"source": "KRX", "date": now_date, "full": True}
+        return out, {"source": "KRX", "date": now_date, "full": not w4_df.empty and not w12_df.empty}
 
     nv, nv_date = get_naver_cap_ranking()
     if not nv.empty:
@@ -140,7 +141,15 @@ def get_market_cap_data():
         out["시총모멘텀점수"] = out.apply(fallback_score, axis=1)
         return out, {"source": "NAVER 현재순위(대체)", "date": nv_date, "full": False}
 
-    return pd.DataFrame(), {"source": "없음", "date": None, "full": False}
+    raise ValueError("No complete market-cap snapshot")
+
+
+def get_market_cap_data():
+    try:
+        return _cached_market_cap_data(datetime.now(SEOUL).strftime("%Y%m%d"))
+    except Exception as exc:
+        # Failed requests are not cached for an hour as successful empty data.
+        return pd.DataFrame(), {"source": "없음", "date": None, "full": False, "error": type(exc).__name__}
 
 
 def _call_flow(date_s, market, investor):
@@ -150,29 +159,52 @@ def _call_flow(date_s, market, investor):
         return stock.get_market_net_purchases_of_equities_by_ticker(date_s, date_s, market, investor)
 
 
-@st.cache_data(ttl=1800)
-def get_krx_flow():
+@st.cache_data(ttl=900, show_spinner=False)
+def _cached_krx_flow(day_key):
     if not PYKRX_OK:
-        return {}, None
-    d = _weekday(datetime.now(SEOUL).date())
-    for _ in range(15):
+        raise ValueError("KRX unavailable")
+    d = completed_daily_date()
+    for _ in range(3):
         date_s = d.strftime("%Y%m%d")
         flow = {}
+        received = 0
         try:
             for investor, key in [("외국인", "외국인순매수"), ("기관합계", "기관순매수")]:
                 for market in ["KOSPI", "KOSDAQ"]:
                     df = _call_flow(date_s, market, investor)
                     if df is None or df.empty or "순매수거래대금" not in df.columns:
                         continue
-                    vals = pd.to_numeric(df["순매수거래대금"], errors="coerce").fillna(0)
+                    received += 1
+                    vals = pd.to_numeric(df["순매수거래대금"], errors="coerce").dropna()
                     for code, val in vals.items():
                         flow.setdefault(str(code).zfill(6), {})[key] = float(val)
-        except Exception:
-            flow = {}
-        if flow:
+        except Exception as exc:
+            raise ValueError("KRX flow unavailable") from exc
+        if flow and received == 4:
             return flow, date_s
-        d -= timedelta(days=1)
-    return {}, None
+        d = _weekday(d - timedelta(days=1))
+    raise ValueError("KRX flow unavailable")
+
+
+def get_krx_flow():
+    try:
+        return _cached_krx_flow(completed_daily_date().isoformat())
+    except Exception:
+        return {}, None
+
+
+@st.cache_data(ttl=300, show_spinner=False)
+def _cached_naver_flow(codes, day_key):
+    result, date = get_naver_flow_map(codes)
+    if not result:
+        raise ValueError("NAVER flow unavailable")
+    return result, date
+
+
+def clear_wealth_data_cache():
+    _cached_market_cap_data.clear()
+    _cached_krx_flow.clear()
+    _cached_naver_flow.clear()
 
 
 def _build_flow_scores(rows, flow_map):
@@ -182,10 +214,15 @@ def _build_flow_scores(rows, flow_map):
         fm = flow_map.get(code)
         if not fm:
             continue
-        data.append({"종목코드": code, "외국인": float(fm.get("외국인순매수", 0) or 0), "기관": float(fm.get("기관순매수", 0) or 0)})
+        foreign = pd.to_numeric(fm.get("외국인순매수"), errors="coerce")
+        institution = pd.to_numeric(fm.get("기관순매수"), errors="coerce")
+        if pd.isna(foreign) or pd.isna(institution):
+            continue
+        data.append({"종목코드": code, "외국인": float(foreign), "기관": float(institution)})
     df = pd.DataFrame(data)
     if df.empty:
         return {}
+    df = df.drop_duplicates("종목코드")
     df["외국인점수"] = df["외국인"].rank(pct=True) * 100
     df["기관점수"] = df["기관"].rank(pct=True) * 100
     df["수급점수"] = (df["외국인점수"] + df["기관점수"]) / 2
@@ -193,18 +230,34 @@ def _build_flow_scores(rows, flow_map):
 
 
 def get_flow_data(rows):
+    codes = tuple(sorted({str(r.get("_종목코드", "")).zfill(6) for r in rows if r.get("_종목코드")}))
+    if not codes:
+        return {}, {"source": "없음", "date": None, "count": 0, "total": 0}
     flow_map, flow_date = get_krx_flow()
     if flow_map:
         scores = _build_flow_scores(rows, flow_map)
         if scores:
-            return scores, {"source": "KRX", "date": flow_date}
+            return scores, {"source": "KRX 순매수대금", "date": flow_date, "unit": "원", "count": len(scores), "total": len(codes)}
 
-    codes = [str(r.get("_종목코드", "")).zfill(6) for r in rows]
-    nv_map, nv_date = get_naver_flow_map(codes)
+    try:
+        nv_map, nv_date = _cached_naver_flow(codes, completed_daily_date().isoformat())
+    except Exception as exc:
+        return {}, {"source": "없음", "date": None, "count": 0, "total": len(codes), "error": type(exc).__name__}
     scores = _build_flow_scores(rows, nv_map)
     if scores:
-        return scores, {"source": "NAVER 투자자동향(대체)", "date": nv_date}
-    return {}, {"source": "없음", "date": None}
+        return scores, {"source": "NAVER 순매수수량(대체)", "date": nv_date, "unit": "주", "count": len(scores), "total": len(codes)}
+    return {}, {"source": "없음", "date": None, "count": 0, "total": len(codes)}
+
+
+def wealth_data_status(rows, cap_df, cap_meta, flow_scores, flow_meta):
+    codes = {str(r.get("_종목코드", "")).zfill(6) for r in rows if r.get("_종목코드")}
+    cap_codes = set(cap_df["종목코드"]) if not cap_df.empty else set()
+    cap_count, flow_count = len(codes & cap_codes), len(codes & set(flow_scores))
+    total = len(codes)
+    complete = bool(total and cap_count == total and flow_count == total)
+    message = (f"시총 {cap_count}/{total}개 · 기준일 {cap_meta.get('date') or '-'} / "
+               f"수급 {flow_count}/{total}개 · 기준일 {flow_meta.get('date') or '-'}")
+    return complete, message
 
 
 def wealth_jump_score(row, cap_score, flow_score):
@@ -264,18 +317,27 @@ def render_wealth_jump_tab(rows, regime="중립장", analysis_at=None):
         st.info("먼저 '전체시장 분석'에서 자동분석을 실행하세요.")
         return
 
+    if st.button("🔄 수급·시총 다시 조회", key="wealth_data_retry"):
+        clear_wealth_data_cache()
     cap_df, cap_meta = get_market_cap_data()
     flow_scores, flow_meta = get_flow_data(rows)
     cap_ok = not cap_df.empty
     flow_ok = bool(flow_scores)
+    complete, coverage = wealth_data_status(rows, cap_df, cap_meta, flow_scores, flow_meta)
 
     s1, s2, s3 = st.columns(3)
     s1.metric("수급", f"✅ {flow_meta['source']} · {flow_meta['date']}" if flow_ok else "❌ 데이터 없음")
     s2.metric("시총", f"✅ {cap_meta['source']} · {cap_meta['date']}" if cap_ok else "❌ 데이터 없음")
     s3.metric("시장상태", regime)
+    st.caption(coverage)
+    st.caption("수급은 장중 실시간 값이 아닌 공표된 일별 자료입니다. 기준일은 실제 수신 데이터 날짜입니다. 연결 수정: 2026-09-15.")
 
     if cap_ok and not cap_meta.get("full"):
-        st.warning("KRX 시총 이력이 막혀 네이버 현재 시총순위로 대체했습니다. 4주·12주 순위변화는 표시하지 않습니다.")
+        st.warning("시총 4주·12주 이력이 일부 또는 전부 없습니다. NAVER 대체 점수는 현재 시총순위 기반의 기존 참고점수이며, 순위 상승을 확인한 모멘텀 점수가 아닙니다.")
+    if flow_ok and flow_meta.get("unit") == "주":
+        st.info("NAVER 수급은 외국인·기관 순매수 수량(주) 기준입니다. KRX 순매수 대금(원)과 단위가 다르므로 점수를 동일한 기준으로 직접 비교하지 마세요.")
+    if not complete and (cap_ok or flow_ok):
+        st.warning("일부 종목의 필수 데이터가 미수신되었습니다. 해당 종목은 신규매수 판정을 보류합니다.")
     if not flow_ok:
         st.error("KRX와 네이버 모두 수급 데이터를 받지 못했습니다. 신규매수 판정을 잠급니다.")
     if not cap_ok:

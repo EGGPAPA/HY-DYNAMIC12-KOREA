@@ -16,7 +16,7 @@ from monthly_ma5_ui import render_monthly_ma5_tab, scan_monthly_ma5, _monthly_ba
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 from market_environment_v2 import render_market_environment
 from wealth_jump_ui import render_wealth_jump_tab
-from wealth_jump_ui import get_market_cap_data, get_flow_data
+from wealth_jump_ui import get_market_cap_data, get_flow_data, clear_wealth_data_cache, wealth_data_status
 from pension_manager_ui import _load_pension, _auto_price
 from naver_fallback_html import get_full_universe_html, get_flow_map_html
 from krx_kis_pipeline import collect_krx_ohlcv, build_first_pass_screen
@@ -703,6 +703,27 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
     return rows, regime, floor, active_pct
 
 
+def refresh_wealth_jump_status(rows, status):
+    clear_wealth_data_cache()
+    cap_df, cap_meta = get_market_cap_data()
+    flow_scores, flow_meta = get_flow_data(rows)
+    complete, message = wealth_data_status(rows, cap_df, cap_meta, flow_scores, flow_meta)
+    st.session_state["wealth_jump_update_ok"] = complete
+    st.session_state["wealth_jump_update_message"] = message
+    if complete:
+        st.session_state["wealth_jump_at"] = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
+    status.write(("✅ ④ 부의 점프 데이터 수신 완료 · " if complete else "⚠️ ④ 부의 점프 일부 데이터 미수신 · ") + message)
+
+
+def show_update_result(status, label, completed_at, regime):
+    if st.session_state.get("wealth_jump_update_ok", False):
+        status.update(label=f"{label} 완료 · {completed_at}", state="complete", expanded=True)
+        st.success(f"{label}가 완료되었습니다. 시장상태: {regime}")
+    else:
+        status.update(label=f"{label} 부분 완료 · 수급·시총 미수신 확인 필요", state="error", expanded=True)
+        st.warning("가격·후보 분석은 갱신했으나 부의 점프 필수 데이터가 완전하지 않습니다. " + st.session_state.get("wealth_jump_update_message", ""))
+
+
 def run_full_update(status):
     """Refresh once, then reuse cached/common data through every dependent step."""
     status.write("⏳ ① 시장데이터 갱신 중...")
@@ -728,10 +749,7 @@ def run_full_update(status):
     status.write(f"✅ ③ TOP12 선정 완료 · {min(FINAL_TOP_N, len(rows))}개")
 
     status.write("⏳ ④ 부의 점프 계산 중...")
-    get_market_cap_data()
-    get_flow_data(rows)
-    st.session_state["wealth_jump_at"] = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
-    status.write("✅ ④ 부의 점프 계산 완료")
+    refresh_wealth_jump_status(rows, status)
 
     status.write("⏳ ⑤ 5개월선 돌파 분석 중...")
     ma5_limit = int(st.session_state.get("kr_ma5_limit", 300))
@@ -783,10 +801,7 @@ def run_fast_update(status):
     status.write(f"✅ ③ TOP12 갱신 완료 · {min(FINAL_TOP_N, len(rows))}개")
 
     status.write("⏳ ④ 부의 점프 갱신 중...")
-    get_market_cap_data()
-    get_flow_data(rows)
-    st.session_state["wealth_jump_at"] = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
-    status.write("✅ ④ 부의 점프 갱신 완료")
+    refresh_wealth_jump_status(rows, status)
 
     status.write("⏳ ⑤ 5개월선 핵심후보 분석 중...")
     row_codes = [str(r.get("_종목코드", "")).zfill(6) for r in rows[:60]]
@@ -820,8 +835,7 @@ if quick_col.button("⚡ 빠른 업데이트", type="primary", use_container_wid
     status = st.status("HY 빠른 업데이트 실행 중", expanded=True)
     try:
         completed_at, regime = run_fast_update(status)
-        status.update(label=f"⚡ 빠른 업데이트 완료 · {completed_at}", state="complete", expanded=True)
-        st.success(f"빠른 업데이트가 완료되었습니다. 시장상태: {regime}")
+        show_update_result(status, "⚡ 빠른 업데이트", completed_at, regime)
     except Exception as e:
         status.update(label="빠른 업데이트 중 오류가 발생했습니다.", state="error", expanded=True)
         st.error(str(e))
@@ -831,8 +845,7 @@ if full_col.button("🚀 정밀 전체 업데이트", use_container_width=True, 
     try:
         completed_at, regime = run_full_update(status)
         st.session_state["full_update_mode"] = "정밀 전체 업데이트"
-        status.update(label=f"🎉 정밀 전체 업데이트 완료 · {completed_at}", state="complete", expanded=True)
-        st.success(f"정밀 전체 업데이트가 완료되었습니다. 시장상태: {regime}")
+        show_update_result(status, "🚀 정밀 전체 업데이트", completed_at, regime)
     except Exception as e:
         status.update(label="전체 업데이트 중 오류가 발생했습니다.", state="error", expanded=True)
         st.error(str(e))

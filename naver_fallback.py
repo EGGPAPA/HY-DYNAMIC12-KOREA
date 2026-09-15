@@ -1,123 +1,157 @@
+"""Read-only Naver fallback. Never infer net purchases from holdings or units."""
+import math
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
 
-from naver_fallback_html import get_flow_map_html, get_market_cap_ranking_html
-
 SEOUL = ZoneInfo("Asia/Seoul")
 BASE = "https://m.stock.naver.com"
-HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": "https://m.stock.naver.com/"}
+HEADERS = {"User-Agent": "Mozilla/5.0", "Referer": BASE + "/"}
 
 
-def _num(v):
-    if v is None:
+def _num(value):
+    if value is None or isinstance(value, bool):
         return None
-    if isinstance(v, (int, float)):
-        return float(v)
-    s = str(v).replace(",", "").replace("원", "").replace("주", "").strip()
-    m = re.search(r"[-+]?\d+(?:\.\d+)?", s)
-    return float(m.group()) if m else None
-
-
-def _walk(obj):
-    if isinstance(obj, dict):
-        yield obj
-        for v in obj.values():
-            yield from _walk(v)
-    elif isinstance(obj, list):
-        for v in obj:
-            yield from _walk(v)
+    text = str(value).replace(",", "").strip()
+    if not re.fullmatch(r"[-+]?\d+(?:\.\d+)?", text):
+        return None
+    number = float(text)
+    return number if math.isfinite(number) else None
 
 
 def _get_json(path, params=None):
-    r = requests.get(BASE + path, params=params or {}, headers=HEADERS, timeout=8)
-    r.raise_for_status()
-    return r.json()
+    response = requests.get(BASE + path, params=params or {}, headers=HEADERS, timeout=(3, 8))
+    response.raise_for_status()
+    return response.json()
 
 
-def _code_from(d):
-    for k in ("itemCode", "stockCode", "code", "symbolCode"):
-        v = d.get(k)
-        if v is not None:
-            s = re.sub(r"\D", "", str(v))
-            if len(s) == 6:
-                return s
-    return None
+def _code(value):
+    text = str(value).zfill(6)
+    # New Korean listings can have alphanumeric six-character short codes.
+    return text if re.fullmatch(r"[0-9A-Z]{6}", text) else None
 
 
-def get_market_cap_ranking(page_size=1000):
-    """Try Naver mobile API first; if blocked, fall back to classic Finance HTML."""
+def completed_daily_date(now=None):
+    """Do not treat intraday investor totals as finalized daily flow."""
+    now = now or datetime.now(SEOUL)
+    day = now.date() if now.hour >= 20 else now.date() - timedelta(days=1)
+    while day.weekday() >= 5:
+        day -= timedelta(days=1)
+    return day
+
+
+def _date(value):
     try:
-        data = _get_json(
-            "/api/domestic/market/stock/default",
-            {"tradeType": "KRX", "marketType": "ALL", "orderType": "marketSum", "startIdx": 0, "pageSize": page_size},
-        )
-        rows, seen = [], set()
-        for d in _walk(data):
-            code = _code_from(d)
-            if not code or code in seen:
-                continue
-            cap = None
-            for k, v in d.items():
-                lk = str(k).lower()
-                if any(t in lk for t in ("marketsum", "marketvalue", "marketcap", "capitalization")):
-                    cap = _num(v)
-                    if cap is not None:
-                        break
-            if cap is not None:
-                seen.add(code)
-                rows.append((code, cap))
-        if rows:
-            df = pd.DataFrame(rows, columns=["종목코드", "시가총액"]).sort_values("시가총액", ascending=False).reset_index(drop=True)
-            df["현재순위"] = range(1, len(df) + 1)
-            return df, datetime.now(SEOUL).strftime("%Y%m%d")
-    except Exception:
-        pass
-
-    return get_market_cap_ranking_html()
-
-
-def _find_investor_value(d, kind):
-    tokens = ("foreign", "foreigner", "frgn", "외국") if kind == "foreign" else ("institution", "organization", "org", "기관")
-    preferred, fallback = [], []
-    for k, v in d.items():
-        lk = str(k).lower()
-        if not any(t in lk for t in tokens):
-            continue
-        n = _num(v)
-        if n is None:
-            continue
-        if any(t in lk for t in ("net", "pure", "buy", "purchase", "순매수")):
-            preferred.append(n)
-        else:
-            fallback.append(n)
-    return preferred[0] if preferred else (fallback[0] if fallback else None)
-
-
-def get_stock_flow(code):
-    try:
-        data = _get_json(f"/api/domestic/detail/{code}/trend", {"tradeType": "KRX", "startIdx": 0, "pageSize": 5})
-        for d in _walk(data):
-            f = _find_investor_value(d, "foreign")
-            i = _find_investor_value(d, "institution")
-            if f is not None or i is not None:
-                return {"외국인순매수": float(f or 0), "기관순매수": float(i or 0)}
-    except Exception:
+        return datetime.strptime(str(value), "%Y%m%d").date()
+    except (TypeError, ValueError):
         return None
+
+
+def get_market_cap_ranking(page_size=100):
+    """Rank the complete KOSPI + KOSDAQ stock universe using exact KRW values.
+
+    Both markets and every page must succeed; partial ranks are misleading.
+    ETF/ETN entries are not part of the stock market-cap ranking.
+    """
+    page_size = min(100, max(1, int(page_size)))
+    rows, dates, all_seen = [], [], set()
+    for market in ("KOSPI", "KOSDAQ"):
+        page, seen, total, rescans = 1, {}, None, 0
+        while True:
+            payload = _get_json(f"/api/stocks/marketValue/{market}", {"page": page, "pageSize": page_size})
+            batch = payload.get("stocks") if isinstance(payload, dict) else None
+            count = payload.get("totalCount") if isinstance(payload, dict) else None
+            if not isinstance(batch, list) or not batch or not isinstance(count, int) or count <= 0:
+                raise ValueError(f"NAVER {market}: invalid market-cap response")
+            if total is None:
+                total = count
+            if count != total or page > 100:
+                raise ValueError(f"NAVER {market}: market-cap pagination changed")
+            for item in batch:
+                code = _code(item.get("itemCode"))
+                if not code or code in all_seen:
+                    raise ValueError(f"NAVER {market}: invalid or cross-market duplicate code")
+                seen[code] = item
+            if len(seen) > total:
+                raise ValueError(f"NAVER {market}: market-cap universe changed")
+            if page * page_size >= total:
+                if len(seen) == total:
+                    break
+                if rescans >= 2:
+                    raise ValueError(f"NAVER {market}: incomplete market-cap universe {len(seen)}/{total}")
+                # Prices move between page requests; merge up to two more passes to recover
+                # entries shifted across a boundary. Never publish partial ranks.
+                page, rescans = 1, rescans + 1
+                continue
+            if len(batch) < page_size:
+                raise ValueError(f"NAVER {market}: incomplete market-cap page")
+            page += 1
+        all_seen.update(seen)
+        for code, item in seen.items():
+            if item.get("stockEndType") != "stock":
+                continue
+            cap = _num(item.get("marketValueRaw"))
+            try:
+                day = datetime.fromisoformat(item["localTradedAt"]).date()
+            except (KeyError, TypeError, ValueError):
+                raise ValueError(f"NAVER {market}: missing market-cap date") from None
+            if cap is None or cap <= 0:
+                raise ValueError(f"NAVER {market}: missing exact KRW market cap")
+            rows.append((code, cap, day.strftime("%Y%m%d")))
+            dates.append(day)
+    if not rows:
+        raise ValueError("NAVER: no stock market-cap data")
+    today = datetime.now(SEOUL).date()
+    newest = max(dates)
+    if newest > today or (today - newest).days > 10:
+        raise ValueError("NAVER: stale market-cap snapshot")
+    frame = pd.DataFrame(rows, columns=["종목코드", "시가총액", "시총기준일"])
+    frame = frame.sort_values(["시가총액", "종목코드"], ascending=[False, True]).reset_index(drop=True)
+    frame["현재순위"] = range(1, len(frame) + 1)
+    return frame, newest.strftime("%Y%m%d")
+
+
+def get_stock_flow(code, as_of=None):
+    code = _code(code)
+    if not code:
+        return None
+    cutoff = as_of or completed_daily_date()
+    try:
+        payload = _get_json(f"/api/stock/{code}/integration")
+        if _code(payload.get("itemCode")) != code:
+            return None
+        candidates = []
+        for item in payload.get("dealTrendInfos", []):
+            day = _date(item.get("bizdate"))
+            foreign = _num(item.get("foreignerPureBuyQuant"))
+            institution = _num(item.get("organPureBuyQuant"))
+            if day is None or day > cutoff or (cutoff - day).days > 10:
+                continue
+            if foreign is None or institution is None:
+                continue
+            candidates.append((day, foreign, institution))
+        if candidates:
+            day, foreign, institution = max(candidates, key=lambda item: item[0])
+            return {"외국인순매수": foreign, "기관순매수": institution,
+                    "기준일": day.strftime("%Y%m%d"), "단위": "주"}
+    except (requests.RequestException, ValueError, TypeError, AttributeError):
+        pass
     return None
 
 
 def get_flow_map(codes):
-    """Try Naver mobile API; if it yields no usable rows, use classic Finance HTML."""
-    out = {}
-    for code in codes:
-        code = str(code).zfill(6)
-        row = get_stock_flow(code)
+    # Sequential requests also work on hosts with exhausted thread quotas.
+    cutoff = completed_daily_date()
+    result = {}
+    for code in dict.fromkeys(filter(None, (_code(value) for value in codes))):
+        row = get_stock_flow(code, as_of=cutoff)
         if row:
-            out[code] = row
-    if out:
-        return out, datetime.now(SEOUL).strftime("%Y%m%d")
-    return get_flow_map_html(codes)
+            result[code] = row
+    if not result:
+        return {}, None
+    date = max(row["기준일"] for row in result.values())
+    # Cross-sectional ranks must not mix different trading days.
+    return {code: row for code, row in result.items() if row["기준일"] == date}, date
