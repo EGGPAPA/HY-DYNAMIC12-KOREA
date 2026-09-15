@@ -293,5 +293,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-14"
+  },
+  {
+    "ticker": "117730",
+    "name": "티로보틱스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "232680",
+    "name": "라온로보틱스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "112290",
+    "name": "와이씨켐",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "120110",
+    "name": "코오롱인더",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "105630",
+    "name": "한세실업",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "322510",
+    "name": "제이엘케이",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "033100",
+    "name": "제룡전기",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "095660",
+    "name": "네오위즈",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "004000",
+    "name": "롯데정밀화학",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
+  },
+  {
+    "ticker": "001250",
+    "name": "GS글로벌",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-15"
   }
 ]
