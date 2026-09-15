@@ -10,6 +10,7 @@ import yfinance as yf
 from krx_kis_pipeline import collect_krx_ohlcv
 from korea_holdings_ui import kakao_ready, send_kakao_message
 from korea_live_price import get_live_price, price_source_label
+from ma_convergence import convergence_columns
 
 try:
     from pykrx import stock
@@ -23,6 +24,7 @@ WATCH_API=f"https://api.github.com/repos/{REPO}/contents/{WATCH_PATH}"
 LIVE_STATE_PATH="data/rise_timing_live.json"
 LIVE_STATE_API=f"https://api.github.com/repos/{REPO}/contents/{LIVE_STATE_PATH}"
 LIVE_STATE_BRANCH="monitor-state"
+CONVERGENCE_API=f"https://api.github.com/repos/{REPO}/contents/data/ma_convergence_daily.json"
 
 
 def _secret(name,default=""):
@@ -60,6 +62,17 @@ def _load_background_state():
         response.raise_for_status()
         payload = response.json()
         return json.loads(base64.b64decode(payload["content"]).decode("utf-8"))
+    except Exception:
+        return {}
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _load_convergence_state():
+    try:
+        response = requests.get(CONVERGENCE_API, headers=_headers(),
+                                params={"ref": LIVE_STATE_BRANCH}, timeout=10)
+        response.raise_for_status()
+        return json.loads(base64.b64decode(response.json()["content"]).decode("utf-8"))
     except Exception:
         return {}
 
@@ -142,7 +155,7 @@ def _timing(row):
     stop=min(price*.97,max(m20*.96,low10*.98))
     if label.startswith("🟢") and price>stop and first*.98<=price<=first*1.02:
         label,action="🟣 1차 매수구간","1차 분할매수 가능 구간"
-    chart=pd.DataFrame({"종가":close,"20일선":ma20,"60일선":ma60})
+    chart=pd.DataFrame({"종가":close,"5일선":close.rolling(5).mean(),"20일선":ma20,"60일선":ma60})
     if m120 is not None:chart["120일선"]=ma120
     return {
         "ticker":str(row["ticker"]).zfill(6),"name":row.get("name") or row["ticker"],"market":row.get("market","KOSPI"),
@@ -460,6 +473,7 @@ def _render_live_watchlist(results):
 
     background = _load_background_state()
     background_map = {str(x.get("ticker", "")).zfill(6): x for x in background.get("items", [])}
+    convergence = _load_convergence_state()
 
     # 10초 구간마다 새 캐시 키로 KIS 현재가를 다시 조회합니다.
     workers = max(1, min(8, len(stable_results)))
@@ -482,7 +496,8 @@ def _render_live_watchlist(results):
             mandatory_label = "🟢 필수 4/4 충족" if mandatory_count == 4 else ("🟠 필수 3/4 확인" if mandatory_count == 3 else f"🔴 필수 {mandatory_count}/4 제외")
             auxiliary_label = "🟢 보조 3/3" if auxiliary_count == 3 else ("🟡 보조 2/3" if auxiliary_count == 2 else f"🔵 보조 {auxiliary_count}/3")
         display_rows.append({
-            "매수 우선순위": rank, "필수조건": mandatory_label, "보조조건": auxiliary_label,
+            "매수 우선순위": rank, **convergence_columns(convergence, x["ticker"]),
+            "필수조건": mandatory_label, "보조조건": auxiliary_label,
             "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
             "② 1차가 거리": f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1", 0) or 0) > 0 else "-",
             "③ 거래량 배수": x["volume_ratio"], "④ 시점점수": x["score"],
@@ -492,6 +507,7 @@ def _render_live_watchlist(results):
         })
 
     st.info("🟢 필수 4/4 충족 종목만 매수 검토 대상입니다. 보조조건(단계·점수·지속성)은 별도로 표시하므로 최종 매수 여부는 직접 판단할 수 있습니다.")
+    st.caption("세 선 수렴 = 5·20·60일선 간격 3% 이내 · 🔵 수렴 관찰 · 🟠 수렴 중이나 종가가 세 선 아래 · ⚪ 수렴 해제/자료 확인. 매수 신호나 기존 필수조건 충족을 뜻하지 않습니다.")
     st.dataframe(
         pd.DataFrame(display_rows),
         use_container_width=True,
@@ -506,16 +522,32 @@ def _render_live_watchlist(results):
     refreshed_at = pd.Timestamp.now(tz="Asia/Seoul").strftime("%H:%M:%S")
     source = price_source_label()
     st.caption(f"현재가 조회 {refreshed_at} KST · 10초 갱신 · 행동판정 15분 갱신 · 최근 서버 조사: {updated_at} · {source}")
+    if convergence:
+        st.caption(f"수렴 일일 조사: {convergence.get('asof', '-')} 종가 · {convergence.get('calculated_count', 0):,}개 계산 / {convergence.get('universe_count', 0):,}개 대상 · 수렴 후보 {convergence.get('candidate_count', 0):,}개 · 이번 추가 {len(convergence.get('added_this_run', []))}개")
+        if not convergence.get("complete"):
+            st.warning("수렴 후보 저장 처리 중입니다. 완료 여부는 서버 실행 결과에서 확인하세요.")
+        try:
+            age = (pd.Timestamp.now(tz="Asia/Seoul").date() - pd.Timestamp(convergence["asof"]).date()).days
+            if age > 4:
+                st.warning("수렴 기준일이 4일 이상 지났습니다. 휴장 또는 일일 업데이트 실패 여부를 확인하세요.")
+        except (ValueError, KeyError, TypeError):
+            st.warning("수렴 자료 기준일을 확인할 수 없습니다.")
+    else:
+        st.caption("수렴 일일 자료를 아직 가져오지 못했습니다. 가격 실시간 갱신과 별도로 서버 조사 완료를 기다려 주세요.")
     if "시세 없음" in source:
         st.warning("KIS 인증정보가 없거나 연결에 실패해 실시간 현재가를 가져오지 못했습니다. Yahoo 가격으로 대체하지 않습니다.")
 
 def _render_watchlist_detail(results):
     selected=st.selectbox("상세 종목", [f"{x['name']} ({x['ticker']})" for x in results],key="rise_watch_detail")
     item=results[[f"{x['name']} ({x['ticker']})" for x in results].index(selected)]
+    convergence = _load_convergence_state().get("items", {}).get(item["ticker"], {})
+    if convergence.get("eligible"):
+        st.caption(f"{convergence['state']} · 간격 {convergence['span_pct']:.2f}% · 5일선 {_won(convergence['ma5'])} / 20일선 {_won(convergence['ma20'])} / 60일선 {_won(convergence['ma60'])} · {convergence['date']} 종가, Naver 일봉 기준")
     a,b,c,d=st.columns(4);a.metric("현재 단계",item["label"]);b.metric("시점점수",f"{item['score']:.0f}점");c.metric("1차 매수 참고",_won(item["buy1"]));d.metric("손절 참고",_won(item["stop"]))
     st.info(f"행동: **{item['action']}** · 돌파 기준 {_won(item['breakout'])} · 2차 눌림 참고 {_won(item['buy2'])}")
     st.line_chart(item["chart"],height=360)
     st.caption("참고 가격은 20일선·최근 20일 고점·최근 저점을 이용한 기술적 기준이며 실제 주문 전 기업 실적과 공시를 별도로 확인하세요.")
+    st.caption("수렴 판정은 Naver 확정 일봉, 상세 차트와 시점점수는 Yahoo 자료입니다. 제공처 및 장중 포함 여부에 따라 수치가 다를 수 있습니다. 120일선은 수렴 판정에서 제외합니다.")
 
 
 def render_rise_timing_watchlist(universe=None):
@@ -557,6 +589,7 @@ def render_rise_timing_watchlist(universe=None):
     st.divider()
     st.markdown("### ⭐ 개인 관찰목록")
     st.caption("전종목 검색 결과에서 따로 관리하고 싶은 종목을 아래 목록에 추가할 수 있습니다.")
+    st.caption("📅 서버 수렴 검색: 평일 20:30 KST 예정(실행 지연 가능) · 새 거래일 종가로 보통주 중심 검색 · 가격 1,000원 이상·20일 평균 거래대금 5억원 이상 · 하루 최대 10개 추가, 기존 목록 유지. 새로 추가된 종목은 페이지를 다시 열거나 새로고침하면 반영됩니다.")
     rows,sha=_load_watchlist()
     if not rows:
         st.warning("관찰종목이 없습니다. 아래에서 종목을 추가하세요.")

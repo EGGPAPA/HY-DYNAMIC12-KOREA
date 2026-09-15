@@ -1,0 +1,46 @@
+name: Daily MA convergence watchlist
+
+on:
+  schedule:
+    # 20:30 Asia/Seoul, after the extended session; GitHub may delay runs.
+    - cron: "30 11 * * 1-5"
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "ma_convergence.py"
+      - "scripts/refresh_ma_convergence.py"
+      - "tests/test_ma_convergence.py"
+      - ".github/workflows/ma-convergence-daily.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ma-convergence-daily
+  cancel-in-progress: false
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Test convergence and safe watchlist merging
+        run: python -m unittest discover -s tests -p test_ma_convergence.py -v
+      - name: Scan closed daily bars and append new observations
+        run: python scripts/refresh_ma_convergence.py --publish --output artifacts/ma-convergence-daily.json
+      - name: Keep scan report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ma-convergence-daily
+          path: artifacts/ma-convergence-daily.json
+          if-no-files-found: ignore
+          retention-days: 14
