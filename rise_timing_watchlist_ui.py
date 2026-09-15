@@ -507,7 +507,7 @@ def _render_live_watchlist(results):
         })
 
     st.info("🟢 필수 4/4 충족 종목만 매수 검토 대상입니다. 보조조건(단계·점수·지속성)은 별도로 표시하므로 최종 매수 여부는 직접 판단할 수 있습니다.")
-    st.caption("세 선 수렴 = 5·20·60일선 간격 3% 이내 · 🔵 수렴 관찰 · 🟠 수렴 중이나 종가가 세 선 아래 · ⚪ 수렴 해제/자료 확인. 매수 신호나 기존 필수조건 충족을 뜻하지 않습니다.")
+    st.caption("세 선 수렴 = 5·20·60일선 간격 3% 이내 · 🔵 수렴 관찰 · 🟠 수렴 중이나 종가가 세 선 아래 · ⚪ 비수렴/자료 확인. 매수 신호나 기존 필수조건 충족을 뜻하지 않습니다.")
     st.dataframe(
         pd.DataFrame(display_rows),
         use_container_width=True,
@@ -542,7 +542,8 @@ def _render_watchlist_detail(results):
     item=results[[f"{x['name']} ({x['ticker']})" for x in results].index(selected)]
     convergence = _load_convergence_state().get("items", {}).get(item["ticker"], {})
     if convergence.get("eligible"):
-        st.caption(f"{convergence['state']} · 간격 {convergence['span_pct']:.2f}% · 5일선 {_won(convergence['ma5'])} / 20일선 {_won(convergence['ma20'])} / 60일선 {_won(convergence['ma60'])} · {convergence['date']} 종가, Naver 일봉 기준")
+        state = convergence["state"] if convergence.get("cluster_now") else "⚪ 비수렴"
+        st.caption(f"{state} · 간격 {convergence['span_pct']:.2f}% · 5일선 {_won(convergence['ma5'])} / 20일선 {_won(convergence['ma20'])} / 60일선 {_won(convergence['ma60'])} · {convergence['date']} 종가, Naver 일봉 기준")
     a,b,c,d=st.columns(4);a.metric("현재 단계",item["label"]);b.metric("시점점수",f"{item['score']:.0f}점");c.metric("1차 매수 참고",_won(item["buy1"]));d.metric("손절 참고",_won(item["stop"]))
     st.info(f"행동: **{item['action']}** · 돌파 기준 {_won(item['breakout'])} · 2차 눌림 참고 {_won(item['buy2'])}")
     st.line_chart(item["chart"],height=360)

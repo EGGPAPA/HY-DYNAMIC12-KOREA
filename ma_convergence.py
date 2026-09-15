@@ -63,7 +63,7 @@ def analyze_bars(bars, reference_date):
     price = closes[-1]
     position = "세 선 아래" if price < min(averages) else ("세 선 위" if price > max(averages) else "세 선 사이")
     clustered = span <= THRESHOLD_PCT + 1e-10
-    state = ("🟠 수렴·하방주의" if position == "세 선 아래" else "🔵 수렴 관찰") if clustered else "⚪ 수렴 해제"
+    state = ("🟠 수렴·하방주의" if position == "세 선 아래" else "🔵 수렴 관찰") if clustered else "⚪ 비수렴"
     base_volume = mean(float(x["volume"]) for x in rows[-21:-1])
     value20 = mean(float(x["close"]) * float(x["volume"]) for x in rows[-20:])
     return {
@@ -105,5 +105,7 @@ def convergence_columns(snapshot, ticker):
     if not row.get("eligible"):
         return {"세 선 수렴": "⚪ " + row.get("reason", "일일 자료 대기"), "수렴 간격": "-",
                 "수렴 기준일": row.get("date", snapshot.get("asof", "-"))}
-    return {"세 선 수렴": row["state"], "수렴 간격": f"{row['span_pct']:.2f}%",
+    # Old snapshots also use neutral wording: no claim of a previous convergence.
+    state = row["state"] if row.get("cluster_now", True) else "⚪ 비수렴"
+    return {"세 선 수렴": state, "수렴 간격": f"{row['span_pct']:.2f}%",
             "수렴 기준일": row["date"]}

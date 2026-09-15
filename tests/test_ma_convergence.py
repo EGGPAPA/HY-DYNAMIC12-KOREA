@@ -119,6 +119,11 @@ class ConvergenceTests(unittest.TestCase):
     def test_missing_ui_data_not_positive(self):
         self.assertIn("자료 대기", convergence_columns({}, "005930")["세 선 수렴"])
 
+    def test_no_claim_of_previous_convergence(self):
+        snapshot = {"items": {"005930": {"eligible": True, "cluster_now": False,
+                    "span_pct": 12, "state": "⚪ 수렴 해제", "date": "2026-09-14"}}}
+        self.assertEqual(convergence_columns(snapshot, "005930")["세 선 수렴"], "⚪ 비수렴")
+
     def test_merge_conflict_reloads_user_changes(self):
         # Simulates a user edit between read and PUT; the retry must keep it.
         store = {"main": [{"ticker": "000001", "name": "old"}], "monitor-state": {}}
