@@ -433,5 +433,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-16"
+  },
+  {
+    "ticker": "128820",
+    "name": "대성산업",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "144510",
+    "name": "지씨셀",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "365330",
+    "name": "에스와이스틸텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "126720",
+    "name": "수산인더스트리",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "001440",
+    "name": "대한전선",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "032640",
+    "name": "LG유플러스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "026940",
+    "name": "부국철강",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "011930",
+    "name": "신성이엔지",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "035250",
+    "name": "강원랜드",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "355150",
+    "name": "코스텍시스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-17"
   }
 ]
