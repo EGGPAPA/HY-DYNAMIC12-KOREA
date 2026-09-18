@@ -503,5 +503,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-17"
+  },
+  {
+    "ticker": "122350",
+    "name": "삼기",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "415640",
+    "name": "KB발해인프라",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "036090",
+    "name": "위지트",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "003540",
+    "name": "대신증권",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "043650",
+    "name": "국순당",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "011040",
+    "name": "경동제약",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "460930",
+    "name": "현대힘스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "137310",
+    "name": "에스디바이오센서",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "084370",
+    "name": "유진테크",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "058430",
+    "name": "포스코스틸리온",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-18"
   }
 ]
