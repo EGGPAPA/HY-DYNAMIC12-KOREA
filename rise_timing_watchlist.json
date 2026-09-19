@@ -573,5 +573,10 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-18"
+  },
+  {
+    "ticker": "000660",
+    "name": "SK하이닉스",
+    "market": "KOSPI"
   }
 ]
