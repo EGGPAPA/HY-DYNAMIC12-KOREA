@@ -10,6 +10,7 @@ import yfinance as yf
 from monthly_ma5_ui import render_monthly_ma5_tab
 from individual_stock_ma5_backtest_ui import render_individual_stock_ma5_backtest
 from korea_live_price import get_kis_price as shared_get_kis_price, kis_ready as shared_kis_ready
+from kakao_error_details import kakao_error_message
 
 REPO="EGGPAPA/HY-DYNAMIC12-KOREA";BRANCH="main";HOLDINGS_PATH="holdings.json";API_URL=f"https://api.github.com/repos/{REPO}/contents/{HOLDINGS_PATH}";KIS_BASE_URL="https://openapi.koreainvestment.com:9443"
 def won(v):
@@ -333,17 +334,27 @@ def refresh_kakao_token():
     data={"grant_type":"refresh_token","client_id":secret_value("KAKAO_REST_API_KEY"),"refresh_token":secret_value("KAKAO_REFRESH_TOKEN")}
     client_secret=secret_value("KAKAO_CLIENT_SECRET")
     if client_secret:data["client_secret"]=client_secret
-    response=requests.post("https://kauth.kakao.com/oauth/token",data=data,timeout=20)
-    if not response.ok:raise RuntimeError(f"카카오 토큰 갱신 실패: HTTP {response.status_code}")
-    token=response.json().get("access_token")
-    if not token:raise RuntimeError("카카오 access_token을 받지 못했습니다.")
+    try:
+        response=requests.post("https://kauth.kakao.com/oauth/token",data=data,timeout=20)
+    except requests.RequestException:
+        raise RuntimeError("카카오 토큰 갱신 실패: 연결 오류 또는 시간 초과입니다. 잠시 후 다시 시도하세요.") from None
+    if not response.ok:raise RuntimeError(kakao_error_message(response,"token"))
+    try:
+        payload=response.json()
+    except ValueError:
+        raise RuntimeError("카카오 토큰 갱신 실패: 응답 형식이 올바르지 않습니다.") from None
+    token=payload.get("access_token") if isinstance(payload,dict) else None
+    if not isinstance(token,str) or not token.strip():raise RuntimeError("카카오 access_token을 받지 못했습니다.")
     return token
 def send_kakao_message(text):
     token=refresh_kakao_token()
     app_url=secret_value("KOREA_APP_URL","https://github.com/EGGPAPA/HY-DYNAMIC12-KOREA")
     template={"object_type":"text","text":text,"link":{"web_url":app_url,"mobile_web_url":app_url},"button_title":"보유종목 확인"}
-    response=requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",headers={"Authorization":f"Bearer {token}"},data={"template_object":json.dumps(template,ensure_ascii=False)},timeout=20)
-    if not response.ok:raise RuntimeError(f"카카오 메시지 전송 실패: HTTP {response.status_code}")
+    try:
+        response=requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",headers={"Authorization":f"Bearer {token}"},data={"template_object":json.dumps(template,ensure_ascii=False)},timeout=20)
+    except requests.RequestException:
+        raise RuntimeError("카카오 메시지 전송 실패: 연결 오류 또는 시간 초과입니다. 중복 전송을 피하려면 카카오톡 수신 여부를 먼저 확인하세요.") from None
+    if not response.ok:raise RuntimeError(kakao_error_message(response,"message"))
 def holding_price_alert_message(items):
     lines=["🔔 보유종목 가격 단계 알림",""]
     for item in items:
