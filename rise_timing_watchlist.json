@@ -578,5 +578,75 @@
     "ticker": "000660",
     "name": "SK하이닉스",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "240550",
+    "name": "동방메디컬",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "382150",
+    "name": "온코크로스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "222080",
+    "name": "SFA넥셀",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "241520",
+    "name": "DSC인베스트먼트",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "005860",
+    "name": "한일사료",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "298040",
+    "name": "효성중공업",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "002960",
+    "name": "한국쉘석유",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "098460",
+    "name": "고영",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "006260",
+    "name": "LS",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "000240",
+    "name": "한국앤컴퍼니",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-21"
   }
 ]
