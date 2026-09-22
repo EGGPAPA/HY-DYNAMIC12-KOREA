@@ -1,10 +1,42 @@
 {
   "monthly": 500000,
   "korea_ticker": "292150.KS",
-  "korea_qty": 85.0,
-  "korea_avg": 37114,
+  "korea_qty": 97.0,
+  "korea_avg": 37451.237113402065,
   "sp_ticker": "360750.KS",
   "sp_qty": 15.0,
   "sp_avg": 26270,
-  "safe_now": 128532
+  "safe_now": 128532.0,
+  "transactions": [
+    {
+      "id": "e0d9f79bdb9244b19946bf1b424cd8dc",
+      "date": "2026-09-22",
+      "recorded_at": "2026-09-22T11:42:23+09:00",
+      "asset": "korea",
+      "ticker": "292150.KS",
+      "side": "buy",
+      "quantity": 12.0,
+      "price": 39840.0,
+      "amount": 478080.0,
+      "realized_profit": null,
+      "quantity_before": 85.0,
+      "quantity_after": 97.0,
+      "average_before": 37114.0,
+      "average_after": 37451.237113402065,
+      "reflect_cash": false,
+      "cash_before": 128532.0,
+      "cash_after": 128532.0,
+      "memo": ""
+    }
+  ],
+  "opening_balance": {
+    "korea_ticker": "292150.KS",
+    "korea_qty": 85.0,
+    "korea_avg": 37114,
+    "sp_ticker": "360750.KS",
+    "sp_qty": 15.0,
+    "sp_avg": 26270,
+    "safe_now": 128532
+  },
+  "schema_version": 2
 }
