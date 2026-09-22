@@ -800,5 +800,28 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-09-22T05:04:25.084950+00:00"
+  },
+  {
+    "ticker": "011930",
+    "name": "신성이엔지",
+    "market": "KOSPI",
+    "status": "holding",
+    "average_price": 16633.0,
+    "quantity": 300.0,
+    "purchases": [
+      {
+        "price": 16633.0,
+        "quantity": 300.0,
+        "fee": 748,
+        "tax": 0,
+        "reason": "통합 적극매수",
+        "memo": "",
+        "executed_at": "2026-09-22T06:05:48.855290+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-09-22T06:05:48.855290+00:00"
   }
 ]
