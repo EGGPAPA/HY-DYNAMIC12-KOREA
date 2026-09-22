@@ -653,5 +653,75 @@
     "ticker": "066570",
     "name": "LG전자",
     "market": "KOSPI"
+  },
+  {
+    "ticker": "212560",
+    "name": "네오오토",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "015750",
+    "name": "성우하이텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "006650",
+    "name": "대한유화",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "049070",
+    "name": "인탑스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "089030",
+    "name": "테크윙",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "187790",
+    "name": "나노",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "005930",
+    "name": "삼성전자",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "067630",
+    "name": "HLB생명과학",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "088980",
+    "name": "맥쿼리인프라",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "033270",
+    "name": "유나이티드제약",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-22"
   }
 ]
