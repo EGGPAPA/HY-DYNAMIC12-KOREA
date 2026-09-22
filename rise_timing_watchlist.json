@@ -648,5 +648,10 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-21"
+  },
+  {
+    "ticker": "066570",
+    "name": "LG전자",
+    "market": "KOSPI"
   }
 ]
