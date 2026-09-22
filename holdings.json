@@ -666,9 +666,9 @@
     "ticker": "059090",
     "name": "미코",
     "market": "KOSDAQ",
-    "status": "holding",
+    "status": "closed",
     "average_price": 19780.671936758892,
-    "quantity": 506.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 19420.0,
@@ -691,9 +691,26 @@
         "source": "추가매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-09-14T06:18:40.304717+00:00"
+    "sales": [
+      {
+        "price": 21400.0,
+        "quantity": 506.0,
+        "average_cost": 19780.671936758892,
+        "realized_pnl": 819380.0000000006,
+        "realized_return_pct": 8.186415852900698,
+        "net_realized_pnl": 800012.0000000006,
+        "net_realized_return_pct": 7.99171191988909,
+        "fee": 1624,
+        "tax": 16243,
+        "buy_fee": 1501,
+        "reason": "1차 익절",
+        "memo": "",
+        "executed_at": "2026-09-22T01:23:55.273964+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-22T01:23:55.273964+00:00",
+    "closed_at": "2026-09-22T01:23:55.273964+00:00"
   },
   {
     "ticker": "051600",
