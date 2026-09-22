@@ -732,9 +732,9 @@
     "ticker": "051600",
     "name": "한전KPS",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 47450.0,
-    "quantity": 105.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 47450.0,
@@ -747,9 +747,26 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-09-15T02:44:53.708943+00:00"
+    "sales": [
+      {
+        "price": 46400.0,
+        "quantity": 105.0,
+        "average_cost": 47450.0,
+        "realized_pnl": -110250.0,
+        "realized_return_pct": -2.212855637513167,
+        "net_realized_pnl": -119036.0,
+        "net_realized_return_pct": -2.3888435012102156,
+        "fee": 731,
+        "tax": 7308,
+        "buy_fee": 747,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-09-22T03:22:06.194771+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-22T03:22:06.194771+00:00",
+    "closed_at": "2026-09-22T03:22:06.194771+00:00"
   },
   {
     "ticker": "001120",
