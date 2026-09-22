@@ -806,8 +806,8 @@
     "name": "신성이엔지",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 16633.0,
-    "quantity": 300.0,
+    "average_price": 16596.5,
+    "quantity": 600.0,
     "purchases": [
       {
         "price": 16633.0,
@@ -818,10 +818,20 @@
         "memo": "",
         "executed_at": "2026-09-22T06:05:48.855290+00:00",
         "source": "신규매수"
+      },
+      {
+        "price": 16560.0,
+        "quantity": 300.0,
+        "fee": 745,
+        "tax": 0,
+        "reason": "통합 적극매수",
+        "memo": "",
+        "executed_at": "2026-09-22T06:09:01.820761+00:00",
+        "source": "추가매수"
       }
     ],
     "sales": [],
     "enabled": true,
-    "updated_at": "2026-09-22T06:05:48.855290+00:00"
+    "updated_at": "2026-09-22T06:09:01.820761+00:00"
   }
 ]
