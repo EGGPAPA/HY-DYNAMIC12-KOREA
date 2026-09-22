@@ -770,11 +770,11 @@
   },
   {
     "ticker": "001120",
-    "name": "LX인터내셔널",
+    "name": "LX인터내셔녈",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 41280.0,
-    "quantity": 122.0,
+    "average_price": 41314.710743801654,
+    "quantity": 242.0,
     "purchases": [
       {
         "price": 41280.0,
@@ -785,10 +785,20 @@
         "memo": "",
         "executed_at": "2026-09-22T01:40:38.931894+00:00",
         "source": "신규매수"
+      },
+      {
+        "price": 41350.0,
+        "quantity": 120.0,
+        "fee": 744,
+        "tax": 0,
+        "reason": "통합 적극매수",
+        "memo": "",
+        "executed_at": "2026-09-22T05:04:25.084950+00:00",
+        "source": "추가매수"
       }
     ],
     "sales": [],
     "enabled": true,
-    "updated_at": "2026-09-22T01:40:38.931894+00:00"
+    "updated_at": "2026-09-22T05:04:25.084950+00:00"
   }
 ]
