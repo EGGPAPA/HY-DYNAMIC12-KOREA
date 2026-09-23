@@ -723,5 +723,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-22"
+  },
+  {
+    "ticker": "104620",
+    "name": "노랑풍선",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "102710",
+    "name": "이엔에프테크놀로지",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "189330",
+    "name": "씨이랩",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "014940",
+    "name": "오리엔탈정공",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "140860",
+    "name": "파크시스템스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "454910",
+    "name": "두산로보틱스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "011200",
+    "name": "HMM",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "236200",
+    "name": "슈프리마",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "263750",
+    "name": "펄어비스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "033780",
+    "name": "KT&G",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-23"
   }
 ]
