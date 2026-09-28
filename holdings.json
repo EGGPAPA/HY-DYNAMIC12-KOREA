@@ -613,9 +613,9 @@
     "ticker": "092790",
     "name": "넥스틸",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 14534.197530864198,
-    "quantity": 400.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 14730.0,
@@ -673,10 +673,26 @@
         "reason": "손절",
         "memo": "",
         "executed_at": "2026-09-22T01:47:49.032593+00:00"
+      },
+      {
+        "price": 13090.0,
+        "quantity": 400.0,
+        "average_cost": 14534.197530864198,
+        "realized_pnl": -577679.0123456791,
+        "realized_return_pct": -9.936548115555476,
+        "net_realized_pnl": -587190.0123456791,
+        "net_realized_return_pct": -10.098630334464943,
+        "fee": 785,
+        "tax": 7854,
+        "buy_fee": 872,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-09-28T00:10:32.423657+00:00"
       }
     ],
-    "enabled": true,
-    "updated_at": "2026-09-22T01:47:49.032593+00:00"
+    "enabled": false,
+    "updated_at": "2026-09-28T00:10:32.423657+00:00",
+    "closed_at": "2026-09-28T00:10:32.423657+00:00"
   },
   {
     "ticker": "059090",
