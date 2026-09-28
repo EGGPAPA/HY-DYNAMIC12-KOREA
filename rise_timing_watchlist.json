@@ -793,5 +793,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-23"
+  },
+  {
+    "ticker": "489790",
+    "name": "한화비전",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "058860",
+    "name": "KTis",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "034730",
+    "name": "SK",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "004980",
+    "name": "성신양회",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "004440",
+    "name": "삼일씨엔에스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "093320",
+    "name": "케이아이엔엑스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "123690",
+    "name": "한국화장품",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "272290",
+    "name": "이녹스첨단소재",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "420570",
+    "name": "제이투케이바이오",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "000440",
+    "name": "중앙에너비스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-28"
   }
 ]
