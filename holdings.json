@@ -864,9 +864,9 @@
     "ticker": "046890",
     "name": "서울반도체",
     "market": "KOSDAQ",
-    "status": "holding",
+    "status": "closed",
     "average_price": 10410.0,
-    "quantity": 250.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 10410.0,
@@ -879,8 +879,25 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-09-28T00:53:58.512906+00:00"
+    "sales": [
+      {
+        "price": 10200.0,
+        "quantity": 250.0,
+        "average_cost": 10410.0,
+        "realized_pnl": -52500.0,
+        "realized_return_pct": -2.017291066282423,
+        "net_realized_pnl": -57097.0,
+        "net_realized_return_pct": -2.1936001905574187,
+        "fee": 382,
+        "tax": 3825,
+        "buy_fee": 390,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-09-28T03:14:39.026406+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-09-28T03:14:39.026406+00:00",
+    "closed_at": "2026-09-28T03:14:39.026406+00:00"
   }
 ]
