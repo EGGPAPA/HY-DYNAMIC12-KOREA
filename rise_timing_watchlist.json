@@ -863,5 +863,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-28"
+  },
+  {
+    "ticker": "008060",
+    "name": "대덕",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "105840",
+    "name": "우진",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "009830",
+    "name": "한화솔루션",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "078520",
+    "name": "에이블씨엔씨",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "003030",
+    "name": "세아제강지주",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "086280",
+    "name": "현대글로비스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "066430",
+    "name": "아이로보틱스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "214180",
+    "name": "헥토이노베이션",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "012860",
+    "name": "모베이스전자",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "365550",
+    "name": "ESR켄달스퀘어리츠",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-29"
   }
 ]
