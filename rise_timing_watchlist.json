@@ -933,5 +933,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-29"
+  },
+  {
+    "ticker": "030520",
+    "name": "한컴",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "097520",
+    "name": "엠씨넥스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "247540",
+    "name": "에코프로비엠",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "006340",
+    "name": "대원전선",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "194370",
+    "name": "제이에스코퍼레이션",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "259630",
+    "name": "엠플러스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "388720",
+    "name": "유일로보틱스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "475580",
+    "name": "에이럭스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "003720",
+    "name": "삼영",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "138930",
+    "name": "BNK금융지주",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-09-30"
   }
 ]
