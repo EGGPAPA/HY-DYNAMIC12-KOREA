@@ -1003,5 +1003,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-09-30"
+  },
+  {
+    "ticker": "348370",
+    "name": "엔켐",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "006280",
+    "name": "녹십자",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "450080",
+    "name": "에코프로머티",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "003000",
+    "name": "부광약품",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "206650",
+    "name": "유바이오로직스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "007690",
+    "name": "국도화학",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "001040",
+    "name": "CJ",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "195940",
+    "name": "HK이노엔",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "302440",
+    "name": "SK바이오사이언스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "000810",
+    "name": "삼성화재",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-01"
   }
 ]
