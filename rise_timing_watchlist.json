@@ -1078,5 +1078,75 @@
     "ticker": "086520",
     "name": "에코프로",
     "market": "KOSDAQ"
+  },
+  {
+    "ticker": "006140",
+    "name": "피제이전자",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "032300",
+    "name": "한국파마",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "025320",
+    "name": "시노펙스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "056080",
+    "name": "유진로봇",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "018880",
+    "name": "한온시스템",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "064400",
+    "name": "LG씨엔에스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "002790",
+    "name": "아모레퍼시픽홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "014820",
+    "name": "동원시스템즈",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "036220",
+    "name": "오상헬스케어",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "003240",
+    "name": "태광산업",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-02"
   }
 ]
