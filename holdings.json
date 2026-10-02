@@ -899,5 +899,28 @@
     "enabled": false,
     "updated_at": "2026-09-28T03:14:39.026406+00:00",
     "closed_at": "2026-09-28T03:14:39.026406+00:00"
+  },
+  {
+    "ticker": "058470",
+    "name": "리노공업",
+    "market": "KOSDAQ",
+    "status": "holding",
+    "average_price": 85300.0,
+    "quantity": 30.0,
+    "purchases": [
+      {
+        "price": 85300.0,
+        "quantity": 30.0,
+        "fee": 384,
+        "tax": 0,
+        "reason": "1차 분할매수",
+        "memo": "",
+        "executed_at": "2026-10-02T03:20:37.242067+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-10-02T03:20:37.242067+00:00"
   }
 ]
