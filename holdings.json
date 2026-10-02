@@ -582,7 +582,7 @@
     "market": "KOSPI",
     "status": "holding",
     "average_price": 15994.071661237786,
-    "quantity": 307.0,
+    "quantity": 31.0,
     "purchases": [
       {
         "price": 16040.0,
@@ -605,9 +605,25 @@
         "source": "추가매수"
       }
     ],
-    "sales": [],
+    "sales": [
+      {
+        "price": 15560.0,
+        "quantity": 276.0,
+        "average_cost": 15994.071661237786,
+        "realized_pnl": -119803.77850162881,
+        "realized_return_pct": -2.713953459954632,
+        "net_realized_pnl": -127551.77850162881,
+        "net_realized_return_pct": -2.8890381370529012,
+        "fee": 644,
+        "tax": 6442,
+        "buy_fee": 662,
+        "reason": "리밸런싱",
+        "memo": "",
+        "executed_at": "2026-10-02T03:22:05.405560+00:00"
+      }
+    ],
     "enabled": true,
-    "updated_at": "2026-09-11T00:19:07.567056+00:00"
+    "updated_at": "2026-10-02T03:22:05.405560+00:00"
   },
   {
     "ticker": "092790",
