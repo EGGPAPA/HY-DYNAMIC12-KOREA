@@ -1073,5 +1073,10 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-01"
+  },
+  {
+    "ticker": "086520",
+    "name": "에코프로",
+    "market": "KOSDAQ"
   }
 ]
