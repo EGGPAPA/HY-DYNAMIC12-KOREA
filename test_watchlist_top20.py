@@ -1,6 +1,7 @@
 """Top-20 display tests; no credentials, quotes or saved records are changed."""
 import ast
 import copy
+from datetime import datetime
 from pathlib import Path
 import unittest
 
@@ -15,8 +16,11 @@ class WatchlistTop20Tests(unittest.TestCase):
         limit = next(n.value.value for n in tree.body if isinstance(n, ast.Assign)
                      and any(isinstance(t, ast.Name) and t.id == "WATCHLIST_DISPLAY_LIMIT" for t in n.targets))
         self.assertEqual(limit, 20)
-        self.ns = {"WATCHLIST_DISPLAY_LIMIT": limit}
+        self.history = {}
+        self.ns = {"WATCHLIST_DISPLAY_LIMIT": limit, "datetime": datetime,
+                   "_buy_decision_history": lambda: self.history}
         for name in ("_mandatory_condition_count", "_stage_priority", "_buy1_distance",
+                     "_decision_action", "_watchlist_condition_snapshot", "_watchlist_tiebreak_key",
                      "_watchlist_priority_key", "_select_watchlist_results"):
             brightness.function_from_file("rise_timing_watchlist_ui.py", name, self.ns)
         self.select = self.ns["_select_watchlist_results"]
@@ -65,7 +69,7 @@ class WatchlistTop20Tests(unittest.TestCase):
         displayed = harness.frame()
         self.assertEqual(len(queried), 20)
         self.assertEqual(set(queried), set(displayed["코드"]))
-        self.assertEqual(displayed["매수 우선순위"].tolist(), list(range(1, 21)))
+        self.assertEqual(displayed["관찰 우선순위"].tolist(), list(range(1, 21)))
 
     def test_table_and_detail_share_the_same_display_subset(self):
         tree = ast.parse((ROOT / "rise_timing_watchlist_ui.py").read_text(encoding="utf-8"))
@@ -76,7 +80,7 @@ class WatchlistTop20Tests(unittest.TestCase):
             call = next(c for c in calls if c.func.id == name)
             self.assertEqual(ast.unparse(call.args[0]), "display_results")
         source = ast.unparse(node)
-        self.assertIn("display_results = _select_watchlist_results(results)", source)
+        self.assertIn("display_results = _select_watchlist_results(results, _load_background_state())", source)
         selector_source = ast.unparse(next(n for n in tree.body if isinstance(n, ast.FunctionDef)
                                           and n.name == "_select_watchlist_results"))
         self.assertNotIn("_save_watchlist", selector_source)
