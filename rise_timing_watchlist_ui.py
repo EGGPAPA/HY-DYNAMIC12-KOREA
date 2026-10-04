@@ -363,7 +363,7 @@ def _buy_decision_history():
     return {}
 
 
-def _decision_action(item, rank):
+def _decision_action(item, rank, record_history=True, return_snapshot=False):
     label = str(item.get("label", ""))
     price = float(item.get("live_price", item.get("price", 0)) or 0)
     close_price = float(item.get("price", 0) or 0)
@@ -389,12 +389,14 @@ def _decision_action(item, rank):
     # 지속성은 가격·종가·손절·상위권이 유지되는지를 기준으로 누적합니다.
     stable_ok = top_ok and gap_ok and close_ok and risk_ok
     history = _buy_decision_history()
-    state = history.setdefault(code, {"consecutive": 0, "dates": []})
-    state["consecutive"] = int(state.get("consecutive", 0)) + 1 if stable_ok else 0
-    dates = list(state.get("dates", []))
-    if stable_ok and today not in dates:
-        dates.append(today)
-    state["dates"] = dates[-10:]
+    state = history.get(code, {"consecutive": 0, "dates": []})
+    if record_history:
+        state = history.setdefault(code, {"consecutive": 0, "dates": []})
+        state["consecutive"] = int(state.get("consecutive", 0)) + 1 if stable_ok else 0
+        dates = list(state.get("dates", []))
+        if stable_ok and today not in dates:
+            dates.append(today)
+        state["dates"] = dates[-10:]
     persistence_ok = state["consecutive"] >= 2 or len(state["dates"]) >= 2
 
     passed = sum([stage_ok, gap_ok, volume_ok, score_ok, close_ok, persistence_ok, risk_ok])
@@ -420,21 +422,34 @@ def _decision_action(item, rank):
     else:
         action = f"🔵 관찰 유지 · 조건 {passed}/7"
 
-    checks = (
-        f"단계 {'✓' if stage_ok else '×'} · 가격거리 {'✓' if gap_ok else '×'} · "
-        f"거래량 {'✓' if volume_ok else '×'} · 점수 {'✓' if score_ok else '×'} · "
-        f"종가돌파 {'✓' if close_ok else '×'} · 지속성 {'✓' if persistence_ok else '×'} · "
-        f"손절위험 {'✓' if risk_ok else '×'}"
-    )
-    mandatory_count = sum([gap_ok, volume_ok, close_ok, risk_ok])
-    auxiliary_count = sum([stage_ok, score_ok, persistence_ok])
+    snapshot = _watchlist_condition_snapshot({
+        "stage": stage_ok, "gap": gap_ok, "volume": volume_ok,
+        "score": score_ok, "close": close_ok,
+        "persistence": persistence_ok, "risk": risk_ok,
+    }, action)
+    if return_snapshot:
+        return snapshot
+    return action, snapshot["checks"], snapshot["mandatory_label"], snapshot["auxiliary_label"]
+
+
+def _watchlist_condition_snapshot(check_map, action):
+    """One set of checks supplies both the sort counts and visible labels."""
+    mandatory_count = sum(bool(check_map.get(k)) for k in ("gap", "volume", "close", "risk"))
+    auxiliary_count = sum(bool(check_map.get(k)) for k in ("stage", "score", "persistence"))
     mandatory_label = "🟢 필수 4/4 충족" if mandatory_count == 4 else (
         "🟠 필수 3/4 확인" if mandatory_count == 3 else f"🔴 필수 {mandatory_count}/4 제외"
     )
     auxiliary_label = "🟢 보조 3/3" if auxiliary_count == 3 else (
         "🟡 보조 2/3" if auxiliary_count == 2 else f"🔵 보조 {auxiliary_count}/3"
     )
-    return action, checks, mandatory_label, auxiliary_label
+    check_names = [("단계", "stage"), ("가격거리", "gap"), ("거래량", "volume"),
+                   ("점수", "score"), ("종가돌파", "close"), ("지속성", "persistence"), ("손절위험", "risk")]
+    return {
+        "action": action,
+        "checks": " · ".join(f"{name} {'✓' if check_map.get(key) else '×'}" for name, key in check_names),
+        "mandatory_count": mandatory_count, "auxiliary_count": auxiliary_count,
+        "mandatory_label": mandatory_label, "auxiliary_label": auxiliary_label,
+    }
 
 
 def _mandatory_condition_count(item):
@@ -452,28 +467,55 @@ def _mandatory_condition_count(item):
     ])
 
 
-def _watchlist_priority_key(item):
-    # Keep the existing table priority; price-only ticks do not reorder it.
+def _watchlist_tiebreak_key(item):
     return (
-        -_mandatory_condition_count(item),
         _stage_priority(item),
         _buy1_distance(item),
         -float(item.get("volume_ratio", 0) or 0),
         -float(item.get("score", 0) or 0),
+        str(item.get("ticker", "")),
     )
 
 
-def _select_watchlist_results(results):
-    """Select the display/quote subset without pruning the saved watchlist."""
-    return sorted(
-        [dict(item) for item in results], key=_watchlist_priority_key
-    )[:WATCHLIST_DISPLAY_LIMIT]
+def _watchlist_priority_key(item):
+    conditions = item["_watchlist_conditions"]
+    return (-conditions["mandatory_count"], -conditions["auxiliary_count"],
+            *_watchlist_tiebreak_key(item))
+
+
+def _select_watchlist_results(results, background=None, record_history=False):
+    """Rank all candidates by their displayed checks before limiting to 20.
+
+    Selection alone must not count as an extra persistence observation.
+    The price fragment records at most one local fallback observation per run.
+    """
+    background_map = {
+        str(x.get("ticker", "")).zfill(6): x for x in (background or {}).get("items", [])
+    }
+    # Preserve the former rank input for fallback persistence qualification.
+    prepared = sorted([dict(item) for item in results], key=lambda item: (
+        -_mandatory_condition_count(item), *_watchlist_tiebreak_key(item)
+    ))
+    required = {"gap", "volume", "close", "risk", "stage", "score", "persistence"}
+    for rank, item in enumerate(prepared, 1):
+        monitored = background_map.get(str(item.get("ticker", "")).zfill(6), {})
+        check_map = monitored.get("checks", {})
+        if monitored.get("action") and isinstance(check_map, dict) and required.issubset(check_map):
+            conditions = _watchlist_condition_snapshot(check_map, monitored["action"])
+        else:
+            decision_item = dict(item)
+            decision_item["live_price"] = float(item.get("price", 0) or 0)
+            conditions = _decision_action(decision_item, rank, record_history=record_history,
+                                          return_snapshot=True)
+        item["_watchlist_conditions"] = conditions
+    return sorted(prepared, key=_watchlist_priority_key)[:WATCHLIST_DISPLAY_LIMIT]
 
 
 @st.fragment(run_every="10s")
 def _render_live_watchlist(results):
-    # Limit before live requests; keep ranking and decision inputs unchanged.
-    stable_results = _select_watchlist_results(results)
+    # Resolve checks once, then use the exact same snapshot for sorting/display.
+    background = _load_background_state()
+    stable_results = _select_watchlist_results(results, background, record_history=True)
 
     refresh_slot = int(pd.Timestamp.now(tz="Asia/Seoul").timestamp() // 10)
 
@@ -481,8 +523,6 @@ def _render_live_watchlist(results):
         live = get_live_price(item["ticker"], item.get("market", "KOSPI"), refresh_slot)
         return float(live) if live is not None else float(item.get("price", 0) or 0)
 
-    background = _load_background_state()
-    background_map = {str(x.get("ticker", "")).zfill(6): x for x in background.get("items", [])}
     convergence = _load_convergence_state()
 
     # 10초 구간마다 새 캐시 키로 KIS 현재가를 다시 조회합니다.
@@ -492,31 +532,20 @@ def _render_live_watchlist(results):
 
     display_rows = []
     for rank, (x, live_price) in enumerate(zip(stable_results, live_prices), 1):
-        decision_item = dict(x)
-        decision_item["live_price"] = float(x.get("price", 0) or 0)
-        decision, checks, mandatory_label, auxiliary_label = _decision_action(decision_item, rank)
-        monitored = background_map.get(str(x.get("ticker", "")).zfill(6), {})
-        if monitored.get("action"):
-            decision = monitored["action"]
-            check_map = monitored.get("checks", {})
-            check_names = [("단계", "stage"), ("가격거리", "gap"), ("거래량", "volume"), ("점수", "score"), ("종가돌파", "close"), ("지속성", "persistence"), ("손절위험", "risk")]
-            checks = " · ".join(f"{name} {'✓' if check_map.get(key) else '×'}" for name, key in check_names)
-            mandatory_count = sum(bool(check_map.get(key)) for key in ("gap", "volume", "close", "risk"))
-            auxiliary_count = sum(bool(check_map.get(key)) for key in ("stage", "score", "persistence"))
-            mandatory_label = "🟢 필수 4/4 충족" if mandatory_count == 4 else ("🟠 필수 3/4 확인" if mandatory_count == 3 else f"🔴 필수 {mandatory_count}/4 제외")
-            auxiliary_label = "🟢 보조 3/3" if auxiliary_count == 3 else ("🟡 보조 2/3" if auxiliary_count == 2 else f"🔵 보조 {auxiliary_count}/3")
+        conditions = x["_watchlist_conditions"]
         display_rows.append({
-            "매수 우선순위": rank, **convergence_columns(convergence, x["ticker"]),
-            "필수조건": mandatory_label, "보조조건": auxiliary_label,
+            "관찰 우선순위": rank, **convergence_columns(convergence, x["ticker"]),
+            "필수조건": conditions["mandatory_label"], "보조조건": conditions["auxiliary_label"],
             "종목": x["name"], "코드": x["ticker"], "① 단계": x["label"],
             "② 1차가 거리": f"{(float(x['price'])/float(x['buy1'])-1)*100:+.1f}%" if float(x.get("buy1", 0) or 0) > 0 else "-",
             "③ 거래량 배수": x["volume_ratio"], "④ 시점점수": x["score"],
             "실시간 현재가": _won(live_price), "1차 매수 참고": _won(x["buy1"]), "2차 눌림 참고": _won(x["buy2"]),
             "손절 참고": _won(x["stop"]), "돌파 기준": _won(x["breakout"]),
-            "20일선 이격": f"{x['gap20']:+.1f}%", "7조건 확인": checks, "기술적 참고": x["action"],
+            "20일선 이격": f"{x['gap20']:+.1f}%", "7조건 확인": conditions["checks"], "기술적 참고": x["action"],
         })
 
     st.info("🟢 필수 4/4 충족 종목만 매수 검토 대상입니다. 보조조건(단계·점수·지속성)은 별도로 표시하므로 최종 매수 여부는 직접 판단할 수 있습니다.")
+    st.caption("관찰 순서: 표시된 필수 충족 수 → 보조 충족 수 → 단계·1차가 거리·거래량·점수. 순위는 매수 확정 신호가 아닙니다.")
     st.caption("세 선 수렴 = 5·20·60일선 간격 3% 이내 · 🔵 수렴 관찰 · 🟠 수렴 중이나 종가가 세 선 아래 · ⚪ 비수렴/자료 확인. 매수 신호나 기존 필수조건 충족을 뜻하지 않습니다.")
     st.dataframe(
         pd.DataFrame(display_rows),
@@ -524,7 +553,7 @@ def _render_live_watchlist(results):
         use_container_width=True,
         hide_index=True,
         column_config={
-            "매수 우선순위": st.column_config.NumberColumn(format="%d위"),
+            "관찰 우선순위": st.column_config.NumberColumn(format="%d위"),
             "③ 거래량 배수": st.column_config.NumberColumn(format="%.2f배"),
             "④ 시점점수": st.column_config.NumberColumn(format="%.0f점"),
         },
@@ -611,7 +640,7 @@ def render_rise_timing_watchlist(universe=None):
             result,_=_timing(row)
             if result:results.append(result)
     if results:
-        display_results = _select_watchlist_results(results)
+        display_results = _select_watchlist_results(results, _load_background_state())
         st.caption(
             f"📌 화면·실시간 조회: 우선순위 상위 {len(display_results)}개 "
             f"· 분석 가능 {len(results):,}개 / 저장 {len(rows):,}개. "
