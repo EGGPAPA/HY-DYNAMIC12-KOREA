@@ -510,6 +510,7 @@ def _render_live_watchlist(results):
     st.caption("세 선 수렴 = 5·20·60일선 간격 3% 이내 · 🔵 수렴 관찰 · 🟠 수렴 중이나 종가가 세 선 아래 · ⚪ 비수렴/자료 확인. 매수 신호나 기존 필수조건 충족을 뜻하지 않습니다.")
     st.dataframe(
         pd.DataFrame(display_rows),
+        key="rise_live_watchlist",
         use_container_width=True,
         hide_index=True,
         column_config={
