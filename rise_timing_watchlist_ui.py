@@ -25,6 +25,7 @@ LIVE_STATE_PATH="data/rise_timing_live.json"
 LIVE_STATE_API=f"https://api.github.com/repos/{REPO}/contents/{LIVE_STATE_PATH}"
 LIVE_STATE_BRANCH="monitor-state"
 CONVERGENCE_API=f"https://api.github.com/repos/{REPO}/contents/data/ma_convergence_daily.json"
+WATCHLIST_DISPLAY_LIMIT = 20
 
 
 def _secret(name,default=""):
@@ -451,19 +452,28 @@ def _mandatory_condition_count(item):
     ])
 
 
+def _watchlist_priority_key(item):
+    # Keep the existing table priority; price-only ticks do not reorder it.
+    return (
+        -_mandatory_condition_count(item),
+        _stage_priority(item),
+        _buy1_distance(item),
+        -float(item.get("volume_ratio", 0) or 0),
+        -float(item.get("score", 0) or 0),
+    )
+
+
+def _select_watchlist_results(results):
+    """Select the display/quote subset without pruning the saved watchlist."""
+    return sorted(
+        [dict(item) for item in results], key=_watchlist_priority_key
+    )[:WATCHLIST_DISPLAY_LIMIT]
+
+
 @st.fragment(run_every="10s")
 def _render_live_watchlist(results):
-    # 순위·행동·지표는 조사 결과로 고정하고 같은 표의 현재가 값만 갱신합니다.
-    stable_results = sorted(
-        [dict(item) for item in results],
-        key=lambda item: (
-            -_mandatory_condition_count(item),
-            _stage_priority(item),
-            _buy1_distance(item),
-            -float(item.get("volume_ratio", 0) or 0),
-            -float(item.get("score", 0) or 0),
-        ),
-    )
+    # Limit before live requests; keep ranking and decision inputs unchanged.
+    stable_results = _select_watchlist_results(results)
 
     refresh_slot = int(pd.Timestamp.now(tz="Asia/Seoul").timestamp() // 10)
 
@@ -600,10 +610,15 @@ def render_rise_timing_watchlist(universe=None):
         for row in rows:
             result,_=_timing(row)
             if result:results.append(result)
-    results=sorted(results,key=lambda item:(_stage_priority(item),_buy1_distance(item),-float(item.get("volume_ratio",0) or 0),-float(item.get("score",0) or 0)))
     if results:
-        _render_live_watchlist(results)
-        _render_watchlist_detail(results)
+        display_results = _select_watchlist_results(results)
+        st.caption(
+            f"📌 화면·실시간 조회: 우선순위 상위 {len(display_results)}개 "
+            f"· 분석 가능 {len(results):,}개 / 저장 {len(rows):,}개. "
+            f"나머지 종목은 삭제하지 않고 보관하며, 자동 추가 후에도 화면에는 최대 {WATCHLIST_DISPLAY_LIMIT}개만 표시합니다."
+        )
+        _render_live_watchlist(display_results)
+        _render_watchlist_detail(display_results)
 
     with st.expander("관찰종목 추가·삭제"):
         c1,c2,c3=st.columns([1,2,1])
