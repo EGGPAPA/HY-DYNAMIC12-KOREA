@@ -2,7 +2,7 @@ import streamlit as st
 
 
 def inject_theme():
-    """Apply the shared light, fresh dashboard styling to every Streamlit page."""
+    """Apply the shared dashboard styling without dimming live-price refreshes."""
     st.markdown(
         """
         <style>
@@ -21,6 +21,14 @@ def inject_theme():
             background:
                 radial-gradient(circle at 92% 2%, rgba(69, 184, 166, .08), transparent 25rem),
                 linear-gradient(180deg, #151b24 0%, #18202a 36rem);
+        }
+        /* Keep the last rendered values readable while a price fragment waits
+           for its next quote. Streamlit normally fades stale elements to 33%.
+           Target only that fade; leave dialogs, disabled controls, warnings,
+           the running indicator and last-updated timestamps unchanged. */
+        .stApp [data-testid="stElementContainer"][data-stale="true"] {
+            opacity: 1 !important;
+            transition: none !important;
         }
         [data-testid="stSidebar"] {
             background: linear-gradient(180deg, #111821 0%, #17202a 62%, #14231f 100%);
@@ -98,4 +106,3 @@ def inject_theme():
         """,
         unsafe_allow_html=True,
     )
-
