@@ -51,6 +51,7 @@ class PriceRefreshTests(unittest.TestCase):
         self.items = [self.item("000002", 20000), self.item("000001", 10000)]
         self.ns = {
             "st": self.st, "pd": pd, "ThreadPoolExecutor": ThreadPoolExecutor,
+            "WATCHLIST_DISPLAY_LIMIT": 20,
             "_mandatory_condition_count": lambda x: 4,
             "_stage_priority": lambda x: 0,
             "_buy1_distance": lambda x: x["price"],
@@ -62,6 +63,8 @@ class PriceRefreshTests(unittest.TestCase):
             "_won": lambda value: f"{value:,.0f}원",
             "price_source_label": lambda: "한국투자증권 KIS 실시간 시세",
         }
+        for name in ("_watchlist_priority_key", "_select_watchlist_results"):
+            function_from_file("rise_timing_watchlist_ui.py", name, self.ns)
         self.render = function_from_file("rise_timing_watchlist_ui.py", "_render_live_watchlist", self.ns)
 
     @staticmethod
