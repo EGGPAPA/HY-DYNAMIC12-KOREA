@@ -58,12 +58,17 @@ class PriceRefreshTests(unittest.TestCase):
             "get_live_price": lambda ticker, market, slot: self.quote[ticker],
             "_load_background_state": lambda: {},
             "_load_convergence_state": lambda: {},
-            "_decision_action": lambda item, rank: ("관찰", "기존 조건", "필수 4/4", "보조 2/3"),
+            "_decision_action": lambda item, rank, **kwargs: {
+                "action": "관찰", "checks": "기존 조건",
+                "mandatory_count": 4, "auxiliary_count": 2,
+                "mandatory_label": "필수 4/4", "auxiliary_label": "보조 2/3",
+            },
             "convergence_columns": lambda state, ticker: {"세 선 수렴": "수렴 관찰"},
             "_won": lambda value: f"{value:,.0f}원",
             "price_source_label": lambda: "한국투자증권 KIS 실시간 시세",
         }
-        for name in ("_watchlist_priority_key", "_select_watchlist_results"):
+        for name in ("_watchlist_condition_snapshot", "_watchlist_tiebreak_key",
+                     "_watchlist_priority_key", "_select_watchlist_results"):
             function_from_file("rise_timing_watchlist_ui.py", name, self.ns)
         self.render = function_from_file("rise_timing_watchlist_ui.py", "_render_live_watchlist", self.ns)
 
