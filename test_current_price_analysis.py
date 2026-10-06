@@ -363,19 +363,17 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertEqual(frame.iloc[1]['1차 매수 참고'], '—')
         self.assertTrue(pd.isna(frame.iloc[1]['시점점수']))
 
-    def test_active_entry_restores_original_daily_screen(self):
+    def test_active_entry_routes_to_current_price_screen(self):
         import ast
         source = Path(__file__).with_name('rise_timing_watchlist_ui.py').read_text(encoding='utf-8')
         tree = ast.parse(source)
         entry = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'render_rise_timing_watchlist')
         body = ast.get_source_segment(source, entry)
-        self.assertNotIn('render_current_price_screen', body)
-        self.assertNotIn('rise_current_price_ui', body)
-        self.assertIn('_timing(row)', body)
-        self.assertIn('_select_watchlist_results(results, _load_background_state())', body)
-        self.assertIn('_scan_all_market', body)
-        self.assertIn('_render_live_watchlist(display_results)', body)
-        self.assertIn('_render_watchlist_detail(display_results)', body)
+        self.assertIn('render_current_price_screen(universe, rows', body)
+        self.assertIn('rise_current_price_ui', body)
+        self.assertNotIn('_timing(row)', body)
+        self.assertNotIn('_select_watchlist_results', body)
+        self.assertNotIn('_scan_all_market', body)
         self.assertIn('관찰종목 추가·삭제', body)
 
     def test_active_evaluator_requotes_every_call_without_old_server_verdicts(self):
@@ -416,7 +414,8 @@ class DataAndScreenTests(unittest.TestCase):
         source = Path(__file__).with_name('rise_current_price_ui.py').read_text(encoding='utf-8')
         for forbidden in ('_load_background_state', 'rise_all_scan', 'get_live_price', 'price_source_label'):
             self.assertNotIn(forbidden, source)
-        self.assertIn("@st.fragment(run_every='5s')", source)
+        self.assertIn('@st.fragment(run_every=WATCHLIST_REFRESH_SECONDS)', source)
+        self.assertEqual(self.ui.WATCHLIST_REFRESH_SECONDS, 10)
         self.assertIn("@st.fragment(run_every='30s')", source)
         self.assertIn('KOSPI·KOSDAQ 전종목 분석이 아닙니다', source)
 
