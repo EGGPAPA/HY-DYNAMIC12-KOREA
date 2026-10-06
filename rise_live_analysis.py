@@ -62,7 +62,8 @@ def evaluate_current(row, history, quote, context, now):
     if volume is None or volume <= 0 or previous_close is None or previous_close <= 0:
         return on_hold(row, '누적 거래량·전일 종가 확인 필요', quote)
     if history is None or history.empty or not {'Close', 'Volume'}.issubset(history.columns):
-        return on_hold(row, 'KIS 일봉 수신 실패', quote)
+        detail = history.attrs.get('error', '') if history is not None else ''
+        return on_hold(row, 'KIS 일봉 수신 실패' + (f' · {detail}' if detail else ''), quote)
     bars = history[['Close', 'Volume']].copy()
     try:
         bars.index = pd.to_datetime(bars.index).tz_localize(None).normalize()
