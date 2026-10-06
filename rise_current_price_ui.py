@@ -8,6 +8,10 @@ from rise_live_analysis import KST, evaluate_current, observe_persistence, prior
 from rise_live_data import get_current_quotes, get_histories, get_market_context
 
 DISPLAY_LIMIT = 20
+WATCHLIST_HIDDEN_COLUMNS = (
+    '시세 수신시각(KST)', '평가 기준일', '과거 일봉 마지막', '평가 구분',
+    '7조건 확인', '수렴 간격', '1차가 거리', '현재가 평가',
+)
 
 
 def won(value):
@@ -47,7 +51,7 @@ def _evaluate(rows, namespace):
     return sorted(results, key=priority_key), context
 
 
-def _frame(results):
+def _frame(results, *, compact=False):
     rows = []
     for rank, item in enumerate(results, 1):
         good = item['valid']
@@ -72,7 +76,9 @@ def _frame(results):
             '평가 기준일': item.get('analysis_day', '—'), '과거 일봉 마지막': item.get('history_day', '—'),
             '평가 구분': item.get('mode', '보류'),
         })
-    return pd.DataFrame(rows)
+    frame = pd.DataFrame(rows)
+    # Simplify only the personal table; keep calculations and diagnostics intact.
+    return frame.drop(columns=list(WATCHLIST_HIDDEN_COLUMNS), errors='ignore') if compact else frame
 
 
 def _status(results, context, seconds):
@@ -122,7 +128,7 @@ def _render_live_watchlist(rows):
     selected = results[:DISPLAY_LIMIT]
     st.caption(f'저장 {len(rows):,}개 모두 현재가로 평가 후 상위 {len(selected)}개 표시 · 나머지 종목은 삭제하지 않습니다.')
     st.caption('관찰 순서: 현재가로 계산한 필수 충족 수 → 보조 충족 수 → 단계·가격거리·거래량·점수. 순위는 매수 확정 신호가 아닙니다.')
-    st.dataframe(_frame(selected), key='rise_live_watchlist', use_container_width=True, hide_index=True,
+    st.dataframe(_frame(selected, compact=True), key='rise_live_watchlist', use_container_width=True, hide_index=True,
                  column_config={'관찰 우선순위': st.column_config.NumberColumn(format='%d위')})
     _status(results, context, 10)
     _detail(selected)
