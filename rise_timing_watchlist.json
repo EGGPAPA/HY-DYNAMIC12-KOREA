@@ -1148,5 +1148,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-02"
+  },
+  {
+    "ticker": "000020",
+    "name": "동화약품",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "002240",
+    "name": "고려제강",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "336570",
+    "name": "원텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "036460",
+    "name": "한국가스공사",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "085620",
+    "name": "미래에셋생명",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "004370",
+    "name": "농심",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "023410",
+    "name": "유진기업",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "383800",
+    "name": "LX홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "277810",
+    "name": "레인보우로보틱스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
+  },
+  {
+    "ticker": "389260",
+    "name": "대명에너지",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-06"
   }
 ]
