@@ -72,19 +72,18 @@ class WatchlistTop20Tests(unittest.TestCase):
         self.assertEqual(displayed["관찰 우선순위"].tolist(), list(range(1, 21)))
 
     def test_table_and_detail_share_the_same_display_subset(self):
-        tree = ast.parse((ROOT / "rise_current_price_ui.py").read_text(encoding="utf-8"))
+        tree = ast.parse((ROOT / "rise_timing_watchlist_ui.py").read_text(encoding="utf-8"))
         node = next(n for n in tree.body if isinstance(n, ast.FunctionDef)
-                    and n.name == "_render_live_watchlist")
+                    and n.name == "render_rise_timing_watchlist")
         calls = [n for n in ast.walk(node) if isinstance(n, ast.Call) and isinstance(n.func, ast.Name)]
-        for name in ("_frame", "_detail"):
+        for name in ("_render_live_watchlist", "_render_watchlist_detail"):
             call = next(c for c in calls if c.func.id == name)
-            self.assertEqual(ast.unparse(call.args[0]), "selected")
+            self.assertEqual(ast.unparse(call.args[0]), "display_results")
         source = ast.unparse(node)
-        self.assertIn("selected = results[:DISPLAY_LIMIT]", source)
-        self.assertIn('_evaluate_visible(chosen, state)', source)
-        self.assertIn("state['snapshot']['results'][:DISPLAY_LIMIT]", source)
-        self.assertNotIn("_evaluate(rows, 'rise_current_watch')", source)
-        self.assertNotIn("_save_watchlist", source)
+        self.assertIn("display_results = _select_watchlist_results(results, _load_background_state())", source)
+        selector_source = ast.unparse(next(n for n in tree.body if isinstance(n, ast.FunctionDef)
+                                          and n.name == "_select_watchlist_results"))
+        self.assertNotIn("_save_watchlist", selector_source)
 
 
 if __name__ == "__main__":
