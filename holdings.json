@@ -1016,7 +1016,7 @@
     "name": "LS ELECTRIC",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 84573.8255033557,
+    "average_price": 213835.57046979867,
     "quantity": 149.0,
     "purchases": [
       {
@@ -1030,9 +1030,9 @@
         "source": "신규매수"
       },
       {
-        "price": 21400.0,
+        "price": 214000.0,
         "quantity": 100.0,
-        "fee": 321,
+        "fee": 3210,
         "tax": 0,
         "reason": "통합 적극매수",
         "memo": "",
