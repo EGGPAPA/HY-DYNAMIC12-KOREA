@@ -26,9 +26,17 @@ def _evaluate(rows, namespace):
         def progress(done, total):
             notice.info(f'KIS 일봉 확인 중 · {done:,}/{total:,}개')
         histories = get_histories(rows, revision, progress)
-        saved = {'key': key, 'histories': histories}
+        saved = {'key': key, 'histories': histories, 'retry_after': datetime.now(KST).timestamp() + 60}
         st.session_state[namespace + '_histories'] = saved
         notice.empty()
+    elif now.timestamp() >= saved.get('retry_after', 0):
+        failed = [row for row in rows if saved['histories'].get(row['ticker']) is None
+                  or saved['histories'][row['ticker']].empty]
+        if failed:
+            # Retry only failed feeds; do not freeze an empty cached daily response
+            # for an hour or redo all successful histories on every quote update.
+            saved['histories'].update(get_histories(failed, (revision, int(now.timestamp() // 60))))
+        saved['retry_after'] = datetime.now(KST).timestamp() + 60
     context = get_market_context(revision)
     quotes = get_current_quotes([row['ticker'] for row in rows])
     evaluated_at = datetime.now(KST)
