@@ -283,6 +283,25 @@ class DataAndScreenTests(unittest.TestCase):
             parsed = self.data.parse_quotes([{'inter_shrn_iscd': '000001', 'inter2_prpr': price}], ['000001'], NOW.isoformat())
             self.assertFalse(parsed['000001']['ok'])
 
+    def test_rate_limit_has_bounded_retry_and_no_credentials_in_error(self):
+        import threading
+        guard = {'lock': threading.Lock(), 'token_lock': threading.Lock(), 'last': 0.0}
+        bad = types.SimpleNamespace(ok=False, status_code=500, json=lambda: {'rt_cd': '1', 'msg_cd': 'EGW00201', 'msg1': 'private provider payload'})
+        good = types.SimpleNamespace(ok=True, status_code=200, json=lambda: {'rt_cd': '0', 'output': []})
+        with patch.object(self.data, '_request_guard', return_value=guard), \
+             patch.object(self.data.time, 'sleep'), \
+             patch.object(self.requests, 'get', side_effect=[bad, good]) as get:
+            data, error = self.data._kis_get('/read-only-test', 'test', {})
+        self.assertEqual(get.call_count, 2)
+        self.assertEqual(error, '')
+        with patch.object(self.data, '_request_guard', return_value=guard), \
+             patch.object(self.data.time, 'sleep'), \
+             patch.object(self.requests, 'get', return_value=bad) as get:
+            data, error = self.data._kis_get('/read-only-test', 'test', {})
+        self.assertEqual(get.call_count, 2)
+        self.assertIn('EGW00201', error)
+        self.assertNotIn('private', error)
+
     def test_daily_uses_adjusted_krx_and_dates(self):
         payload = {'output2': [{'stck_bsop_date': '20261005', 'stck_clpr': '10178', 'acml_vol': '1000'}]}
         with patch.object(self.data, '_kis_get', return_value=(payload, '')) as call:
@@ -370,6 +389,24 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertIn("@st.fragment(run_every='10s')", source)
         self.assertIn("@st.fragment(run_every='30s')", source)
         self.assertIn('KOSPI·KOSDAQ 전종목 분석이 아닙니다', source)
+
+    def test_upper_scan_recalculates_and_timer_does_not_repeat_alerts(self):
+        from unittest.mock import Mock
+        good = evaluate_current(ROW, bars(), quote(), CONTEXT, NOW)
+        good['average_value'] = 1_000_000_000
+        self.st.columns = lambda n: [types.SimpleNamespace(metric=lambda *args: None) for _ in range(n)]
+        send, promote = Mock(return_value=None), Mock(return_value=None)
+        with patch.object(self.ui, '_evaluate', return_value=([good], CONTEXT)) as evaluate, \
+             patch.object(self.ui, '_status'):
+            self.ui._render_live_scan([ROW], send, promote)
+            self.assertEqual(send.call_count, 0)
+            self.st.session_state['rise_current_notify_once'] = True
+            self.ui._render_live_scan([ROW], send, promote)
+            self.ui._render_live_scan([ROW], send, promote)
+        self.assertEqual(evaluate.call_count, 3)
+        self.assertEqual(send.call_count, 1)
+        self.assertEqual(promote.call_count, 1)
+        self.assertEqual(send.call_args.args[0][0]['현재가'], good['price'])
 
 
 if __name__ == '__main__':
