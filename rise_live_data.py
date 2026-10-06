@@ -17,7 +17,7 @@ def _request_guard():
     return {'lock': threading.Lock(), 'token_lock': threading.Lock(), 'last': 0.0}
 
 
-def _kis_get(path, tr_id, params):
+def _kis_get(path, tr_id, params, _attempt=0):
     guard = _request_guard()
     with guard['token_lock']:
         token = get_kis_access_token()
@@ -25,7 +25,8 @@ def _kis_get(path, tr_id, params):
         return {}, 'KIS 인증 실패 또는 설정 없음'
     # Shared limiter, including concurrent history loads. Never log credentials/payloads.
     with guard['lock']:
-        wait = .15 - (time.monotonic() - guard['last'])
+        # Leave headroom for other HY screens using this same account's API key.
+        wait = 1.05 - (time.monotonic() - guard['last'])
         if wait > 0:
             time.sleep(wait)
         guard['last'] = time.monotonic()
@@ -41,6 +42,10 @@ def _kis_get(path, tr_id, params):
         if not response.ok or str(data.get('rt_cd')) != '0':
             # msg1 may contain provider detail; expose only the provider error identifier.
             code = str(data.get('msg_cd', ''))[:20]
+            if code == 'EGW00201' and _attempt == 0:
+                with guard['lock']:
+                    guard['last'] = max(guard['last'], time.monotonic() + 1.0)
+                return _kis_get(path, tr_id, params, _attempt=1)
             return {}, f'KIS 조회 실패 HTTP {response.status_code} ({code})'
         return data, ''
     except (requests.RequestException, ValueError, TypeError):
