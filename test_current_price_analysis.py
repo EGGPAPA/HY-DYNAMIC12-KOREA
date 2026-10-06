@@ -253,6 +253,31 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertFalse(result['000001']['ok'])
         self.assertNotIn('price', result['000001'])
 
+    def test_calendar_denied_uses_only_confirmed_today_index_dates(self):
+        class Clock:
+            @staticmethod
+            def now(tz):
+                return NOW
+        with patch.object(self.data, 'datetime', Clock), \
+             patch.object(self.data, '_calendar', return_value=([], 'calendar denied')), \
+             patch.object(self.data, '_index_trading_dates', return_value=(['20261001', '20261002', '20261006'], '')):
+            result = self.data.get_market_context()
+        self.assertEqual(result['day'], '20261006')
+        self.assertEqual(result['previous'], '20261002')
+        self.assertIn('notice', result)
+        with patch.object(self.data, 'datetime', Clock), \
+             patch.object(self.data, '_calendar', return_value=([], 'calendar denied')), \
+             patch.object(self.data, '_index_trading_dates', return_value=(['20261001', '20261002'], '')):
+            stale = self.data.get_market_context()
+        self.assertIn('error', stale)
+
+    def test_index_context_rejects_zero_volume_future_and_invalid_dates(self):
+        data = {'output2': [{'stck_bsop_date': date, 'acml_vol': vol} for date, vol in
+                           [('20261001', '10'), ('20261002', '10'), ('20261006', '0'), ('20261007', '99'), ('20260999', '88')]]}
+        with patch.object(self.data, '_kis_get', return_value=(data, '')):
+            dates, error = self.data._index_trading_dates('20261006', 0)
+        self.assertEqual(dates, ['20261001', '20261002'])
+
     def test_quote_partial_bad_payload(self):
         for price in ('NaN', 'Infinity', '0', None):
             parsed = self.data.parse_quotes([{'inter_shrn_iscd': '000001', 'inter2_prpr': price}], ['000001'], NOW.isoformat())
