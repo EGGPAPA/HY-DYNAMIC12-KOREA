@@ -290,14 +290,14 @@ def _send_rise_scan_alerts(scan):
     if not kakao_ready():return "카카오 연결정보가 없어 알림을 보내지 못했습니다."
     today=datetime.now().strftime("%Y-%m-%d")
     sent=_rise_alert_state()
-    candidates=[x for x in scan if str(x.get("단계","")).startswith(("🟢","🟣","🟡"))]
+    candidates=[x for x in scan if str(x.get("단계","")).startswith(("🟢","🟡"))]
     fresh=[x for x in candidates if f"{today}:{x['코드']}:{x['단계']}" not in sent][:5]
     if not fresh:return None
-    lines=["📍 현재가 기준 신규 후보 · 장중 잠정",""]
+    lines=["📍 전종목 상승시점 신규 후보",""]
     for item in fresh:
         lines.append(f"{item['단계']} · {item['종목']} ({item['코드']}) · {item['시점점수']:.0f}점")
         lines.append(f"현재 {_won(item['현재가'])} / 1차 {_won(item['1차매수'])} / 손절참고 {_won(item['손절참고'])}")
-    lines.extend(["","※ 최신 시세로 필수 4/4를 확인한 기술적 관찰 후보입니다. 종가 확정·매수 확정 신호가 아닙니다."])
+    lines.extend(["","※ 통합매수판정과 분리된 기술적 관찰 신호입니다."])
     try:
         send_kakao_message("\n".join(lines))
         sent.update(f"{today}:{x['코드']}:{x['단계']}" for x in fresh)
@@ -307,7 +307,7 @@ def _send_rise_scan_alerts(scan):
 
 
 def _promote_buy_candidates(scan):
-    candidates=[x for x in scan if str(x.get("단계","")).startswith(("🟢","🟣"))][:5]
+    candidates=[x for x in scan if str(x.get("단계","")).startswith("🟢")][:5]
     if not candidates:return None
     try:
         rows,sha=_load_watchlist()
@@ -592,10 +592,62 @@ def _render_watchlist_detail(results):
 
 
 def render_rise_timing_watchlist(universe=None):
-    # Lazy import keeps other application views independent of this screen.
-    from rise_current_price_ui import render_current_price_screen
-    rows, sha = _load_watchlist()
-    render_current_price_screen(universe, rows, _send_rise_scan_alerts, _promote_buy_candidates)
+    st.subheader("📍 전종목 상승시점 검색")
+    st.caption("통합매수판정과 완전히 분리해 KOSPI·KOSDAQ 전 종목에서 상승초입과 돌파확인 후보를 찾습니다.")
+    if universe is None or universe.empty:
+        st.warning("전종목 목록을 가져오지 못했습니다.")
+    elif st.button("🔎 KOSPI·KOSDAQ 전종목 상승초입 찾기",type="primary",use_container_width=True):
+        universe_rows=tuple(tuple(x) for x in universe[["종목코드","종목명","시장"]].astype(str).itertuples(index=False,name=None))
+        with st.status("전종목 70거래일 가격·거래량 분석 중...",expanded=True) as status:
+            scan,message=_scan_all_market(universe_rows)
+            st.session_state["rise_all_scan"]=scan;st.session_state["rise_all_scan_message"]=message
+            st.session_state["rise_kakao_notice"]=_send_rise_scan_alerts(scan) if scan else None
+            st.session_state["rise_promote_notice"]=_promote_buy_candidates(scan) if scan else None
+            status.update(label=f"전종목 상승시점 검색 완료 · {len(scan):,}개 후보",state="complete")
+    scan=st.session_state.get("rise_all_scan",[])
+    kakao_notice=st.session_state.pop("rise_kakao_notice",None)
+    if kakao_notice:
+        if "완료" in kakao_notice:st.success(kakao_notice)
+        else:st.warning(kakao_notice)
+    promote_notice=st.session_state.pop("rise_promote_notice",None)
+    if promote_notice:
+        if "완료" in promote_notice or "이미" in promote_notice:st.success(promote_notice)
+        else:st.warning(promote_notice)
+    if scan:
+        green=[x for x in scan if str(x["단계"]).startswith("🟢")]
+        yellow=[x for x in scan if str(x["단계"]).startswith("🟡")]
+        blue=[x for x in scan if str(x["단계"]).startswith("🔵")]
+        a,b,c1,d=st.columns(4);a.metric("🟢 상승초입",len(green));b.metric("🟡 돌파확인",len(yellow));c1.metric("🔵 준비구간",len(blue));d.metric("전체 후보",len(scan))
+        st.caption(st.session_state.get("rise_all_scan_message",""))
+        scan_df=pd.DataFrame(scan)
+        for col in ["현재가","1차매수","2차눌림","손절참고","돌파기준"]:scan_df[col]=scan_df[col].map(_won)
+        scan_df["20일선이격"]=scan_df["20일선이격"].map(lambda x:f"{x:+.1f}%")
+        scan_df["평균거래대금"]=scan_df["평균거래대금"].map(lambda x:f"{x/100_000_000:,.1f}억원")
+        st.dataframe(scan_df,use_container_width=True,hide_index=True)
+        st.info("🟢 상승초입을 먼저 보고 1차매수 참고가 부근에서 분할 접근합니다. 🔴 급등·추격금지 종목은 결과에서 제외합니다.")
+    elif st.session_state.get("rise_all_scan_message"):
+        st.info(st.session_state["rise_all_scan_message"])
+    st.divider()
+    st.markdown("### ⭐ 개인 관찰목록")
+    st.caption("전종목 검색 결과에서 따로 관리하고 싶은 종목을 아래 목록에 추가할 수 있습니다.")
+    st.caption("📅 서버 수렴 검색: 평일 20:30 KST 예정(실행 지연 가능) · 새 거래일 종가로 보통주 중심 검색 · 가격 1,000원 이상·20일 평균 거래대금 5억원 이상 · 하루 최대 10개 추가, 기존 목록 유지. 새로 추가된 종목은 페이지를 다시 열거나 새로고침하면 반영됩니다.")
+    rows,sha=_load_watchlist()
+    if not rows:
+        st.warning("관찰종목이 없습니다. 아래에서 종목을 추가하세요.")
+    results=[]
+    with st.spinner("관찰종목 상승시점 계산 중..."):
+        for row in rows:
+            result,_=_timing(row)
+            if result:results.append(result)
+    if results:
+        display_results = _select_watchlist_results(results, _load_background_state())
+        st.caption(
+            f"📌 화면·실시간 조회: 우선순위 상위 {len(display_results)}개 "
+            f"· 분석 가능 {len(results):,}개 / 저장 {len(rows):,}개. "
+            f"나머지 종목은 삭제하지 않고 보관하며, 자동 추가 후에도 화면에는 최대 {WATCHLIST_DISPLAY_LIMIT}개만 표시합니다."
+        )
+        _render_live_watchlist(display_results)
+        _render_watchlist_detail(display_results)
 
     with st.expander("관찰종목 추가·삭제"):
         c1,c2,c3=st.columns([1,2,1])
