@@ -11,7 +11,7 @@ from rise_live_analysis import KST, evaluate_current, observe_persistence, prior
 from rise_live_data import get_current_quotes, get_histories, get_market_context
 
 DISPLAY_LIMIT = 20
-WATCHLIST_REFRESH_SECONDS = 5
+WATCHLIST_REFRESH_SECONDS = 10
 WATCHLIST_SELECTION_SECONDS = 60
 WATCHLIST_HIDDEN_COLUMNS = (
     '시세 수신시각(KST)', '평가 기준일', '과거 일봉 마지막', '평가 구분',
@@ -212,14 +212,14 @@ def _detail(results):
     st.caption('표·상세·차트는 동일한 현재가로 계산됩니다. 마지막 점은 확정 종가가 아닌 현재가일 수 있습니다. 실제 주문은 하지 않습니다.')
 
 
-@st.fragment(run_every='5s')
+@st.fragment(run_every=WATCHLIST_REFRESH_SECONDS)
 def _render_live_watchlist(rows):
     if not rows:
         st.info('저장된 관찰종목이 없습니다.')
         return
     state = _watch_state(rows)
     if state['snapshot'] is None:
-        st.info(f'저장 {len(rows):,}개 전체 평가로 표시할 20개를 준비 중입니다. 준비 후 현재가를 5초 간격으로 조회합니다.')
+        st.info(f'저장 {len(rows):,}개 전체 평가로 표시할 20개를 준비 중입니다. 준비 후 현재가를 {WATCHLIST_REFRESH_SECONDS}초 간격으로 조회합니다.')
         if state['error']:
             st.warning(state['error'])
         _schedule_watch_selection(state, rows)
@@ -229,7 +229,7 @@ def _render_live_watchlist(rows):
     started = monotonic()
     results, context = _evaluate_visible(chosen, state)
     selected = results[:DISPLAY_LIMIT]
-    st.caption(f'표시 {len(selected)}개 가격·조건 5초 간격 조회 · 저장 {len(rows):,}개 전체 재선정은 별도로 약 1분 간격 · 저장 종목은 삭제하지 않습니다.')
+    st.caption(f'표시 {len(selected)}개 가격·조건 {WATCHLIST_REFRESH_SECONDS}초 간격 조회 · 저장 {len(rows):,}개 전체 재선정은 별도로 약 1분 간격 · 저장 종목은 삭제하지 않습니다.')
     st.caption('최근 전체평가의 상위 20개를 표시하며, 표 안 순서는 현재가 기준 필수 → 보조 → 단계·가격거리·거래량·점수입니다. 매수 확정 신호가 아닙니다.')
     st.dataframe(_frame(selected, compact=True), key='rise_live_watchlist', use_container_width=True, hide_index=True,
                  column_config={'관찰 우선순위': st.column_config.NumberColumn(format='%d위')})
