@@ -73,6 +73,8 @@ def _status(results, context, seconds):
     stamps = f'{min(received)} ~ {max(received)}' if received else '수신 성공 없음'
     st.caption(f'현재가·누적 거래량: KIS KRX(J) · {seconds}초마다 재조회·재평가 · 정상 평가 {good:,}/{len(results):,}개')
     st.caption(f'실제 시세 수신시각(KST): {stamps} · 수신시각은 거래소 체결시각이 아닙니다.')
+    if context.get('notice'):
+        st.caption(context['notice'])
     if context.get('error'):
         st.warning(context['error'] + ' · 거래일을 확인할 때까지 평가를 보류합니다.')
     elif not context['intraday']:
