@@ -324,8 +324,30 @@ class DataAndScreenTests(unittest.TestCase):
         frame, config = self.st.frames[0]
         self.assertEqual(len(frame), 20)
         self.assertEqual(config['key'], 'rise_live_watchlist')
+        self.assertTrue(set(self.ui.WATCHLIST_HIDDEN_COLUMNS).isdisjoint(frame.columns))
+        self.assertEqual(len(frame.columns), 15)
         self.assertEqual(len(details), 20)
         self.assertIs(details[0], results[0])
+
+    def test_compact_watchlist_hides_only_requested_columns_without_changing_results(self):
+        good = evaluate_current(ROW, bars(), quote(10200), CONTEXT, NOW)
+        failed = evaluate_current(ROW, bars(), {'ok': False}, CONTEXT, NOW)
+        results = [good, failed]
+        full = self.ui._frame(results)
+        compact = self.ui._frame(results, compact=True)
+        removed = {'시세 수신시각(KST)', '평가 기준일', '과거 일봉 마지막', '평가 구분',
+                   '7조건 확인', '수렴 간격', '1차가 거리', '현재가 평가'}
+        self.assertEqual(set(full.columns) - set(compact.columns), removed)
+        pd.testing.assert_frame_equal(compact, full.drop(columns=list(removed)))
+        pd.testing.assert_frame_equal(self.ui._frame(results), full)
+        self.assertEqual(compact.iloc[0]['현재가(KIS)'], '10,200원')
+        self.assertEqual(compact.iloc[0]['필수조건'], good['mandatory_label'])
+        self.assertEqual(compact.iloc[0]['보조조건'], good['auxiliary_label'])
+        self.assertEqual(compact.iloc[1]['1차 매수 참고'], '—')
+        self.assertTrue(pd.isna(compact.iloc[1]['시점점수']))
+
+    def test_compact_empty_watchlist_is_safe(self):
+        self.assertTrue(self.ui._frame([], compact=True).empty)
 
     def test_table_uses_live_price_and_holds_hide_score_and_targets(self):
         good = evaluate_current(ROW, bars(), quote(10200), CONTEXT, NOW)
@@ -407,6 +429,8 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertEqual(send.call_count, 1)
         self.assertEqual(promote.call_count, 1)
         self.assertEqual(send.call_args.args[0][0]['현재가'], good['price'])
+        self.assertEqual(self.st.frames[0][1]['key'], 'rise_current_scan_table')
+        self.assertTrue(set(self.ui.WATCHLIST_HIDDEN_COLUMNS).issubset(self.st.frames[0][0].columns))
 
 
 if __name__ == '__main__':
