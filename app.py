@@ -951,6 +951,7 @@ elif selected_view == "🔥 현재 5개월선 돌파":
     render_monthly_ma5_tab()
 
 elif selected_view == "📍 상승시점 관찰":
+    st.caption("아래 상승시점·개인관찰 평가는 상단의 저장 분석과 별도로 KIS 현재가로 갱신됩니다. 표의 시세 수신시각을 확인하세요.")
     rise_universe, _ = get_full_universe()
     render_rise_timing_watchlist(rise_universe)
 
