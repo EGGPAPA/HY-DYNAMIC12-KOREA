@@ -141,12 +141,20 @@ def get_current_quotes(codes):
 @st.cache_data(ttl=3600, max_entries=6000, show_spinner=False)
 def get_daily_history(code, day, revision=0):
     start = (datetime.strptime(day, '%Y%m%d') - timedelta(days=240)).strftime('%Y%m%d')
-    data, error = _kis_get('/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice',
+    data, error = {}, ''
+    for attempt in range(2):
+        data, error = _kis_get('/uapi/domestic-stock/v1/quotations/inquire-daily-itemchartprice',
                            'FHKST03010100', {'FID_COND_MRKT_DIV_CODE': 'J', 'FID_INPUT_ISCD': code,
                            'FID_INPUT_DATE_1': start, 'FID_INPUT_DATE_2': day,
                            'FID_PERIOD_DIV_CODE': 'D', 'FID_ORG_ADJ_PRC': '0'})
+        if not error or '인증' in error:
+            break
+        if attempt == 0:
+            time.sleep(.8)
     if error:
-        return pd.DataFrame()
+        frame = pd.DataFrame()
+        frame.attrs['error'] = error
+        return frame
     frame = pd.DataFrame(data.get('output2') or [])
     required = {'stck_bsop_date', 'stck_clpr', 'acml_vol'}
     if frame.empty or not required.issubset(frame.columns):
