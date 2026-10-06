@@ -96,7 +96,7 @@ class FastRefreshTests(unittest.TestCase):
             first, _ = self.ui._evaluate_visible(rows, state)
             second, _ = self.ui._evaluate_visible(rows, state)
         self.assertEqual(fetch.call_count, 2)
-        self.assertEqual(fetch.call_args.kwargs['refresh_seconds'], 5)
+        self.assertEqual(fetch.call_args.kwargs['refresh_seconds'], 10)
         self.assertFalse(daily.called)
         self.assertEqual(second[0]['price'], 9700)
         self.assertEqual(second[0]['chart'].iloc[-1, 0], 9700)
@@ -113,15 +113,36 @@ class FastRefreshTests(unittest.TestCase):
         self.assertIsNone(results[0]['score'])
         self.assertFalse(results[0]['valid'])
 
-    def test_one_batch_per_five_second_visible_refresh(self):
+    def test_one_batch_per_ten_second_visible_refresh(self):
         codes = [f'{i:06d}' for i in range(20)]
         with patch.object(self.data, 'datetime', Clock), patch.object(self.data, '_quote_chunk', return_value={}) as chunk:
-            self.data.get_current_quotes(codes, refresh_seconds=5)
-            Clock.value = NOW + timedelta(seconds=5)
-            self.data.get_current_quotes(codes, refresh_seconds=5)
+            self.data.get_current_quotes(codes, refresh_seconds=self.ui.WATCHLIST_REFRESH_SECONDS)
+            Clock.value = NOW + timedelta(seconds=10)
+            self.data.get_current_quotes(codes, refresh_seconds=self.ui.WATCHLIST_REFRESH_SECONDS)
         self.assertEqual(chunk.call_count, 2)
         self.assertEqual(len(chunk.call_args.args[0]), 20)
         self.assertNotEqual(chunk.call_args_list[0].args[1], chunk.call_args_list[1].args[1])
+
+    def test_timer_request_and_caption_share_ten_second_setting(self):
+        from pathlib import Path
+        import ast
+        source = Path(self.ui.__file__).read_text(encoding='utf-8')
+        tree = ast.parse(source)
+        renderer = next(node for node in tree.body if isinstance(node, ast.FunctionDef)
+                        and node.name == '_render_live_watchlist')
+        timer = next(item for item in renderer.decorator_list if isinstance(item, ast.Call))
+        interval = next(item.value for item in timer.keywords if item.arg == 'run_every')
+        self.assertEqual(ast.unparse(interval), 'WATCHLIST_REFRESH_SECONDS')
+        self.assertEqual(self.ui.WATCHLIST_REFRESH_SECONDS, 10)
+        self.assertEqual(self.ui.WATCHLIST_SELECTION_SECONDS, 60)
+        self.assertNotIn('5초', source)
+        rows, snapshot = self.snapshot(1)
+        self.ready_state(rows, snapshot)
+        with patch.object(self.ui, '_evaluate_visible', return_value=(snapshot['results'], CONTEXT)), \
+             patch.object(self.ui, '_detail'), patch.object(self.ui, '_schedule_watch_selection'):
+            self.ui._render_live_watchlist(rows)
+        self.assertTrue(any('가격·조건 10초 간격 조회' in message for message in self.st.messages))
+        self.assertTrue(any('10초 간격 조회 요청' in message for message in self.st.messages))
 
     def test_full_worker_still_evaluates_every_saved_row_and_only_retries_missing_history(self):
         rows, snapshot = self.snapshot(25)
