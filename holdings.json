@@ -987,5 +987,28 @@
     "sales": [],
     "enabled": true,
     "updated_at": "2026-10-02T04:21:10.325277+00:00"
+  },
+  {
+    "ticker": "086520",
+    "name": "에코프로",
+    "market": "KOSDAQ",
+    "status": "holding",
+    "average_price": 90027.0,
+    "quantity": 129.0,
+    "purchases": [
+      {
+        "price": 90027.0,
+        "quantity": 129.0,
+        "fee": 1742,
+        "tax": 0,
+        "reason": "1차 분할매수",
+        "memo": "",
+        "executed_at": "2026-10-06T00:11:48.065134+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-10-06T00:11:48.065134+00:00"
   }
 ]
