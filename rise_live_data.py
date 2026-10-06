@@ -60,7 +60,37 @@ def _calendar(day, retry_revision=0):
 def get_market_context(retry_revision=0):
     now = datetime.now(KST)
     calendar, error = _calendar(now.strftime('%Y%m%d'), retry_revision)
-    return {'error': error} if error else market_context(calendar, now)
+    context = {'error': error} if error else market_context(calendar, now)
+    if not context.get('error'):
+        return context
+    # Some keys can query market data but cannot use the account calendar API.
+    # Establish TODAY from a dated, traded KOSPI index bar; never infer a holiday
+    # from missing data or insert a weekday merely because the clock says Monday.
+    dates, index_error = _index_trading_dates(now.strftime('%Y%m%d'), int(now.timestamp() // 60))
+    if not index_error and len(dates) >= 2 and dates[-1] == now.strftime('%Y%m%d') and now.hour >= 9:
+        intraday = (now.hour, now.minute) < (15, 30)
+        return {'day': dates[-1], 'previous': dates[-2], 'intraday': intraday,
+                'mode': '장중 잠정' if intraday else '최근 거래일 참고',
+                'notice': '휴장일 조회 대신 KIS 종합지수의 오늘 거래일·직전 거래일을 확인했습니다.'}
+    return {'error': context['error'] + ' · 시장 일봉으로도 오늘 거래일을 확인하지 못했습니다'}
+
+
+@st.cache_data(ttl=60, max_entries=16, show_spinner=False)
+def _index_trading_dates(day, refresh_slot):
+    start = (datetime.strptime(day, '%Y%m%d') - timedelta(days=30)).strftime('%Y%m%d')
+    data, error = _kis_get('/uapi/domestic-stock/v1/quotations/inquire-daily-indexchartprice',
+                           'FHKUP03500100', {'FID_COND_MRKT_DIV_CODE': 'U', 'FID_INPUT_ISCD': '0001',
+                           'FID_INPUT_DATE_1': start, 'FID_INPUT_DATE_2': day, 'FID_PERIOD_DIV_CODE': 'D'})
+    dates = set()
+    for row in data.get('output2') or []:
+        date = str(row.get('stck_bsop_date', ''))
+        if len(date) == 8 and date.isdigit() and date <= day and (number(row.get('acml_vol')) or 0) > 0:
+            try:
+                datetime.strptime(date, '%Y%m%d')
+                dates.add(date)
+            except ValueError:
+                pass
+    return sorted(dates), error
 
 
 def parse_quotes(output, requested, received_at):
