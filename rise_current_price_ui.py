@@ -1,5 +1,8 @@
 """One current-price snapshot drives tables, ranking and detail charts."""
+from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
+from time import monotonic
 
 import pandas as pd
 import streamlit as st
@@ -8,6 +11,8 @@ from rise_live_analysis import KST, evaluate_current, observe_persistence, prior
 from rise_live_data import get_current_quotes, get_histories, get_market_context
 
 DISPLAY_LIMIT = 20
+WATCHLIST_REFRESH_SECONDS = 5
+WATCHLIST_SELECTION_SECONDS = 60
 WATCHLIST_HIDDEN_COLUMNS = (
     '시세 수신시각(KST)', '평가 기준일', '과거 일봉 마지막', '평가 구분',
     '7조건 확인', '수렴 간격', '1차가 거리', '현재가 평가',
@@ -51,6 +56,94 @@ def _evaluate(rows, namespace):
     return sorted(results, key=priority_key), context
 
 
+@st.cache_resource(show_spinner=False)
+def _watchlist_pool():
+    # Workers return data only. UI and Session State are touched on the script thread.
+    return ThreadPoolExecutor(max_workers=2, thread_name_prefix='watch-selection')
+
+
+def _build_watch_selection(rows, revision, histories, history_hour, observations):
+    now = datetime.now(KST)
+    hour = now.strftime('%Y%m%d%H')
+    histories = dict(histories)
+    missing = rows if history_hour != hour else [
+        row for row in rows if histories.get(row['ticker']) is None or histories[row['ticker']].empty]
+    if missing:
+        histories.update(get_histories(missing, (revision, int(now.timestamp() // 60))))
+    context = get_market_context(revision)
+    quotes = get_current_quotes([row['ticker'] for row in rows])
+    evaluated_at = datetime.now(KST)
+    results = [evaluate_current(row, histories.get(row['ticker']), quotes.get(row['ticker']),
+                               context, evaluated_at) for row in rows]
+    observe_persistence(results, observations)
+    return {'results': sorted(results, key=priority_key), 'histories': histories,
+            'history_hour': hour, 'context': context, 'observations': observations,
+            'completed_at': datetime.now(KST).isoformat(timespec='seconds')}
+
+
+def _watch_state(rows):
+    now = datetime.now(KST)
+    revision = st.session_state.get('rise_live_revision', 0)
+    key = (now.strftime('%Y%m%d'), revision,
+           tuple((row['ticker'], row.get('name'), row.get('market')) for row in rows))
+    state = st.session_state.get('rise_watch_fast_state')
+    if state is None or state['key'] != key:
+        if state and state.get('future'):
+            state['future'].cancel()
+        # Reuse daily input from the old renderer on a hot deployment, not old verdicts.
+        saved = st.session_state.get('rise_current_watch_histories', {})
+        saved_key = saved.get('key', ())
+        reusable = (len(saved_key) == 3 and saved_key[:2] == (now.strftime('%Y%m%d%H'), revision)
+                    and set(saved_key[2]) == {row['ticker'] for row in rows})
+        state = {'key': key, 'revision': revision, 'future': None, 'snapshot': None,
+                 'histories': dict(saved.get('histories', {})) if reusable else {},
+                 'history_hour': now.strftime('%Y%m%d%H') if reusable else None,
+                 'observations': {}, 'observed_at': {}, 'next_selection': 0, 'error': ''}
+        st.session_state['rise_watch_fast_state'] = state
+    future = state['future']
+    if future is not None and future.done():
+        state['future'] = None
+        state['next_selection'] = monotonic() + WATCHLIST_SELECTION_SECONDS
+        try:
+            snapshot = future.result()  # done() above: never wait for the full scan here.
+            state.update(snapshot=snapshot, histories=snapshot['histories'],
+                         history_hour=snapshot['history_hour'], error='')
+            # A background result cannot roll back a newer visible-row observation.
+            for item in snapshot['results']:
+                code, stamp = item['ticker'], item.get('quote_received_at')
+                if stamp and stamp >= state['observed_at'].get(code, ''):
+                    state['observed_at'][code] = stamp
+                    if code in snapshot['observations']:
+                        state['observations'][code] = dict(snapshot['observations'][code])
+                    else:
+                        state['observations'].pop(code, None)
+        except Exception:
+            # Do not expose provider responses, secrets, or traceback values in UI.
+            state['error'] = '전체 목록 재선정 실패 · 표시 종목의 현재가 갱신은 계속합니다.'
+    return state
+
+
+def _schedule_watch_selection(state, rows):
+    if state['future'] is None and monotonic() >= state['next_selection']:
+        state['future'] = _watchlist_pool().submit(
+            _build_watch_selection, [dict(row) for row in rows], state['revision'],
+            dict(state['histories']), state['history_hour'], deepcopy(state['observations']))
+
+
+def _evaluate_visible(rows, state):
+    # At most 20 quotes: one KIS batch. No daily history or full-universe wait here.
+    context = get_market_context(state['revision'])
+    quotes = get_current_quotes([row['ticker'] for row in rows], refresh_seconds=WATCHLIST_REFRESH_SECONDS)
+    now = datetime.now(KST)
+    results = [evaluate_current(row, state['histories'].get(row['ticker']),
+                               quotes.get(row['ticker']), context, now) for row in rows]
+    observe_persistence(results, state['observations'])
+    for item in results:
+        # Even a failed receipt supersedes older background observations.
+        state['observed_at'][item['ticker']] = item.get('quote_received_at') or now.isoformat(timespec='seconds')
+    return sorted(results, key=priority_key), context
+
+
 def _frame(results, *, compact=False):
     rows = []
     for rank, item in enumerate(results, 1):
@@ -85,7 +178,7 @@ def _status(results, context, seconds):
     good = sum(x['valid'] for x in results)
     received = [x['quote_received_at'] for x in results if x.get('quote_received_at')]
     stamps = f'{min(received)} ~ {max(received)}' if received else '수신 성공 없음'
-    st.caption(f'현재가·누적 거래량: KIS KRX(J) · {seconds}초마다 재조회·재평가 · 정상 평가 {good:,}/{len(results):,}개')
+    st.caption(f'현재가·누적 거래량: KIS KRX(J) · {seconds}초 간격 조회 요청(통신 지연 가능) · 정상 평가 {good:,}/{len(results):,}개')
     st.caption(f'실제 시세 수신시각(KST): {stamps} · 수신시각은 거래소 체결시각이 아닙니다.')
     if context.get('notice'):
         st.caption(context['notice'])
@@ -119,19 +212,41 @@ def _detail(results):
     st.caption('표·상세·차트는 동일한 현재가로 계산됩니다. 마지막 점은 확정 종가가 아닌 현재가일 수 있습니다. 실제 주문은 하지 않습니다.')
 
 
-@st.fragment(run_every='10s')
+@st.fragment(run_every='5s')
 def _render_live_watchlist(rows):
     if not rows:
         st.info('저장된 관찰종목이 없습니다.')
         return
-    results, context = _evaluate(rows, 'rise_current_watch')
+    state = _watch_state(rows)
+    if state['snapshot'] is None:
+        st.info(f'저장 {len(rows):,}개 전체 평가로 표시할 20개를 준비 중입니다. 준비 후 현재가를 5초 간격으로 조회합니다.')
+        if state['error']:
+            st.warning(state['error'])
+        _schedule_watch_selection(state, rows)
+        return
+    row_map = {row['ticker']: row for row in rows}
+    chosen = [row_map[item['ticker']] for item in state['snapshot']['results'][:DISPLAY_LIMIT]]
+    started = monotonic()
+    results, context = _evaluate_visible(chosen, state)
     selected = results[:DISPLAY_LIMIT]
-    st.caption(f'저장 {len(rows):,}개 모두 현재가로 평가 후 상위 {len(selected)}개 표시 · 나머지 종목은 삭제하지 않습니다.')
-    st.caption('관찰 순서: 현재가로 계산한 필수 충족 수 → 보조 충족 수 → 단계·가격거리·거래량·점수. 순위는 매수 확정 신호가 아닙니다.')
+    st.caption(f'표시 {len(selected)}개 가격·조건 5초 간격 조회 · 저장 {len(rows):,}개 전체 재선정은 별도로 약 1분 간격 · 저장 종목은 삭제하지 않습니다.')
+    st.caption('최근 전체평가의 상위 20개를 표시하며, 표 안 순서는 현재가 기준 필수 → 보조 → 단계·가격거리·거래량·점수입니다. 매수 확정 신호가 아닙니다.')
     st.dataframe(_frame(selected, compact=True), key='rise_live_watchlist', use_container_width=True, hide_index=True,
                  column_config={'관찰 우선순위': st.column_config.NumberColumn(format='%d위')})
-    _status(results, context, 10)
+    _status(selected, context, WATCHLIST_REFRESH_SECONDS)
+    snapshot = state['snapshot']
+    full_good = sum(item['valid'] for item in snapshot['results'])
+    progress = ' · 전체 재선정 진행 중' if state['future'] is not None else ''
+    st.caption(f"이번 표시 종목 조회·평가 {monotonic() - started:.1f}초 · 전체평가 완료 {snapshot['completed_at']} · 전체 정상 {full_good}/{len(rows)}개{progress}")
+    if state['error']:
+        st.warning(state['error'])
+    failed = [item for item in snapshot['results'] if not item['valid']]
+    if failed:
+        with st.expander(f'최근 전체평가 보류 {len(failed)}개 확인'):
+            st.dataframe(_frame(failed), hide_index=True, use_container_width=True)
     _detail(selected)
+    # Submit after rendering the fast table; never block on this future.
+    _schedule_watch_selection(state, rows)
 
 
 def _scan_candidates(results):
@@ -189,5 +304,5 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote):
             _render_live_scan(scan_rows, send_alerts, promote)
     st.divider()
     st.markdown('### ⭐ 개인 관찰목록 · 현재가 평가')
-    st.caption('서버의 일일 후보 추가는 유지됩니다. 아래 평가는 저장 종목 모두를 최신 시세로 다시 계산하며, 화면에는 20개만 표시합니다.')
+    st.caption('서버의 일일 후보 추가는 유지됩니다. 전체 상위 20개 재선정과 표시 종목의 빠른 현재가·조건 갱신을 분리합니다.')
     _render_live_watchlist(watchlist)
