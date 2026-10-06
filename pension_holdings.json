@@ -4,9 +4,9 @@
   "korea_qty": 97.0,
   "korea_avg": 37451.237113402065,
   "sp_ticker": "360750.KS",
-  "sp_qty": 15.0,
-  "sp_avg": 26270,
-  "safe_now": 128532.0,
+  "sp_qty": 0.0,
+  "sp_avg": 0.0,
+  "safe_now": 517587.0,
   "transactions": [
     {
       "id": "e0d9f79bdb9244b19946bf1b424cd8dc",
@@ -26,6 +26,26 @@
       "reflect_cash": false,
       "cash_before": 128532.0,
       "cash_after": 128532.0,
+      "memo": ""
+    },
+    {
+      "id": "da873e8439f24573b0075e80204f8a09",
+      "date": "2026-10-06",
+      "recorded_at": "2026-10-06T13:21:44+09:00",
+      "asset": "sp",
+      "ticker": "360750.KS",
+      "side": "sell",
+      "quantity": 15.0,
+      "price": 25937.0,
+      "amount": 389055.0,
+      "realized_profit": -4995.0,
+      "quantity_before": 15.0,
+      "quantity_after": 0.0,
+      "average_before": 26270.0,
+      "average_after": 0.0,
+      "reflect_cash": true,
+      "cash_before": 128532.0,
+      "cash_after": 517587.0,
       "memo": ""
     }
   ],
