@@ -134,9 +134,10 @@ def _quote_chunk(codes, refresh_slot):
     return {code: parsed.get(code, {'ok': False, 'error': 'KIS 응답에 종목 없음'}) for code in codes}
 
 
-def get_current_quotes(codes):
+def get_current_quotes(codes, refresh_seconds=10):
     codes = sorted(set(str(code).zfill(6) for code in codes))
-    slot = int(datetime.now(KST).timestamp() // 10)
+    # Keep default scan pacing; visible watchlist can request fresh five-second slots.
+    slot = (refresh_seconds, int(datetime.now(KST).timestamp() // refresh_seconds))
     result = {}
     for i in range(0, len(codes), 30):
         result.update(_quote_chunk(tuple(codes[i:i + 30]), slot))
