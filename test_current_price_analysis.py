@@ -311,16 +311,20 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertEqual(params['FID_COND_MRKT_DIV_CODE'], 'J')
         self.assertEqual(frame.index[-1], pd.Timestamp('2026-10-05'))
 
-    def test_full_watchlist_evaluated_before_cap_and_detail_uses_same_snapshot(self):
+    def test_fast_watchlist_queries_twenty_and_detail_uses_same_snapshot(self):
         results = []
         for i in range(25):
             item = evaluate_current(dict(ROW, ticker=str(i).zfill(6)), bars(), quote(10200), CONTEXT, NOW)
             results.append(item)
         details = []
-        with patch.object(self.ui, '_evaluate', return_value=(results, CONTEXT)) as evaluate, \
+        state = {'snapshot': {'results': results, 'completed_at': NOW.isoformat()}, 'future': None, 'error': ''}
+        with patch.object(self.ui, '_watch_state', return_value=state), \
+             patch.object(self.ui, '_evaluate_visible', return_value=(results[:20], CONTEXT)) as evaluate, \
+             patch.object(self.ui, '_schedule_watch_selection') as schedule, \
              patch.object(self.ui, '_detail', lambda selected: details.extend(selected)):
             self.ui._render_live_watchlist([dict(ROW, ticker=str(i).zfill(6)) for i in range(25)])
-        self.assertEqual(len(evaluate.call_args.args[0]), 25)
+        self.assertEqual(len(evaluate.call_args.args[0]), 20)
+        self.assertEqual(len(schedule.call_args.args[1]), 25)
         frame, config = self.st.frames[0]
         self.assertEqual(len(frame), 20)
         self.assertEqual(config['key'], 'rise_live_watchlist')
@@ -408,7 +412,7 @@ class DataAndScreenTests(unittest.TestCase):
         source = Path(__file__).with_name('rise_current_price_ui.py').read_text(encoding='utf-8')
         for forbidden in ('_load_background_state', 'rise_all_scan', 'get_live_price', 'price_source_label'):
             self.assertNotIn(forbidden, source)
-        self.assertIn("@st.fragment(run_every='10s')", source)
+        self.assertIn("@st.fragment(run_every='5s')", source)
         self.assertIn("@st.fragment(run_every='30s')", source)
         self.assertIn('KOSPI·KOSDAQ 전종목 분석이 아닙니다', source)
 
