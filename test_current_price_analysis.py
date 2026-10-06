@@ -347,6 +347,22 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertNotEqual(first[0]['score'], second[0]['score'])
         self.assertNotEqual(first[0]['mandatory_count'], second[0]['mandatory_count'])
 
+    def test_failed_histories_retry_only_failed_symbols_after_cooldown(self):
+        class Clock:
+            @staticmethod
+            def now(tz):
+                return NOW
+        rows = [ROW, dict(ROW, ticker='000002')]
+        key = (NOW.strftime('%Y%m%d%H'), 0, ('000001', '000002'))
+        self.st.session_state['retry_histories'] = {'key': key, 'histories': {'000001': bars(), '000002': pd.DataFrame()}, 'retry_after': 0}
+        with patch.object(self.ui, 'datetime', Clock), \
+             patch.object(self.ui, 'get_histories', return_value={'000002': bars()}) as fetch, \
+             patch.object(self.ui, 'get_market_context', return_value=CONTEXT), \
+             patch.object(self.ui, 'get_current_quotes', return_value={'000001': quote(), '000002': quote()}):
+            results, _ = self.ui._evaluate(rows, 'retry')
+        self.assertEqual([r['ticker'] for r in fetch.call_args.args[0]], ['000002'])
+        self.assertTrue(all(r['valid'] for r in results))
+
     def test_live_screens_do_not_reuse_daily_scan_or_server_actions(self):
         source = Path(__file__).with_name('rise_current_price_ui.py').read_text(encoding='utf-8')
         for forbidden in ('_load_background_state', 'rise_all_scan', 'get_live_price', 'price_source_label'):
