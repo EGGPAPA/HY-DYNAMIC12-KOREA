@@ -82,7 +82,8 @@ class WatchlistTop20Tests(unittest.TestCase):
         source = ast.unparse(node)
         self.assertIn("selected = results[:DISPLAY_LIMIT]", source)
         self.assertIn('_evaluate_visible(chosen, state)', source)
-        self.assertIn("state['snapshot']['results'][:DISPLAY_LIMIT]", source)
+        self.assertIn('chosen = rows', source)
+        self.assertNotIn("state['snapshot']['results'][:DISPLAY_LIMIT]", source)
         self.assertNotIn("_evaluate(rows, 'rise_current_watch')", source)
         self.assertNotIn("_save_watchlist", source)
 

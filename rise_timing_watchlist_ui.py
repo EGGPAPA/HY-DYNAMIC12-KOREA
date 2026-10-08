@@ -11,6 +11,7 @@ from krx_kis_pipeline import collect_krx_ohlcv
 from korea_holdings_ui import kakao_ready, send_kakao_message
 from korea_live_price import get_live_price, price_source_label
 from ma_convergence import convergence_columns
+from rise_watch_cohort import COHORT_PATH, active_rows, validate_cohort, retire_member
 
 try:
     from pykrx import stock
@@ -26,6 +27,63 @@ LIVE_STATE_API=f"https://api.github.com/repos/{REPO}/contents/{LIVE_STATE_PATH}"
 LIVE_STATE_BRANCH="monitor-state"
 CONVERGENCE_API=f"https://api.github.com/repos/{REPO}/contents/data/ma_convergence_daily.json"
 WATCHLIST_DISPLAY_LIMIT = 20
+COHORT_API = f"https://api.github.com/repos/{REPO}/contents/{COHORT_PATH}"
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _load_watch_cohort():
+    try:
+        response = requests.get(COHORT_API, headers=_headers(),
+                                params={"ref": LIVE_STATE_BRANCH}, timeout=10)
+        response.raise_for_status()
+        doc = response.json()
+        value = json.loads(base64.b64decode(doc['content']).decode('utf-8'))
+        return validate_cohort(value), doc['sha']
+    except Exception:
+        return None, None
+
+
+def _retire_watch_member(ticker):
+    if not _secret('GITHUB_PAT'):
+        raise RuntimeError('관찰 설정 저장 권한을 확인해 주세요.')
+    for attempt in range(3):
+        _load_watch_cohort.clear()
+        current, sha = _load_watch_cohort()
+        if current is None or not sha:
+            raise RuntimeError('관찰 설정을 읽지 못해 변경하지 않았습니다.')
+        updated = retire_member(current, ticker, pd.Timestamp.now(tz='Asia/Seoul').isoformat())
+        payload = {'message': 'Archive convergence observation (preserve saved watchlist)',
+                   'branch': LIVE_STATE_BRANCH, 'sha': sha,
+                   'content': base64.b64encode(json.dumps(updated, ensure_ascii=False, indent=2).encode()).decode()}
+        response = requests.put(COHORT_API, headers=_headers(), json=payload, timeout=20)
+        if response.status_code in (200, 201):
+            _load_watch_cohort.clear()
+            return
+        if response.status_code not in (409, 422):
+            break
+    raise RuntimeError('관찰 설정 저장 실패 · 새로고침 후 다시 시도해 주세요.')
+
+
+def _render_cohort_archive(rows, cohort):
+    codes = {x['ticker'] for x in cohort['active']}
+    archived = cohort.get('archived', {})
+    with st.expander(f"보관·대기 목록 {sum(x['ticker'] not in codes for x in rows):,}개 / 관찰 종료"):
+        st.caption('원본 종목은 삭제하지 않습니다. 새 후보는 대기하며, 관찰 종료로 빈자리가 생기면 다음 완료된 일일 수렴 검색에서 보충합니다.')
+        other = [{'종목': x.get('name', x['ticker']), '코드': x['ticker'],
+                  '구분': '관찰 종료·보관' if x['ticker'] in archived else '보관·후보 대기'}
+                 for x in rows if x['ticker'] not in codes]
+        if other:
+            st.dataframe(pd.DataFrame(other), hide_index=True, use_container_width=True)
+        labels = {f"{x['name']} ({x['ticker']})": x['ticker'] for x in cohort['active']}
+        if labels:
+            selected = st.selectbox('관찰을 종료하고 보관할 종목', list(labels), key='cohort_retire')
+            if st.button('선택 종목 관찰 종료 · 기록 보존', key='cohort_retire_save'):
+                try:
+                    _retire_watch_member(labels[selected])
+                    st.success('관찰을 종료했습니다. 저장 종목과 선정 기록은 보존됩니다.')
+                    st.rerun()
+                except Exception as exc:
+                    st.error(str(exc))
 
 
 def _secret(name,default=""):
@@ -595,9 +653,17 @@ def render_rise_timing_watchlist(universe=None):
     # Lazy import keeps other application views independent of this screen.
     from rise_current_price_ui import render_current_price_screen
     rows, sha = _load_watchlist()
-    render_current_price_screen(universe, rows, _send_rise_scan_alerts, _promote_buy_candidates)
+    cohort, _ = _load_watch_cohort()
+    if cohort is None:
+        st.warning('저장된 수렴 관찰 대상을 불러오지 못했습니다. 임의로 다른 종목을 대신 선정하지 않습니다. 잠시 후 새로고침해 주세요.')
+    else:
+        selected_rows = active_rows(rows, cohort)
+        render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
+                                    saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''))
+        _render_cohort_archive(rows, cohort)
 
-    with st.expander("관찰종목 추가·삭제"):
+    with st.expander("전체 보관 목록에 종목 추가·삭제"):
+        st.caption('여기서 추가한 종목은 보관 목록에 저장됩니다. 수렴 기준을 충족하고 관찰 자리가 있을 때 일일 검색에서 관찰 대상으로 선정됩니다.')
         c1,c2,c3=st.columns([1,2,1])
         code=c1.text_input("종목코드",key="rise_add_code").strip()
         name=c2.text_input("종목명",key="rise_add_name").strip()

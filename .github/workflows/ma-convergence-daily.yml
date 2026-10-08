@@ -9,8 +9,10 @@ on:
     branches: [main]
     paths:
       - "ma_convergence.py"
+      - "rise_watch_cohort.py"
       - "scripts/refresh_ma_convergence.py"
       - "tests/test_ma_convergence.py"
+      - "tests/test_rise_watch_cohort.py"
       - ".github/workflows/ma-convergence-daily.yml"
 
 permissions:
@@ -34,6 +36,8 @@ jobs:
           python-version: "3.12"
       - name: Test convergence and safe watchlist merging
         run: python -m unittest discover -s tests -p test_ma_convergence.py -v
+      - name: Test persistent observation membership
+        run: python -m unittest discover -s tests -p test_rise_watch_cohort.py -v
       - name: Scan closed daily bars and append new observations
         run: python scripts/refresh_ma_convergence.py --publish --output artifacts/ma-convergence-daily.json
       - name: Keep scan report

@@ -1,4 +1,4 @@
-"""One current-price snapshot drives tables, ranking and detail charts."""
+"""Current prices evaluate a saved convergence cohort, never reselect its members."""
 from copy import deepcopy
 from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime
@@ -119,7 +119,7 @@ def _watch_state(rows):
                         state['observations'].pop(code, None)
         except Exception:
             # Do not expose provider responses, secrets, or traceback values in UI.
-            state['error'] = '전체 목록 재선정 실패 · 표시 종목의 현재가 갱신은 계속합니다.'
+            state['error'] = '관찰 종목 일봉 확인 실패 · 대상 종목은 유지하며 현재가 갱신은 계속합니다.'
     return state
 
 
@@ -141,6 +141,7 @@ def _evaluate_visible(rows, state):
     for item in results:
         # Even a failed receipt supersedes older background observations.
         state['observed_at'][item['ticker']] = item.get('quote_received_at') or now.isoformat(timespec='seconds')
+        item['watch_entry'] = next((row.get('watch_entry') for row in rows if row['ticker'] == item['ticker']), None)
     return sorted(results, key=priority_key), context
 
 
@@ -198,6 +199,10 @@ def _detail(results):
     labels = {f"{x['name']} ({x['ticker']})": x for x in results}
     selected = st.selectbox('현재가 기준 상세 종목', list(labels), key='rise_current_detail')
     item = labels[selected]
+    entry = item.get('watch_entry')
+    if entry:
+        st.caption(f"수렴 후보 선정일 {entry['entry_asof']} · 선정 당시 간격 {entry['entry_span_pct']:.2f}% · {entry['entry_reason']}")
+        st.caption('선정 후 수렴이 풀리거나 순위가 내려가도 관찰을 유지합니다. 필수 4/4는 매수 검토 조건이지 매수 확정 신호가 아닙니다.')
     if not item['valid']:
         st.warning(item['reason'] + ' · 이전 분석값을 대신 표시하지 않습니다.')
         return
@@ -215,34 +220,35 @@ def _detail(results):
 @st.fragment(run_every=WATCHLIST_REFRESH_SECONDS)
 def _render_live_watchlist(rows):
     if not rows:
-        st.info('저장된 관찰종목이 없습니다.')
+        st.info('관찰 중인 수렴 종목이 없습니다. 다음 완료된 일일 검색에서 빈자리를 보충합니다.')
         return
+    # Membership comes only from the durable cohort, NOT current-price ranking.
+    rows = rows[:DISPLAY_LIMIT]
     state = _watch_state(rows)
     if state['snapshot'] is None:
-        st.info(f'저장 {len(rows):,}개 전체 평가로 표시할 20개를 준비 중입니다. 준비 후 현재가를 {WATCHLIST_REFRESH_SECONDS}초 간격으로 조회합니다.')
+        st.info(f'선정된 수렴 관찰 {len(rows):,}개 일봉을 준비 중입니다. 준비 후 가격·조건을 {WATCHLIST_REFRESH_SECONDS}초 간격으로 조회합니다.')
         if state['error']:
             st.warning(state['error'])
         _schedule_watch_selection(state, rows)
         return
-    row_map = {row['ticker']: row for row in rows}
-    chosen = [row_map[item['ticker']] for item in state['snapshot']['results'][:DISPLAY_LIMIT]]
+    chosen = rows
     started = monotonic()
     results, context = _evaluate_visible(chosen, state)
     selected = results[:DISPLAY_LIMIT]
-    st.caption(f'표시 {len(selected)}개 가격·조건 {WATCHLIST_REFRESH_SECONDS}초 간격 조회 · 저장 {len(rows):,}개 전체 재선정은 별도로 약 1분 간격 · 저장 종목은 삭제하지 않습니다.')
-    st.caption('최근 전체평가의 상위 20개를 표시하며, 표 안 순서는 현재가 기준 필수 → 보조 → 단계·가격거리·거래량·점수입니다. 매수 확정 신호가 아닙니다.')
+    st.caption(f'관찰 {len(selected)}개 유지 · 가격·조건 {WATCHLIST_REFRESH_SECONDS}초 간격 조회 · 장중 종목 교체 없음')
+    st.caption('같은 관찰 종목 안에서 필수 → 보조 → 단계·가격거리·거래량·점수 순으로 표시합니다. 수렴 해제·순위 하락만으로 종목을 제외하지 않으며, 순위는 매수 확정 신호가 아닙니다.')
     st.dataframe(_frame(selected, compact=True), key='rise_live_watchlist', use_container_width=True, hide_index=True,
                  column_config={'관찰 우선순위': st.column_config.NumberColumn(format='%d위')})
     _status(selected, context, WATCHLIST_REFRESH_SECONDS)
     snapshot = state['snapshot']
     full_good = sum(item['valid'] for item in snapshot['results'])
-    progress = ' · 전체 재선정 진행 중' if state['future'] is not None else ''
-    st.caption(f"이번 표시 종목 조회·평가 {monotonic() - started:.1f}초 · 전체평가 완료 {snapshot['completed_at']} · 전체 정상 {full_good}/{len(rows)}개{progress}")
+    progress = ' · 관찰 종목 자료 확인 중' if state['future'] is not None else ''
+    st.caption(f"이번 조회·평가 {monotonic() - started:.1f}초 · 자료 확인 완료 {snapshot['completed_at']} · 관찰 자료 정상 {full_good}/{len(rows)}개{progress}")
     if state['error']:
         st.warning(state['error'])
     failed = [item for item in snapshot['results'] if not item['valid']]
     if failed:
-        with st.expander(f'최근 전체평가 보류 {len(failed)}개 확인'):
+        with st.expander(f'관찰 자료 보류 {len(failed)}개 확인'):
             st.dataframe(_frame(failed), hide_index=True, use_container_width=True)
     _detail(selected)
     # Submit after rendering the fast table; never block on this future.
@@ -281,7 +287,7 @@ def _render_live_scan(rows, send_alerts, promote):
                     st.info(notice)
 
 
-def render_current_price_screen(universe, watchlist, send_alerts, promote):
+def render_current_price_screen(universe, watchlist, send_alerts, promote, *, saved_count=None, cohort_asof=''):
     st.subheader('📍 현재가 기준 상승시점 평가')
     st.caption('KIS 현재가·누적 거래량과 직전 거래일까지의 KIS 일봉으로 평가합니다. 과거 서버 판정은 현재 평가에 섞지 않습니다.')
     st.caption('현재가 돌파는 종가 확정이 아닙니다. 거래량 배수는 당일 누적 거래량 ÷ 직전 20일 하루 평균으로, 오전에는 낮을 수 있습니다.')
@@ -303,6 +309,8 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote):
         if scan_rows:
             _render_live_scan(scan_rows, send_alerts, promote)
     st.divider()
-    st.markdown('### ⭐ 개인 관찰목록 · 현재가 평가')
-    st.caption('서버의 일일 후보 추가는 유지됩니다. 전체 상위 20개 재선정과 표시 종목의 빠른 현재가·조건 갱신을 분리합니다.')
+    st.markdown('### ⭐ 개인 관찰목록 · 수렴 후보 추적')
+    st.caption('수렴 후보를 선정해 계속 관찰합니다. 상승·돌파로 수렴이 풀려도 유지하고, 현재가와 필수·보조조건만 갱신합니다.')
+    total = len(watchlist) if saved_count is None else saved_count
+    st.caption(f'관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 새 후보는 보관·대기 · 원본 기록 보존')
     _render_live_watchlist(watchlist)

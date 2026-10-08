@@ -64,13 +64,13 @@ class FastRefreshTests(unittest.TestCase):
             self.ui._render_live_watchlist(rows)
             self.ui._render_live_watchlist(rows)
         self.assertEqual(pool.submit.call_count, 1)
-        self.assertEqual(len(pool.submit.call_args.args[1]), 25)
+        self.assertEqual(len(pool.submit.call_args.args[1]), 20)
         self.assertFalse(full.called)
         self.assertFalse(visible.called)
         self.assertFalse(self.st.frames)
 
     def test_pending_background_worker_does_not_block_live_twenty(self):
-        rows, snapshot = self.snapshot(178)
+        rows, snapshot = self.snapshot(20)
         state = self.ready_state(rows, snapshot)
         gate = Event()
         with ThreadPoolExecutor(max_workers=1) as pool:
@@ -182,7 +182,7 @@ class FastRefreshTests(unittest.TestCase):
         updated = self.ui._watch_state(rows)
         self.assertIs(updated['snapshot'], snapshot)
         self.assertIsNone(updated['future'])
-        self.assertIn('재선정 실패', updated['error'])
+        self.assertIn('일봉 확인 실패', updated['error'])
         self.assertNotIn('private', updated['error'])
 
     def test_revision_membership_and_day_changes_discard_inflight_selection(self):
@@ -226,6 +226,39 @@ class FastRefreshTests(unittest.TestCase):
         self.assertEqual(set(state['histories']), {rows[0]['ticker']})
         self.st.session_state['rise_live_revision'] = 1
         self.assertFalse(self.ui._watch_state(rows)['histories'])
+
+    def test_background_rank_changes_never_replace_saved_members(self):
+        rows, snapshot = self.snapshot(25)
+        active = rows[:20]
+        # Simulate even an old hot-deployment background snapshot containing outsiders.
+        snapshot['results'] = list(reversed(snapshot['results']))
+        self.ready_state(active, snapshot)
+        calls = []
+        def visible(chosen, state):
+            calls.append([x['ticker'] for x in chosen])
+            return ([evaluate_current(row, bars(), quote(), CONTEXT, NOW) for row in chosen], CONTEXT)
+        with patch.object(self.ui, '_evaluate_visible', side_effect=visible), \
+             patch.object(self.ui, '_detail'), patch.object(self.ui, '_schedule_watch_selection'):
+            self.ui._render_live_watchlist(active)
+            snapshot['results'].reverse()
+            self.ui._render_live_watchlist(active)
+        expected = [x['ticker'] for x in active]
+        self.assertEqual(calls, [expected, expected])
+
+    def test_entry_reason_survives_live_recalculation_and_price_failure(self):
+        rows, snapshot = self.snapshot(1)
+        entry = {'entry_asof': '2026-10-02', 'entry_span_pct': 1.5, 'entry_reason': 'closed convergence'}
+        rows[0]['watch_entry'] = entry
+        state = self.ready_state(rows, snapshot)
+        code = rows[0]['ticker']
+        with patch.object(self.ui, 'get_market_context', return_value=CONTEXT), \
+             patch.object(self.ui, 'get_current_quotes', side_effect=[{code: quote(14000)}, {}]):
+            rising, _ = self.ui._evaluate_visible(rows, state)
+            failed, _ = self.ui._evaluate_visible(rows, state)
+        self.assertEqual(rising[0]['watch_entry'], entry)
+        self.assertEqual(failed[0]['watch_entry'], entry)
+        self.assertEqual(rising[0]['ticker'], failed[0]['ticker'])
+        self.assertFalse(failed[0]['valid'])
 
 
 if __name__ == '__main__':

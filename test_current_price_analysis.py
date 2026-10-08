@@ -324,7 +324,7 @@ class DataAndScreenTests(unittest.TestCase):
              patch.object(self.ui, '_detail', lambda selected: details.extend(selected)):
             self.ui._render_live_watchlist([dict(ROW, ticker=str(i).zfill(6)) for i in range(25)])
         self.assertEqual(len(evaluate.call_args.args[0]), 20)
-        self.assertEqual(len(schedule.call_args.args[1]), 25)
+        self.assertEqual(len(schedule.call_args.args[1]), 20)
         frame, config = self.st.frames[0]
         self.assertEqual(len(frame), 20)
         self.assertEqual(config['key'], 'rise_live_watchlist')
@@ -369,12 +369,13 @@ class DataAndScreenTests(unittest.TestCase):
         tree = ast.parse(source)
         entry = next(n for n in tree.body if isinstance(n, ast.FunctionDef) and n.name == 'render_rise_timing_watchlist')
         body = ast.get_source_segment(source, entry)
-        self.assertIn('render_current_price_screen(universe, rows', body)
+        self.assertIn('selected_rows = active_rows(rows, cohort)', body)
+        self.assertIn('render_current_price_screen(universe, selected_rows', body)
         self.assertIn('rise_current_price_ui', body)
         self.assertNotIn('_timing(row)', body)
         self.assertNotIn('_select_watchlist_results', body)
         self.assertNotIn('_scan_all_market', body)
-        self.assertIn('관찰종목 추가·삭제', body)
+        self.assertIn('전체 보관 목록에 종목 추가·삭제', body)
 
     def test_active_evaluator_requotes_every_call_without_old_server_verdicts(self):
         class Clock:

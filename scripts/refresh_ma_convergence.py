@@ -17,6 +17,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from ma_convergence import (KST, DAILY_ADD_LIMIT, THRESHOLD_PCT, MIN_DAILY_VALUE,
     closed_date_limit, ordinary_stock, actively_trading, analyze_bars,
     candidate_sort_key, merge_candidates)
+from rise_watch_cohort import COHORT_PATH, reconcile_cohort
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "EGGPAPA/HY-DYNAMIC12-KOREA")
 WATCH_PATH = "rise_timing_watchlist.json"
@@ -176,6 +177,26 @@ def publish(snapshot, previous):
     print(f"Published {snapshot['asof']}: added {len(plan['tickers'])}, watchlist {len(verified)}", flush=True)
 
 
+def publish_cohort(snapshot):
+    # Separate state file: never truncate or rewrite the user's saved watchlist.
+    # CAS retry re-reads manual retirements so daily fill cannot overwrite them.
+    for attempt in range(4):
+        previous, sha = github_read(COHORT_PATH, STATE_BRANCH, {})
+        rows, _ = github_read(WATCH_PATH, 'main')
+        updated = reconcile_cohort(previous, rows, snapshot)
+        if updated == previous:
+            return
+        try:
+            github_write(COHORT_PATH, STATE_BRANCH, updated, sha,
+                         f"Maintain stable convergence cohort ({snapshot['asof']})")
+            print(f"Cohort preserved: {len(updated['active'])} active; saved records untouched", flush=True)
+            return
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (409, 422) or attempt == 3:
+                raise
+            time.sleep(1)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--publish", action="store_true")
@@ -185,8 +206,10 @@ def main():
     previous, _ = github_read(STATE_PATH, STATE_BRANCH, {})
     if args.publish and previous.get("pending"):
         publish(previous, previous)
+        publish_cohort(previous)
         return
     if args.publish and previous.get("complete") and previous.get("asof", "") >= asof:
+        publish_cohort(previous)
         print(f"No new closed trading day ({asof}); preserved watchlist", flush=True)
         return
     universe, coverage = fetch_universe()
@@ -231,6 +254,7 @@ def main():
         args.output.write_text(json.dumps(snapshot, ensure_ascii=False, indent=2, allow_nan=False), encoding="utf-8")
     if args.publish:
         publish(snapshot, previous)
+        publish_cohort(snapshot)
     else:
         print("Dry run only; no remote files changed", flush=True)
 

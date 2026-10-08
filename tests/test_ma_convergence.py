@@ -159,10 +159,12 @@ class ConvergenceTests(unittest.TestCase):
 
     def test_completed_date_not_scanned_twice(self):
         with patch.object(sys, "argv", ["scanner", "--publish"]), \
+             patch.object(runner, 'publish_cohort') as cohort, \
              patch.object(runner, "reference_date", return_value="2026-09-14"), \
              patch.object(runner, "github_read", return_value=({"asof": "2026-09-14", "complete": True}, "sha")), \
              patch.object(runner, "fetch_universe", side_effect=AssertionError("must skip")):
             runner.main()
+        cohort.assert_called_once()
 
     def test_ui_keeps_single_price_table_and_adds_ma5(self):
         source = (Path(__file__).resolve().parents[1] / "rise_timing_watchlist_ui.py").read_text(encoding="utf-8")
