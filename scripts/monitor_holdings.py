@@ -6,7 +6,7 @@ from datetime import datetime, time, timedelta
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-import requests
+from monitor_kakao import KakaoError, send_text
 import yfinance as yf
 
 KST = ZoneInfo("Asia/Seoul")
@@ -45,41 +45,28 @@ def pending(row, price, sent):
 def fresh_price(row, now):
     code = str(row.get("ticker", "")).zfill(6)
     suffix = "KQ" if "KOSDAQ" in str(row.get("market", "")).upper() else "KS"
-    frame = yf.Ticker(code + "." + suffix).history(period="1d", interval="5m", auto_adjust=False)
+    # A multi-day request also covers providers returning no bars for a 1d window.
+    # The timestamp checks below still require a fresh bar from today.
+    frame = yf.Ticker(code + "." + suffix).history(period="5d", interval="5m", auto_adjust=False)
     if frame is None or frame.empty:
+        print(f"Price {code}: provider returned no bars")
         return None
     close = frame["Close"].dropna()
     if close.empty:
+        print(f"Price {code}: provider returned no closing prices")
         return None
     stamp = close.index[-1].to_pydatetime()
     if stamp.tzinfo is None:
+        print(f"Price {code}: timestamp has no timezone")
         return None
     stamp = stamp.astimezone(KST)
     if stamp.date() != now.date() or not timedelta(0) <= now - stamp <= timedelta(minutes=20):
+        print(f"Price {code}: rejected bar {stamp.isoformat()}; checked at {now.isoformat()}")
         return None
     return positive(close.iloc[-1])
 
 def send_kakao(text):
-    required = ("KAKAO_REST_API_KEY", "KAKAO_REFRESH_TOKEN")
-    if any(not os.getenv(name) for name in required):
-        raise RuntimeError("Kakao credentials missing")
-    data = {"grant_type": "refresh_token", "client_id": os.environ[required[0]],
-            "refresh_token": os.environ[required[1]]}
-    if os.getenv("KAKAO_CLIENT_SECRET"):
-        data["client_secret"] = os.environ["KAKAO_CLIENT_SECRET"]
-    response = requests.post("https://kauth.kakao.com/oauth/token", data=data, timeout=20)
-    if not response.ok:
-        raise RuntimeError("Kakao authentication failed: HTTP " + str(response.status_code))
-    token = response.json().get("access_token")
-    if not token:
-        raise RuntimeError("Kakao access token missing")
-    template = {"object_type": "text", "text": text,
-                "link": {"web_url": APP_URL, "mobile_web_url": APP_URL}, "button_title": "보유종목 확인"}
-    response = requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",
-                             headers={"Authorization": "Bearer " + token},
-                             data={"template_object": json.dumps(template, ensure_ascii=False)}, timeout=20)
-    if not response.ok or response.json().get("result_code") != 0:
-        raise RuntimeError("Kakao delivery failed: HTTP " + str(response.status_code))
+    send_text(text, APP_URL, "보유종목 확인")
 
 def main():
     if os.getenv("HOLDING_TEST") == "true":
@@ -102,6 +89,7 @@ def main():
         try:
             price = fresh_price(row, now)
             if price is None:
+                print("Holding price unavailable or stale:", str(row.get("ticker", "")))
                 errors += 1
                 continue
             for item in pending(row, price, sent):
@@ -115,7 +103,8 @@ def main():
                 STATE.parent.mkdir(parents=True, exist_ok=True)
                 STATE.write_text(json.dumps({"date": today, "sent": sorted(sent)}, indent=2), encoding="utf-8")
         except Exception as exc:
-            print("Holding check failed:", type(exc).__name__)
+            print("Holding check failed:", str(row.get("ticker", "")),
+                  str(exc) if isinstance(exc, KakaoError) else type(exc).__name__)
             errors += 1
     if errors:
         raise RuntimeError(f"{errors} holdings could not be checked or notified")

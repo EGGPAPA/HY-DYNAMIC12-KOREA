@@ -4,10 +4,6 @@ on:
   schedule:
     - cron: '7,17,27,37,47,57 0-5 * * 1-5'
     - cron: '7,17,27,37 6 * * 1-5'
-  push:
-    paths:
-      - 'scripts/monitor_holdings.py'
-      - '.github/workflows/holdings-reference-alert.yml'
   workflow_dispatch:
 
 permissions:
