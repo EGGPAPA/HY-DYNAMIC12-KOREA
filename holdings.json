@@ -969,9 +969,9 @@
     "ticker": "033100",
     "name": "제룡전기",
     "market": "KOSDAQ",
-    "status": "holding",
+    "status": "closed",
     "average_price": 49050.0,
-    "quantity": 98.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 49050.0,
@@ -984,9 +984,26 @@
         "source": "신규매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-10-02T04:21:10.325277+00:00"
+    "sales": [
+      {
+        "price": 48650.0,
+        "quantity": 98.0,
+        "average_cost": 49050.0,
+        "realized_pnl": -39200.0,
+        "realized_return_pct": -0.8154943934760461,
+        "net_realized_pnl": -47788.0,
+        "net_realized_return_pct": -0.9940051430842821,
+        "fee": 715,
+        "tax": 7152,
+        "buy_fee": 721,
+        "reason": "신호 약화",
+        "memo": "",
+        "executed_at": "2026-10-08T01:32:27.106844+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-10-08T01:32:27.106844+00:00",
+    "closed_at": "2026-10-08T01:32:27.106844+00:00"
   },
   {
     "ticker": "086520",
