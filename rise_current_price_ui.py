@@ -81,12 +81,12 @@ def _build_watch_selection(rows, revision, histories, history_hour, observations
             'completed_at': datetime.now(KST).isoformat(timespec='seconds')}
 
 
-def _watch_state(rows):
+def _watch_state(rows, namespace='rise_watch_fast_state'):
     now = datetime.now(KST)
     revision = st.session_state.get('rise_live_revision', 0)
     key = (now.strftime('%Y%m%d'), revision,
            tuple((row['ticker'], row.get('name'), row.get('market')) for row in rows))
-    state = st.session_state.get('rise_watch_fast_state')
+    state = st.session_state.get(namespace)
     if state is None or state['key'] != key:
         if state and state.get('future'):
             state['future'].cancel()
@@ -99,7 +99,7 @@ def _watch_state(rows):
                  'histories': dict(saved.get('histories', {})) if reusable else {},
                  'history_hour': now.strftime('%Y%m%d%H') if reusable else None,
                  'observations': {}, 'observed_at': {}, 'next_selection': 0, 'error': ''}
-        st.session_state['rise_watch_fast_state'] = state
+        st.session_state[namespace] = state
     future = state['future']
     if future is not None and future.done():
         state['future'] = None
@@ -250,8 +250,51 @@ def _render_live_watchlist(rows):
     if failed:
         with st.expander(f'관찰 자료 보류 {len(failed)}개 확인'):
             st.dataframe(_frame(failed), hide_index=True, use_container_width=True)
-    _detail(selected)
+    with st.expander('관찰종목 상세·차트'):
+        _detail(selected)
     # Submit after rendering the fast table; never block on this future.
+    _schedule_watch_selection(state, rows)
+
+
+@st.fragment(run_every=WATCHLIST_REFRESH_SECONDS)
+def render_new_discoveries(load_recent):
+    st.markdown('### 🆕 최근 새로 발굴된 종목')
+    recent = load_recent()
+    if recent['state'] == 'pending':
+        st.info('일일 검색·저장이 진행 중입니다. 완료된 신규 후보만 표시합니다.')
+        return
+    if recent['state'] != 'ready':
+        st.warning('최근 신규 발굴 결과를 확인하지 못했습니다. 신규 후보가 없다는 뜻은 아닙니다.')
+        return
+    asof = recent['asof']
+    today = datetime.now(KST).date().isoformat()
+    when = '오늘 완료된 검색' if asof == today else '최근 완료된 검색 · 오늘 발굴 결과가 아닙니다'
+    rows = recent['rows']
+    st.caption(f'발굴 기준일 {asof} 종가 · {when} · 신규 저장 {len(rows)}개')
+    st.caption(f'매일 장 마감 후 새 후보를 최대 10개 저장합니다. 이 표는 새로 추가된 종목만 보여주며, 기존 관찰 20개를 교체하지 않습니다. 현재가·조건은 {WATCHLIST_REFRESH_SECONDS}초 간격 조회합니다.')
+    if recent['unverified']:
+        st.warning(f"발굴일·저장 기록 확인이 필요한 {recent['unverified']}개는 표시를 보류했습니다.")
+    if not rows:
+        st.info(f'{asof} 검색에서 표시할 신규 저장 종목이 없습니다. 기존 후보의 중복 검색은 새 발굴로 표시하지 않습니다.')
+        return
+    # Separate state prevents this panel from replacing the primary cohort's data.
+    state = _watch_state(rows, namespace='rise_discovery_fast_state')
+    if state['snapshot'] is None:
+        st.info(f'신규 후보 {len(rows)}개의 현재가 평가 자료를 준비 중입니다.')
+        if state['error']:
+            st.warning(state['error'])
+        _schedule_watch_selection(state, rows)
+        return
+    results, context = _evaluate_visible(rows, state)
+    frame = _frame(results, compact=True)
+    columns = ['종목', '코드', '현재가(KIS)', '필수조건', '보조조건', '단계', '1차 매수 참고', '손절 참고']
+    frame = frame[columns].copy()
+    status = {row['ticker']: row['discovery_status'] for row in rows}
+    frame.insert(2, '관찰 상태', frame['코드'].map(status))
+    st.dataframe(frame, key='rise_recent_discoveries', hide_index=True, use_container_width=True)
+    _status(results, context, WATCHLIST_REFRESH_SECONDS)
+    if state['error']:
+        st.warning(state['error'])
     _schedule_watch_selection(state, rows)
 
 

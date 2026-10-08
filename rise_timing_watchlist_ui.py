@@ -12,6 +12,7 @@ from korea_holdings_ui import kakao_ready, send_kakao_message
 from korea_live_price import get_live_price, price_source_label
 from ma_convergence import convergence_columns
 from rise_watch_cohort import COHORT_PATH, active_rows, validate_cohort, retire_member
+from rise_new_candidates import recent_discoveries
 
 try:
     from pykrx import stock
@@ -143,6 +144,13 @@ def _save_watchlist(rows,sha):
     response=requests.put(WATCH_API,headers=_headers(),json=payload,timeout=20)
     if response.status_code not in (200,201):raise RuntimeError(f"관찰목록 저장 실패: HTTP {response.status_code}")
     _load_watchlist.clear()
+
+
+def _recent_discoveries():
+    rows, _ = _load_watchlist()
+    cohort, _ = _load_watch_cohort()
+    return recent_discoveries(rows, _load_convergence_state(), cohort,
+                              today=pd.Timestamp.now(tz='Asia/Seoul').date().isoformat())
 
 
 def _symbol(code,market):
@@ -651,7 +659,7 @@ def _render_watchlist_detail(results):
 
 def render_rise_timing_watchlist(universe=None):
     # Lazy import keeps other application views independent of this screen.
-    from rise_current_price_ui import render_current_price_screen
+    from rise_current_price_ui import render_current_price_screen, render_new_discoveries
     rows, sha = _load_watchlist()
     cohort, _ = _load_watch_cohort()
     if cohort is None:
@@ -660,6 +668,8 @@ def render_rise_timing_watchlist(universe=None):
         selected_rows = active_rows(rows, cohort)
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
                                     saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''))
+    render_new_discoveries(_recent_discoveries)
+    if cohort is not None:
         _render_cohort_archive(rows, cohort)
 
     with st.expander("전체 보관 목록에 종목 추가·삭제"):
