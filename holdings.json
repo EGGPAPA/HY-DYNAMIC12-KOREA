@@ -1074,5 +1074,28 @@
     ],
     "enabled": true,
     "updated_at": "2026-10-08T00:58:36.419535+00:00"
+  },
+  {
+    "ticker": "206650",
+    "name": "유바이오로직스",
+    "market": "KOSDAQ",
+    "status": "holding",
+    "average_price": 8710.0,
+    "quantity": 460.0,
+    "purchases": [
+      {
+        "price": 8710.0,
+        "quantity": 460.0,
+        "fee": 601,
+        "tax": 0,
+        "reason": "통합 적극매수",
+        "memo": "",
+        "executed_at": "2026-10-08T01:29:11.577302+00:00",
+        "source": "신규매수"
+      }
+    ],
+    "sales": [],
+    "enabled": true,
+    "updated_at": "2026-10-08T01:29:11.577302+00:00"
   }
 ]
