@@ -1288,5 +1288,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-07"
+  },
+  {
+    "ticker": "298050",
+    "name": "HS효성첨단소재",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "014970",
+    "name": "삼륭물산",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "035000",
+    "name": "HS애드",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "035810",
+    "name": "이지홀딩스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "025820",
+    "name": "이구산업",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "020710",
+    "name": "시공테크",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "017800",
+    "name": "현대엘리베이터",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "054210",
+    "name": "이랜텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "003780",
+    "name": "진양산업",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "001510",
+    "name": "SK증권",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-08"
   }
 ]
