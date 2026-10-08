@@ -201,8 +201,16 @@ def _detail(results):
     item = labels[selected]
     entry = item.get('watch_entry')
     if entry:
-        st.caption(f"수렴 후보 선정일 {entry['entry_asof']} · 선정 당시 간격 {entry['entry_span_pct']:.2f}% · {entry['entry_reason']}")
-        st.caption('선정 후 수렴이 풀리거나 순위가 내려가도 관찰을 유지합니다. 필수 4/4는 매수 검토 조건이지 매수 확정 신호가 아닙니다.')
+        if entry.get('entry_policy') == 'leader_v1':
+            st.caption(f"주도주 후보 선정 기준일 {entry['entry_asof']} · {entry['entry_reason']}")
+            st.caption(f"선정 당시: 20거래일 {entry['entry_ret20_pct']:+.1f}% / 60거래일 {entry['entry_ret60_pct']:+.1f}% · "
+                       f"해당 시장지수 대비 {entry['entry_excess20_pct']:+.1f}%p / {entry['entry_excess60_pct']:+.1f}%p · "
+                       f"20일 평균 거래대금 약 {entry['entry_mean_value20']/100000000:,.1f}억원")
+            if entry.get('entry_overheated'):
+                st.caption('선정 당시 급등·과열 참고 종목입니다. 주도주 후보 포함은 즉시 매수 신호가 아닙니다.')
+        else:
+            st.caption(f"수렴 후보 선정일 {entry['entry_asof']} · 선정 당시 간격 {entry['entry_span_pct']:.2f}% · {entry['entry_reason']}")
+        st.caption('선정 후 조건이 약해져도 관찰 대상은 자동 교체하지 않습니다. 필수 4/4는 매수 검토 조건이지 매수 확정 신호가 아닙니다.')
     if not item['valid']:
         st.warning(item['reason'] + ' · 이전 분석값을 대신 표시하지 않습니다.')
         return
@@ -220,13 +228,13 @@ def _detail(results):
 @st.fragment(run_every=WATCHLIST_REFRESH_SECONDS)
 def _render_live_watchlist(rows):
     if not rows:
-        st.info('관찰 중인 수렴 종목이 없습니다. 다음 완료된 일일 검색에서 빈자리를 보충합니다.')
+        st.info('관찰 중인 종목이 없습니다. 다음 완료된 일일 검색에서 선정 기준을 충족하는 종목으로 빈자리를 보충합니다.')
         return
     # Membership comes only from the durable cohort, NOT current-price ranking.
     rows = rows[:DISPLAY_LIMIT]
     state = _watch_state(rows)
     if state['snapshot'] is None:
-        st.info(f'선정된 수렴 관찰 {len(rows):,}개 일봉을 준비 중입니다. 준비 후 가격·조건을 {WATCHLIST_REFRESH_SECONDS}초 간격으로 조회합니다.')
+        st.info(f'선정된 관찰 {len(rows):,}개 일봉을 준비 중입니다. 준비 후 가격·조건을 {WATCHLIST_REFRESH_SECONDS}초 간격으로 조회합니다.')
         if state['error']:
             st.warning(state['error'])
         _schedule_watch_selection(state, rows)
@@ -236,7 +244,7 @@ def _render_live_watchlist(rows):
     results, context = _evaluate_visible(chosen, state)
     selected = results[:DISPLAY_LIMIT]
     st.caption(f'관찰 {len(selected)}개 유지 · 가격·조건 {WATCHLIST_REFRESH_SECONDS}초 간격 조회 · 장중 종목 교체 없음')
-    st.caption('같은 관찰 종목 안에서 필수 → 보조 → 단계·가격거리·거래량·점수 순으로 표시합니다. 수렴 해제·순위 하락만으로 종목을 제외하지 않으며, 순위는 매수 확정 신호가 아닙니다.')
+    st.caption('같은 관찰 종목 안에서 필수 → 보조 → 단계·가격거리·거래량·점수 순으로 표시합니다. 주도력 선정 순위와는 다르며, 조건 약화·순위 하락만으로 자동 제외하지 않습니다. 순위는 매수 확정 신호가 아닙니다.')
     st.dataframe(_frame(selected, compact=True), key='rise_live_watchlist', use_container_width=True, hide_index=True,
                  column_config={'관찰 우선순위': st.column_config.NumberColumn(format='%d위')})
     _status(selected, context, WATCHLIST_REFRESH_SECONDS)
@@ -330,7 +338,7 @@ def _render_live_scan(rows, send_alerts, promote):
                     st.info(notice)
 
 
-def render_current_price_screen(universe, watchlist, send_alerts, promote, *, saved_count=None, cohort_asof=''):
+def render_current_price_screen(universe, watchlist, send_alerts, promote, *, saved_count=None, cohort_asof='', cohort_policy='convergence_v1'):
     st.subheader('📍 현재가 기준 상승시점 평가')
     st.caption('KIS 현재가·누적 거래량과 직전 거래일까지의 KIS 일봉으로 평가합니다. 과거 서버 판정은 현재 평가에 섞지 않습니다.')
     st.caption('현재가 돌파는 종가 확정이 아닙니다. 거래량 배수는 당일 누적 거래량 ÷ 직전 20일 하루 평균으로, 오전에는 낮을 수 있습니다.')
@@ -352,8 +360,18 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
         if scan_rows:
             _render_live_scan(scan_rows, send_alerts, promote)
     st.divider()
-    st.markdown('### ⭐ 개인 관찰목록 · 수렴 후보 추적')
-    st.caption('수렴 후보를 선정해 계속 관찰합니다. 상승·돌파로 수렴이 풀려도 유지하고, 현재가와 필수·보조조건만 갱신합니다.')
+    if cohort_policy == 'leader_v1':
+        st.markdown('### ⭐ 개인 관찰목록 · 주도주 후보 추적')
+        st.caption('저장 종목 중 시장 대비 강한 상승 추세와 거래대금을 기준으로 최대 20개를 선정합니다. 수렴은 참고이며, 선정 후 현재가·필수·보조조건을 10초마다 조회합니다.')
+        with st.expander('주도주 선정 기준 보기', expanded=False):
+            st.caption('마감 일봉 기준: 보통주 · 1,000원 이상 · 20일 평균 거래대금 약 20억원 이상 · 현재가 > 20일선 > 60일선 · 20일선 상승 · 20·60거래일 모두 상승하고 해당 KOSPI/KOSDAQ 지수보다 강한 종목')
+            st.caption('주도력 순서: 저장 보통주 내 20거래일 시장 초과 수익률 백분위 45% + 60거래일 25% + 평균 거래대금 30%. 거래대금은 종가×거래량 근사치입니다. 수렴 간격은 선발·정렬 점수에 넣지 않습니다.')
+            st.caption('검증된 수익 예측이나 매수 추천이 아닌 관찰용 기준입니다. 급등 종목도 포함될 수 있으며 업종별 대표성·실적·외국인 수급은 별도 검증하지 않습니다. 현재 매수 조건은 아래 필수·보조로 따로 확인하세요.')
+    else:
+        st.markdown('### ⭐ 개인 관찰목록 · 수렴 후보 추적')
+        st.caption('수렴 후보를 선정해 계속 관찰합니다. 상승·돌파로 수렴이 풀려도 유지하고, 현재가와 필수·보조조건만 갱신합니다.')
     total = len(watchlist) if saved_count is None else saved_count
     st.caption(f'관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 새 후보는 보관·대기 · 원본 기록 보존')
     _render_live_watchlist(watchlist)
+
+

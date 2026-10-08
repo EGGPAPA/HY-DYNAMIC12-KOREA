@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, timezone
 from statistics import mean
 import math
 import re
+from rise_leaders import strength_metrics
 
 KST = timezone(timedelta(hours=9))
 THRESHOLD_PCT = 3.0
@@ -67,6 +68,7 @@ def analyze_bars(bars, reference_date):
     base_volume = mean(float(x["volume"]) for x in rows[-21:-1])
     value20 = mean(float(x["close"]) * float(x["volume"]) for x in rows[-20:])
     return {
+        **strength_metrics(closes),
         "eligible": True, "date": reference_date, "close": price,
         "ma5": averages[0], "ma20": averages[1], "ma60": averages[2],
         "span_pct": span, "span_5_sessions_ago_pct": old_span,
@@ -109,3 +111,5 @@ def convergence_columns(snapshot, ticker):
     state = row["state"] if row.get("cluster_now", True) else "⚪ 비수렴"
     return {"세 선 수렴": state, "수렴 간격": f"{row['span_pct']:.2f}%",
             "수렴 기준일": row["date"]}
+
+

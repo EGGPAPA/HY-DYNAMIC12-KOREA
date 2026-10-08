@@ -88,7 +88,7 @@ def fetch_universe():
                 raw_seen.add(code)
                 if ordinary_stock(row):
                     stocks[code] = {"ticker": code, "name": row["stockName"], "market": market,
-                                    "tradable": actively_trading(row)}
+                                    "tradable": actively_trading(row), "ordinary": True}
             if page * 100 >= total:
                 break
             if not rows:
@@ -121,6 +121,16 @@ def reference_date(limit):
     if dates[0] != dates[1] or (datetime.fromisoformat(limit) - datetime.fromisoformat(dates[0])).days > 10:
         raise RuntimeError("Reference trading date is inconsistent or stale")
     return dates[0]
+
+
+def fetch_benchmarks(asof):
+    result = {}
+    for market in ('KOSPI', 'KOSDAQ'):
+        try:
+            result[market] = analyze_bars(fetch_bars(market), asof)
+        except Exception:
+            result[market] = {'eligible': False, 'reason': '시장지수 자료 수신 실패'}
+    return result
 
 
 def scan_one(row, asof):
@@ -188,7 +198,7 @@ def publish_cohort(snapshot):
             return
         try:
             github_write(COHORT_PATH, STATE_BRANCH, updated, sha,
-                         f"Maintain stable convergence cohort ({snapshot['asof']})")
+                         f"Maintain stable observation cohort ({snapshot['asof']})")
             print(f"Cohort preserved: {len(updated['active'])} active; saved records untouched", flush=True)
             return
         except urllib.error.HTTPError as exc:
@@ -235,7 +245,8 @@ def main():
     if len(errors) > len(jobs) * 0.05 or eligible < len(universe) * 0.80:
         raise RuntimeError(f"Coverage insufficient ({eligible}/{len(universe)}, errors={len(errors)}); no publish")
     candidates = sorted([x for code, x in items.items() if code in universe and x.get("candidate")], key=candidate_sort_key)
-    snapshot = {"version": 1, "asof": asof, "updated_at": datetime.now(KST).isoformat(timespec="seconds"),
+    snapshot = {"version": 1, "leader_version": 1, "benchmarks": fetch_benchmarks(asof),
+                "asof": asof, "updated_at": datetime.now(KST).isoformat(timespec="seconds"),
                 "source": "Naver daily OHLCV", "threshold_pct": THRESHOLD_PCT,
                 "definition": "100 * (max(SMA5,SMA20,SMA60)-min(SMA5,SMA20,SMA60)) / mean(SMA5,SMA20,SMA60)",
                 "min_price": 1000, "min_mean_value20": MIN_DAILY_VALUE, "daily_add_limit": DAILY_ADD_LIMIT,
@@ -261,3 +272,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+

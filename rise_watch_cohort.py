@@ -8,6 +8,7 @@ import math
 import re
 
 from ma_convergence import THRESHOLD_PCT, MIN_DAILY_VALUE, candidate_sort_key
+from rise_leaders import LEADER_POLICY, leader_candidates, leader_entry, leader_snapshot_ready
 
 COHORT_PATH = 'data/rise_watch_cohort.json'
 COHORT_LIMIT = 20
@@ -54,6 +55,8 @@ def validate_cohort(value):
         raise ValueError('관찰 대상 코드가 올바르지 않습니다.')
     if not isinstance(value.get('archived', {}), dict):
         raise ValueError('관찰 보관 기록을 확인할 수 없습니다.')
+    if value.get('policy', 'convergence_v1') not in ('convergence_v1', LEADER_POLICY):
+        raise ValueError('관찰 선정 기준을 확인할 수 없습니다.')
     return value
 
 
@@ -66,6 +69,9 @@ def reconcile_cohort(previous, saved_rows, snapshot):
     state = deepcopy(validate_cohort(previous)) if previous else {
         'version': 1, 'active': [], 'archived': {}, 'last_review_asof': ''}
     if not snapshot.get('complete') or snapshot.get('pending'):
+        return state
+    is_leader = state.get('policy') == LEADER_POLICY
+    if is_leader and not leader_snapshot_ready(snapshot):
         return state
     asof = snapshot.get('asof', '')
     if not asof or asof <= state.get('last_review_asof', ''):
@@ -80,19 +86,50 @@ def reconcile_cohort(previous, saved_rows, snapshot):
                                               'archive_reason': '사용자가 저장 목록에서 삭제'}
     state['active'] = kept
     seen = {x['ticker'] for x in kept} | set(state['archived'])
-    for row in eligible_candidates(snapshot, saved_rows):
+    candidates = leader_candidates(snapshot, saved_rows) if is_leader else eligible_candidates(snapshot, saved_rows)
+    for row in candidates:
         if len(state['active']) >= COHORT_LIMIT:
             break
         if row['ticker'] in seen:
             continue
-        state['active'].append({
+        entry = leader_entry(row, asof) if is_leader else {
             'ticker': row['ticker'], 'name': row['name'], 'market': row['market'],
             'entry_asof': asof, 'entry_span_pct': row['span_pct'],
             'entry_reason': '보통주 · 5·20·60일선 간격 3% 이내 · 1,000원 이상 · 20일 평균 거래대금 5억원 이상',
-        })
+        }
+        state['active'].append(entry)
         seen.add(row['ticker'])
     state['last_review_asof'] = asof
     return state
+
+
+def reselect_leaders(previous, saved_rows, snapshot):
+    """Explicit one-time user-authorized recomposition; never called by timers.
+
+    Preserve the previous membership/reasons in history and all saved rows.
+    Manual retirements remain excluded. Daily maintenance only fills vacancies.
+    """
+    state = deepcopy(validate_cohort(previous))
+    if not leader_snapshot_ready(snapshot):
+        raise ValueError('완료된 주도주·시장지수 자료가 필요합니다.')
+    asof = snapshot['asof']
+    if asof < state.get('last_review_asof', ''):
+        raise ValueError('이전 기준일 자료로 관찰 대상을 변경할 수 없습니다.')
+    migration_key = f'{LEADER_POLICY}:{asof}'
+    if state.get('reselection_key') == migration_key:
+        return state
+    candidates = [row for row in leader_candidates(snapshot, saved_rows)
+                  if row['ticker'] not in state.get('archived', {})][:COHORT_LIMIT]
+    if not candidates:
+        raise ValueError('주도주 조건 충족 종목이 없어 기존 관찰 대상을 유지합니다.')
+    state.setdefault('selection_history', []).append({
+        'policy': state.get('policy', 'convergence_v1'), 'active': deepcopy(state['active']),
+        'last_review_asof': state.get('last_review_asof', ''),
+        'changed_asof': asof, 'reason': '사용자 요청: 주도력 우선, 수렴 참고로 재구성',
+    })
+    state.update(policy=LEADER_POLICY, active=[leader_entry(row, asof) for row in candidates],
+                 selection_asof=asof, last_review_asof=asof, reselection_key=migration_key)
+    return validate_cohort(state)
 
 
 def retire_member(previous, ticker, stamp):
@@ -110,3 +147,5 @@ def active_rows(saved_rows, cohort):
     validate_cohort(cohort)
     saved = {str(x.get('ticker', '')).zfill(6): x for x in saved_rows}
     return [{**saved[x['ticker']], 'watch_entry': dict(x)} for x in cohort['active'] if x['ticker'] in saved]
+
+

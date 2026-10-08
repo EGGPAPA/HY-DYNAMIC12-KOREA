@@ -69,7 +69,8 @@ def _render_cohort_archive(rows, cohort):
     codes = {x['ticker'] for x in cohort['active']}
     archived = cohort.get('archived', {})
     with st.expander(f"보관·대기 목록 {sum(x['ticker'] not in codes for x in rows):,}개 / 관찰 종료"):
-        st.caption('원본 종목은 삭제하지 않습니다. 새 후보는 대기하며, 관찰 종료로 빈자리가 생기면 다음 완료된 일일 수렴 검색에서 보충합니다.')
+        rule = '주도주' if cohort.get('policy') == 'leader_v1' else '수렴'
+        st.caption(f'원본 종목은 삭제하지 않습니다. 새 후보는 대기하며, 관찰 종료로 빈자리가 생기면 다음 완료된 일일 검색에서 {rule} 기준 충족 종목으로 보충합니다.')
         other = [{'종목': x.get('name', x['ticker']), '코드': x['ticker'],
                   '구분': '관찰 종료·보관' if x['ticker'] in archived else '보관·후보 대기'}
                  for x in rows if x['ticker'] not in codes]
@@ -663,17 +664,18 @@ def render_rise_timing_watchlist(universe=None):
     rows, sha = _load_watchlist()
     cohort, _ = _load_watch_cohort()
     if cohort is None:
-        st.warning('저장된 수렴 관찰 대상을 불러오지 못했습니다. 임의로 다른 종목을 대신 선정하지 않습니다. 잠시 후 새로고침해 주세요.')
+        st.warning('저장된 관찰 대상을 불러오지 못했습니다. 임의로 다른 종목을 대신 선정하지 않습니다. 잠시 후 새로고침해 주세요.')
     else:
         selected_rows = active_rows(rows, cohort)
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
-                                    saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''))
+                                    saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''),
+                                    cohort_policy=cohort.get('policy', 'convergence_v1'))
     render_new_discoveries(_recent_discoveries)
     if cohort is not None:
         _render_cohort_archive(rows, cohort)
 
     with st.expander("전체 보관 목록에 종목 추가·삭제"):
-        st.caption('여기서 추가한 종목은 보관 목록에 저장됩니다. 수렴 기준을 충족하고 관찰 자리가 있을 때 일일 검색에서 관찰 대상으로 선정됩니다.')
+        st.caption('여기서 추가한 종목은 보관 목록에 저장됩니다. 현재 선정 기준을 충족하고 관찰 자리가 있을 때 완료된 일일 검색에서 관찰 대상으로 선정됩니다.')
         c1,c2,c3=st.columns([1,2,1])
         code=c1.text_input("종목코드",key="rise_add_code").strip()
         name=c2.text_input("종목명",key="rise_add_name").strip()
@@ -693,3 +695,5 @@ def render_rise_timing_watchlist(universe=None):
                 idx=labels.index(remove);updated=rows[:idx]+rows[idx+1:]
                 try:_save_watchlist(updated,sha);st.success("관찰목록에서 삭제했습니다.");st.rerun()
                 except Exception as exc:st.error(str(exc))
+
+

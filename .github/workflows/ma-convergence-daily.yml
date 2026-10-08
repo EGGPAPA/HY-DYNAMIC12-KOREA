@@ -10,9 +10,11 @@ on:
     paths:
       - "ma_convergence.py"
       - "rise_watch_cohort.py"
+      - "rise_leaders.py"
       - "scripts/refresh_ma_convergence.py"
       - "tests/test_ma_convergence.py"
       - "tests/test_rise_watch_cohort.py"
+      - "tests/test_rise_leaders.py"
       - ".github/workflows/ma-convergence-daily.yml"
 
 permissions:
@@ -38,6 +40,8 @@ jobs:
         run: python -m unittest discover -s tests -p test_ma_convergence.py -v
       - name: Test persistent observation membership
         run: python -m unittest discover -s tests -p test_rise_watch_cohort.py -v
+      - name: Test saved-stock leader selection
+        run: python -m unittest discover -s tests -p test_rise_leaders.py -v
       - name: Scan closed daily bars and append new observations
         run: python scripts/refresh_ma_convergence.py --publish --output artifacts/ma-convergence-daily.json
       - name: Keep scan report
@@ -48,3 +52,5 @@ jobs:
           path: artifacts/ma-convergence-daily.json
           if-no-files-found: ignore
           retention-days: 14
+
+
