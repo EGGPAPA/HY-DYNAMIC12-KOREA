@@ -1,0 +1,28 @@
+name: Sector observation charts
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'sector_observation.py'
+      - 'sector_observation_ui.py'
+      - 'test_sector_observation.py'
+      - 'app.py'
+      - '.github/workflows/sector-observation-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'pandas>=2.2,<3'
+      - run: python -m unittest test_sector_observation test_current_price_analysis test_holiday_reference -v
+      - run: python -m py_compile app.py sector_observation.py sector_observation_ui.py

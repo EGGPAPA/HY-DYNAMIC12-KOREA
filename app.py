@@ -951,7 +951,10 @@ elif selected_view == "🔥 현재 5개월선 돌파":
     render_monthly_ma5_tab()
 
 elif selected_view == "📍 상승시점 관찰":
-    st.caption("아래 상승시점·개인관찰 평가는 상단의 저장 분석과 별도로 KIS 현재가로 갱신됩니다. 표 아래의 시세 수신시각을 확인하세요.")
+    from sector_observation_ui import render_sector_observation
+    render_sector_observation()
+    st.divider()
+    st.caption("업종 흐름은 마감 종가 기준입니다. 아래 상승시점·개인관찰 평가는 장중 KIS 현재가, 휴일에는 최근 확정 종가를 사용합니다.")
     rise_universe, _ = get_full_universe()
     render_rise_timing_watchlist(rise_universe)
 
@@ -961,3 +964,4 @@ elif selected_view == "📈 과거 성과 검증":
 
 
 st.caption("역할 분리: TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 전략검증=백테스트/OOS · 실제 체결/평균단가/수익률은 사이드바의 보유종목 관리에서 확인")
+
