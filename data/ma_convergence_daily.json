@@ -2395,7 +2395,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6466713457484915,
       "mean_value20": 25730499865.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -20.76271186440678,
+      "ret20_pct": -13.425925925925931,
+      "ret60_pct": 7.884615384615379,
+      "ma20_prev5": 32900.0
     },
     "011780": {
       "ticker": "011780",
@@ -2416,7 +2422,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6834173319860839,
       "mean_value20": 7730205300.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -4.257095158597668,
+      "ret20_pct": -8.96825396825397,
+      "ret60_pct": 2.502234137622872,
+      "ma20_prev5": 123030.0
     },
     "139130": {
       "ticker": "139130",
@@ -2437,7 +2449,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.0539362772937242,
       "mean_value20": 7364749900.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.190319031903188,
+      "ret20_pct": -5.630026809651478,
+      "ret60_pct": 1.675332177931832,
+      "ma20_prev5": 18450.5
     },
     "000815": {
       "ticker": "000815",
@@ -2478,7 +2496,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.9168125246296964,
       "mean_value20": 4454428480.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.221957040572798,
+      "ret20_pct": 8.395989974937335,
+      "ret60_pct": 16.419919246298797,
+      "ma20_prev5": 40725.0
     },
     "003530": {
       "ticker": "003530",
@@ -2499,7 +2523,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.5493634912071325,
       "mean_value20": 5234910144.25,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -7.521186440677963,
+      "ret20_pct": -11.190233977619535,
+      "ret60_pct": -0.11441647597254523,
+      "ma20_prev5": 4741.25
     },
     "158430": {
       "ticker": "158430",
@@ -2520,7 +2550,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.103675895874436,
       "mean_value20": 24068287973.75,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 15.575221238938063,
+      "ret20_pct": 40.73275862068966,
+      "ret60_pct": 77.44565217391303,
+      "ma20_prev5": 5174.75
     },
     "035510": {
       "ticker": "035510",
@@ -2541,7 +2577,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.3542907033299893,
       "mean_value20": 3427903997.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.926701570680624,
+      "ret20_pct": 5.6875449964002955,
+      "ret60_pct": 18.77022653721683,
+      "ma20_prev5": 15125.0
     },
     "035890": {
       "ticker": "035890",
@@ -2562,7 +2604,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8352494292588005,
       "mean_value20": 542508887.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -8.478260869565213,
+      "ret20_pct": -10.993657505285414,
+      "ret60_pct": 4.987531172069826,
+      "ma20_prev5": 2309.5
     },
     "003550": {
       "ticker": "003550",
@@ -2583,7 +2631,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.1103145080600796,
       "mean_value20": 26761438605.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.3006244424620856,
+      "ret20_pct": -12.931726907630525,
+      "ret60_pct": 7.008884501480761,
+      "ma20_prev5": 115550.0
     },
     "375500": {
       "ticker": "375500",
@@ -2604,7 +2658,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.0739400791540339,
       "mean_value20": 34312780175.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -20.374707259953162,
+      "ret20_pct": -12.82051282051282,
+      "ret60_pct": 9.854604200323092,
+      "ma20_prev5": 80720.0
     },
     "004990": {
       "ticker": "004990",
@@ -2625,7 +2685,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8888298749844082,
       "mean_value20": 3081456290.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.5327868852458995,
+      "ret20_pct": -7.243460764587528,
+      "ret60_pct": 0.43572984749455923,
+      "ma20_prev5": 24637.5
     },
     "041930": {
       "ticker": "041930",
@@ -2646,7 +2712,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.030299205708131393,
       "mean_value20": 314157246.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.8016032064128265,
+      "ret20_pct": -4.255319148936165,
+      "ret60_pct": 10.61452513966481,
+      "ma20_prev5": 5027.0
     },
     "071090": {
       "ticker": "071090",
@@ -2667,7 +2739,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.11520342349310997,
       "mean_value20": 6234250918.25,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 5.873261205564151,
+      "ret20_pct": 8.557844690966721,
+      "ret60_pct": 17.697594501718218,
+      "ma20_prev5": 3268.25
     },
     "000220": {
       "ticker": "000220",
@@ -2688,7 +2766,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.4686522921472851,
       "mean_value20": 270509171.25,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.4569536423840956,
+      "ret20_pct": -2.7918781725888353,
+      "ret60_pct": 6.241331484049928,
+      "ma20_prev5": 3820.0
     },
     "039130": {
       "ticker": "039130",
@@ -2709,7 +2793,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7313665117445782,
       "mean_value20": 902928587.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.298850574712641,
+      "ret20_pct": -9.29878048780488,
+      "ret60_pct": -4.186795491143314,
+      "ma20_prev5": 32037.5
     },
     "108380": {
       "ticker": "108380",
@@ -2730,7 +2820,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.515881190536138,
       "mean_value20": 462474106.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.824146981627299,
+      "ret20_pct": -4.774678111587982,
+      "ret60_pct": 11.285266457680244,
+      "ma20_prev5": 18482.5
     },
     "226590": {
       "ticker": "226590",
@@ -2751,7 +2847,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.392855790536103,
       "mean_value20": 1088585963.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.1361470388019037,
+      "ret20_pct": 21.139554087530964,
+      "ret60_pct": 24.851063829787236,
+      "ma20_prev5": 13174.5
     },
     "108230": {
       "ticker": "108230",
@@ -2772,7 +2874,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.1970833715731219,
       "mean_value20": 876081118.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.7692307692307683,
+      "ret20_pct": -6.508875739644971,
+      "ret60_pct": 12.857142857142856,
+      "ma20_prev5": 3230.5
     },
     "092790": {
       "ticker": "092790",
@@ -2793,7 +2901,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.15995839646409266,
       "mean_value20": 18484804449.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.95968322534197,
+      "ret20_pct": 0.7552870090634434,
+      "ret60_pct": 25.258215962441312,
+      "ma20_prev5": 13657.5
     },
     "117700": {
       "ticker": "117700",
@@ -2854,7 +2968,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.3341515457123022,
       "mean_value20": 2145188885.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 5.9113300492610765,
+      "ret20_pct": 12.565445026178,
+      "ret60_pct": 24.277456647398843,
+      "ma20_prev5": 6016.0
     },
     "051600": {
       "ticker": "051600",
@@ -2875,7 +2995,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7987134704156478,
       "mean_value20": 6710318172.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.609492988133768,
+      "ret20_pct": -7.602956705385433,
+      "ret60_pct": -2.2346368715083775,
+      "ma20_prev5": 46675.0
     },
     "004090": {
       "ticker": "004090",
@@ -2896,7 +3022,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.1365490505741733,
       "mean_value20": 8301488480.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.5977796754910392,
+      "ret20_pct": 2.4347826086956514,
+      "ret60_pct": 4.897595725734649,
+      "ma20_prev5": 11727.0
     },
     "056090": {
       "ticker": "056090",
@@ -2917,7 +3049,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.8493763214600047,
       "mean_value20": 271600442.25,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.5042016806722671,
+      "ret20_pct": 0.08453085376163294,
+      "ret60_pct": 11.2781954887218,
+      "ma20_prev5": 5913.75
     },
     "059090": {
       "ticker": "059090",
@@ -2938,7 +3076,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.1004364492573693,
       "mean_value20": 9557850557.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 21.144278606965173,
+      "ret20_pct": 30.1443078567611,
+      "ret60_pct": 54.50507614213198,
+      "ma20_prev5": 20014.0
     },
     "139250": {
       "ticker": "139250",
@@ -3019,7 +3163,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 2.8272158284934648,
       "mean_value20": 56850312450.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 7.648183556405352,
+      "ret20_pct": 0.7155635062611854,
+      "ret60_pct": 11.928429423459242,
+      "ma20_prev5": 269600.0
     },
     "499660": {
       "ticker": "499660",
@@ -3060,7 +3210,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8354312574909128,
       "mean_value20": 11803256327.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 14.066289409862565,
+      "ret20_pct": 40.11916583912611,
+      "ret60_pct": 77.48427672955975,
+      "ma20_prev5": 11150.5
     },
     "305720": {
       "ticker": "305720",
@@ -3101,7 +3257,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.8914070899123732,
       "mean_value20": 68597459700.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -4.381846635367759,
+      "ret20_pct": -8.941877794336806,
+      "ret60_pct": 2.8619528619528545,
+      "ma20_prev5": 326650.0
     },
     "039030": {
       "ticker": "039030",
@@ -3122,7 +3284,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.6640555185613621,
       "mean_value20": 58480867625.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 6.570841889117052,
+      "ret20_pct": 13.815789473684204,
+      "ret60_pct": 51.532846715328475,
+      "ma20_prev5": 456150.0
     },
     "316140": {
       "ticker": "316140",
@@ -3143,7 +3311,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8221907045571031,
       "mean_value20": 122734475685.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -11.111111111111116,
+      "ret20_pct": -5.263157894736848,
+      "ret60_pct": 7.82029950083194,
+      "ma20_prev5": 35240.0
     },
     "105560": {
       "ticker": "105560",
@@ -3164,7 +3338,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.91271731790364,
       "mean_value20": 155596717075.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -8.150646430578979,
+      "ret20_pct": -7.106310403638427,
+      "ret60_pct": -4.667444574095681,
+      "ma20_prev5": 174905.0
     },
     "403870": {
       "ticker": "403870",
@@ -3185,7 +3365,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6875630673564973,
       "mean_value20": 144213774465.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 15.732368896925863,
+      "ret20_pct": 20.075046904315208,
+      "ret60_pct": 62.84987277353689,
+      "ma20_prev5": 54240.0
     },
     "086790": {
       "ticker": "086790",
@@ -3206,7 +3392,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.2197416196423831,
       "mean_value20": 88013268370.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -8.253500368459843,
+      "ret20_pct": -10.367170626349898,
+      "ret60_pct": 1.5497553017944643,
+      "ma20_prev5": 136050.0
     },
     "030200": {
       "ticker": "030200",
@@ -3227,7 +3419,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.887881623547984,
       "mean_value20": 14250115740.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.7523452157598447,
+      "ret20_pct": -6.5573770491803245,
+      "ret60_pct": -11.55172413793103,
+      "ma20_prev5": 53280.0
     },
     "323410": {
       "ticker": "323410",
@@ -3248,7 +3446,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.1259123753387337,
       "mean_value20": 15915613667.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.842364532019704,
+      "ret20_pct": -11.473922902494326,
+      "ret60_pct": -9.629629629629633,
+      "ma20_prev5": 21107.5
     },
     "010120": {
       "ticker": "010120",
@@ -3269,7 +3473,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.773488608760652,
       "mean_value20": 85853736930.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.540284360189574,
+      "ret20_pct": -4.734299516908214,
+      "ret60_pct": 4.118268215417098,
+      "ma20_prev5": 203290.0
     },
     "253450": {
       "ticker": "253450",
@@ -3290,7 +3500,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.7715646940822467,
       "mean_value20": 904410172.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.23809523809523725,
+      "ret20_pct": -3.4562211981566837,
+      "ret60_pct": -4.11899313501144,
+      "ma20_prev5": 21187.5
     },
     "009540": {
       "ticker": "009540",
@@ -3311,7 +3527,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.1305317421710646,
       "mean_value20": 56613598475.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -13.88478581979321,
+      "ret20_pct": -17.0697012802276,
+      "ret60_pct": -10.99236641221374,
+      "ma20_prev5": 343250.0
     },
     "064960": {
       "ticker": "064960",
@@ -3332,7 +3554,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.763913739190671,
       "mean_value20": 1514935585.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.1400778210116655,
+      "ret20_pct": -2.0522388059701524,
+      "ret60_pct": 3.754940711462451,
+      "ma20_prev5": 26342.5
     },
     "475400": {
       "ticker": "475400",
@@ -3353,7 +3581,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.5412531085847225,
       "mean_value20": 1965263772.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.2178590640129086,
+      "ret20_pct": -1.0112359550561778,
+      "ret60_pct": 8.899876390605677,
+      "ma20_prev5": 18167.0
     },
     "001500": {
       "ticker": "001500",
@@ -3374,7 +3608,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.9178858194206962,
       "mean_value20": 442413193.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -4.797979797979801,
+      "ret20_pct": -8.048780487804875,
+      "ret60_pct": -3.457106274007682,
+      "ma20_prev5": 7937.5
     },
     "199820": {
       "ticker": "199820",
@@ -3395,7 +3635,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6716076120614043,
       "mean_value20": 1007830409.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.3419023136246784,
+      "ret20_pct": 2.0352781546811416,
+      "ret60_pct": 7.275320970042798,
+      "ma20_prev5": 7496.5
     },
     "000400": {
       "ticker": "000400",
@@ -3416,7 +3662,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.8308689186157787,
       "mean_value20": 738918356.75,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 11.407766990291268,
+      "ret20_pct": 10.336538461538458,
+      "ret60_pct": 11.407766990291268,
+      "ma20_prev5": 2073.25
     },
     "178920": {
       "ticker": "178920",
@@ -3437,7 +3689,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.024324064056012,
       "mean_value20": 722499924.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 11.081226465841842,
+      "ret20_pct": 6.7735263702171755,
+      "ret60_pct": 16.20709060213843,
+      "ma20_prev5": 18817.0
     },
     "024110": {
       "ticker": "024110",
@@ -3458,7 +3716,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.5288119597971357,
       "mean_value20": 16724292277.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.2406947890818865,
+      "ret20_pct": -4.784688995215314,
+      "ret60_pct": -2.9268292682926855,
+      "ma20_prev5": 20580.0
     },
     "200670": {
       "ticker": "200670",
@@ -3479,7 +3743,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.0963806098354423,
       "mean_value20": 716154767.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.020202020202011,
+      "ret20_pct": -2.131782945736438,
+      "ret60_pct": -2.5096525096525046,
+      "ma20_prev5": 25385.0
     },
     "445090": {
       "ticker": "445090",
@@ -3500,7 +3770,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 3.5854761673500932,
       "mean_value20": 605109515.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 7.126436781609202,
+      "ret20_pct": 14.4963144963145,
+      "ret60_pct": 8.878504672897192,
+      "ma20_prev5": 20849.0
     },
     "046890": {
       "ticker": "046890",
@@ -3521,7 +3797,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6804857573978491,
       "mean_value20": 2796410749.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.4840271055179146,
+      "ret20_pct": 6.900102986611745,
+      "ret60_pct": 9.378292939936772,
+      "ma20_prev5": 9962.0
     },
     "117730": {
       "ticker": "117730",
@@ -3542,7 +3824,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.4006911271470678,
       "mean_value20": 1913520348.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 6.726457399103136,
+      "ret20_pct": 9.761721752498076,
+      "ret60_pct": 24.49869224062773,
+      "ma20_prev5": 13298.0
     },
     "232680": {
       "ticker": "232680",
@@ -3563,7 +3851,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6693634050658234,
       "mean_value20": 1077382535.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 9.90990990990992,
+      "ret20_pct": 15.94508975712776,
+      "ret60_pct": 32.76904474002418,
+      "ma20_prev5": 9625.0
     },
     "112290": {
       "ticker": "112290",
@@ -3584,7 +3878,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.1899288530297214,
       "mean_value20": 2502777699.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 19.401544401544403,
+      "ret20_pct": 28.053830227743283,
+      "ret60_pct": 27.657378740970074,
+      "ma20_prev5": 10109.0
     },
     "120110": {
       "ticker": "120110",
@@ -3605,7 +3905,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.1319964638398017,
       "mean_value20": 10500435225.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.298611111111116,
+      "ret20_pct": 0.9057971014492683,
+      "ret60_pct": 2.2018348623853212,
+      "ma20_prev5": 55925.0
     },
     "105630": {
       "ticker": "105630",
@@ -3626,7 +3932,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.5289975717299726,
       "mean_value20": 376864571.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.1467889908256979,
+      "ret20_pct": -3.5010940919037226,
+      "ret60_pct": -2.0000000000000018,
+      "ma20_prev5": 8915.5
     },
     "322510": {
       "ticker": "322510",
@@ -3647,7 +3959,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6699667890360306,
       "mean_value20": 837999250.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 5.316973415132931,
+      "ret20_pct": 10.871905274488691,
+      "ret60_pct": 22.473246135552905,
+      "ma20_prev5": 4885.5
     },
     "033100": {
       "ticker": "033100",
@@ -3668,7 +3986,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.011627718185459,
       "mean_value20": 3579190460.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.577287066246047,
+      "ret20_pct": 5.228758169934644,
+      "ret60_pct": 13.114754098360649,
+      "ma20_prev5": 46392.5
     },
     "095660": {
       "ticker": "095660",
@@ -3689,7 +4013,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.1089462357522466,
       "mean_value20": 669262193.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.6237402015677471,
+      "ret20_pct": -0.6783493499152082,
+      "ret60_pct": -3.2488986784140916,
+      "ma20_prev5": 17856.0
     },
     "004000": {
       "ticker": "004000",
@@ -3710,7 +4040,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.1214931412332916,
       "mean_value20": 2119200712.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.7174887892376685,
+      "ret20_pct": -8.187772925764191,
+      "ret60_pct": -2.0954598370197863,
+      "ma20_prev5": 45207.5
     },
     "001250": {
       "ticker": "001250",
@@ -3731,7 +4067,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.7525781039607307,
       "mean_value20": 1735773117.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 24.951267056530213,
+      "ret20_pct": 20.715630885122405,
+      "ret60_pct": 26.679841897233203,
+      "ma20_prev5": 2636.25
     },
     "249420": {
       "ticker": "249420",
@@ -3752,7 +4094,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7498035066341581,
       "mean_value20": 3281795715.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.128349788434413,
+      "ret20_pct": -6.781914893617024,
+      "ret60_pct": -5.589225589225588,
+      "ma20_prev5": 14791.5
     },
     "011790": {
       "ticker": "011790",
@@ -3773,7 +4121,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.2425153531075677,
       "mean_value20": 22818967200.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 20.922384701912257,
+      "ret20_pct": 22.159090909090917,
+      "ret60_pct": 16.97497279651796,
+      "ma20_prev5": 88600.0
     },
     "026960": {
       "ticker": "026960",
@@ -3794,7 +4148,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6570596878038606,
       "mean_value20": 1704430637.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.1372549019607954,
+      "ret20_pct": 3.1372549019607954,
+      "ret60_pct": 0.19047619047618536,
+      "ma20_prev5": 25560.0
     },
     "089010": {
       "ticker": "089010",
@@ -3815,7 +4175,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8350656926605421,
       "mean_value20": 4233671415.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 21.29032258064516,
+      "ret20_pct": 21.81425485961124,
+      "ret60_pct": 35.251798561151084,
+      "ma20_prev5": 22965.0
     },
     "272210": {
       "ticker": "272210",
@@ -3836,7 +4202,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.8082330843218042,
       "mean_value20": 57215623240.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.6476683937823857,
+      "ret20_pct": 8.640226628895187,
+      "ret60_pct": 18.54714064914993,
+      "ma20_prev5": 72500.0
     },
     "053700": {
       "ticker": "053700",
@@ -3857,7 +4229,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.7698003760876263,
       "mean_value20": 364097337.25,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.8277634961439535,
+      "ret20_pct": -0.24937655860348684,
+      "ret60_pct": 8.108108108108114,
+      "ma20_prev5": 3941.0
     },
     "031210": {
       "ticker": "031210",
@@ -3878,7 +4256,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.0308408464835621,
       "mean_value20": 1708690537.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.318944844124692,
+      "ret20_pct": -3.318077803203656,
+      "ret60_pct": -0.23612750885477762,
+      "ma20_prev5": 42960.0
     },
     "098070": {
       "ticker": "098070",
@@ -3899,7 +4283,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7160345018683894,
       "mean_value20": 2431672267.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.91836734693878,
+      "ret20_pct": -9.430255402750486,
+      "ret60_pct": 4.06320541760723,
+      "ma20_prev5": 24632.5
     },
     "000080": {
       "ticker": "000080",
@@ -3920,7 +4310,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.9548938700111119,
       "mean_value20": 1068907600.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.1234240212342437,
+      "ret20_pct": -4.8387096774193505,
+      "ret60_pct": -4.2207792207792245,
+      "ma20_prev5": 15235.5
     },
     "004430": {
       "ticker": "004430",
@@ -3941,7 +4337,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.5770051454794992,
       "mean_value20": 1026208576.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.1333914559721103,
+      "ret20_pct": -1.9442096365173245,
+      "ret60_pct": -5.07364975450082,
+      "ma20_prev5": 11619.0
     },
     "128820": {
       "ticker": "128820",
@@ -3962,7 +4364,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 10.299350136921886,
       "mean_value20": 3433589814.25,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 13.167701863354031,
+      "ret20_pct": 9.495192307692314,
+      "ret60_pct": 10.2905569007264,
+      "ma20_prev5": 4121.75
     },
     "144510": {
       "ticker": "144510",
@@ -3983,7 +4391,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7624498095456739,
       "mean_value20": 620879308.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.8711484593837433,
+      "ret20_pct": -2.715231788079475,
+      "ret60_pct": 8.333333333333325,
+      "ma20_prev5": 14264.5
     },
     "365330": {
       "ticker": "365330",
@@ -4004,7 +4418,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.9015540127676669,
       "mean_value20": 769708790.8,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.8637532133676027,
+      "ret20_pct": 0.6988564167725642,
+      "ret60_pct": -11.00505334081976,
+      "ma20_prev5": 1567.3
     },
     "126720": {
       "ticker": "126720",
@@ -4025,7 +4445,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.3941594275016123,
       "mean_value20": 497302142.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.8561484918793503,
+      "ret20_pct": -2.083333333333337,
+      "ret60_pct": 1.9277108433734869,
+      "ma20_prev5": 21620.0
     },
     "001440": {
       "ticker": "001440",
@@ -4046,7 +4472,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.005414765069869,
       "mean_value20": 90916891360.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.280991735537189,
+      "ret20_pct": -1.0471204188481686,
+      "ret60_pct": 1.9784172661870603,
+      "ma20_prev5": 29330.0
     },
     "032640": {
       "ticker": "032640",
@@ -4067,7 +4499,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7702088749472892,
       "mean_value20": 12699667565.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.6882312456985562,
+      "ret20_pct": -4.3737574552683895,
+      "ret60_pct": -5.065789473684212,
+      "ma20_prev5": 14769.0
     },
     "026940": {
       "ticker": "026940",
@@ -4088,7 +4526,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.32989140944321066,
       "mean_value20": 682524491.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -4.449648711943799,
+      "ret20_pct": -8.92857142857143,
+      "ret60_pct": -12.82051282051282,
+      "ma20_prev5": 2188.5
     },
     "011930": {
       "ticker": "011930",
@@ -4109,7 +4553,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.6082548763227569,
       "mean_value20": 4153951197.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 15.891701000588586,
+      "ret20_pct": 21.24384236453203,
+      "ret60_pct": 25.174825174825166,
+      "ma20_prev5": 16617.5
     },
     "035250": {
       "ticker": "035250",
@@ -4130,7 +4580,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.4645235299999628,
       "mean_value20": 3210925589.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.2499999999999956,
+      "ret20_pct": -3.8539553752535483,
+      "ret60_pct": -3.331067301155677,
+      "ma20_prev5": 14606.0
     },
     "355150": {
       "ticker": "355150",
@@ -4151,7 +4607,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.2398858275569355,
       "mean_value20": 2988209858.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 10.588235294117654,
+      "ret20_pct": 22.2684703433923,
+      "ret60_pct": 24.602332979851525,
+      "ma20_prev5": 20097.5
     },
     "122350": {
       "ticker": "122350",
@@ -4172,7 +4634,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 19.11464266045889,
       "mean_value20": 3468210175.65,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 10.664112388250313,
+      "ret20_pct": -0.5166475315729002,
+      "ret60_pct": 5.030303030303029,
+      "ma20_prev5": 1650.35
     },
     "415640": {
       "ticker": "415640",
@@ -4193,7 +4661,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.2668611725619028,
       "mean_value20": 2523171486.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.203883495145632,
+      "ret20_pct": -4.957102001906577,
+      "ret60_pct": -7.082945013979492,
+      "ma20_prev5": 10415.0
     },
     "036090": {
       "ticker": "036090",
@@ -4214,7 +4688,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.2302243730713985,
       "mean_value20": 777986349.35,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.126452494873545,
+      "ret20_pct": 2.5110782865583436,
+      "ret60_pct": 10.597609561752996,
+      "ma20_prev5": 1348.15
     },
     "003540": {
       "ticker": "003540",
@@ -4235,7 +4715,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.3349966744208364,
       "mean_value20": 1625738545.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -7.954545454545459,
+      "ret20_pct": -8.818011257035652,
+      "ret60_pct": -8.128544423440454,
+      "ma20_prev5": 26550.0
     },
     "043650": {
       "ticker": "043650",
@@ -4256,7 +4742,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.06495518701602604,
       "mean_value20": 657191378.75,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.878116343490301,
+      "ret20_pct": -3.6111111111111094,
+      "ret60_pct": -1.6997167138810165,
+      "ma20_prev5": 3601.25
     },
     "011040": {
       "ticker": "011040",
@@ -4277,7 +4769,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.5573490021211699,
       "mean_value20": 116864878.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.195219123505975,
+      "ret20_pct": -1.5503875968992276,
+      "ret60_pct": 2.008032128514059,
+      "ma20_prev5": 5069.5
     },
     "460930": {
       "ticker": "460930",
@@ -4298,7 +4796,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.9356873613474237,
       "mean_value20": 1450938822.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.311787072243346,
+      "ret20_pct": -7.853403141361259,
+      "ret60_pct": 11.898274296094469,
+      "ma20_prev5": 13266.5
     },
     "137310": {
       "ticker": "137310",
@@ -4319,7 +4823,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.444610295320556,
       "mean_value20": 803944953.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 6.0556464811784005,
+      "ret20_pct": 5.024311183144237,
+      "ret60_pct": 2.5316455696202445,
+      "ma20_prev5": 6140.5
     },
     "084370": {
       "ticker": "084370",
@@ -4340,7 +4850,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.0597196646587348,
       "mean_value20": 28984130035.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 20.49122807017545,
+      "ret20_pct": 19.90223463687151,
+      "ret60_pct": 16.80272108843537,
+      "ma20_prev5": 142340.0
     },
     "058430": {
       "ticker": "058430",
@@ -4361,7 +4877,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.6650516601927846,
       "mean_value20": 1000241575.75,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.588735387885225,
+      "ret20_pct": -7.57097791798107,
+      "ret60_pct": -6.189967982924227,
+      "ma20_prev5": 4695.25
     },
     "000660": {
       "ticker": "000660",
@@ -4382,7 +4904,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.9807089326041426,
       "mean_value20": 5671383141900.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -10.27142096860032,
+      "ret20_pct": -5.440269209197979,
+      "ret60_pct": -22.87282708142726,
+      "ma20_prev5": 1766500.0
     },
     "240550": {
       "ticker": "240550",
@@ -4403,7 +4931,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.12552807873060332,
       "mean_value20": 2945098645.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.3159557661927326,
+      "ret20_pct": 7.8632478632478575,
+      "ret60_pct": 12.4777183600713,
+      "ma20_prev5": 5886.0
     },
     "382150": {
       "ticker": "382150",
@@ -4424,7 +4958,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.13007140775575454,
       "mean_value20": 454850181.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.0,
+      "ret20_pct": 5.643994211287984,
+      "ret60_pct": 7.038123167155419,
+      "ma20_prev5": 3507.5
     },
     "222080": {
       "ticker": "222080",
@@ -4445,7 +4985,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 3.6361678673731936,
       "mean_value20": 4253809368.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 12.41914618369988,
+      "ret20_pct": 14.34210526315789,
+      "ret60_pct": 16.021361815754332,
+      "ma20_prev5": 7625.5
     },
     "241520": {
       "ticker": "241520",
@@ -4466,7 +5012,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8020360883610141,
       "mean_value20": 861778390.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.9815950920245453,
+      "ret20_pct": 0.7490636704119868,
+      "ret60_pct": 0.7490636704119868,
+      "ma20_prev5": 8050.5
     },
     "005860": {
       "ticker": "005860",
@@ -4487,7 +5039,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.28321533684583666,
       "mean_value20": 2075353423.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.742616033755274,
+      "ret20_pct": -3.556485355648531,
+      "ret60_pct": -5.1440329218107035,
+      "ma20_prev5": 2407.0
     },
     "298040": {
       "ticker": "298040",
@@ -4508,7 +5066,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.6457764136206237,
       "mean_value20": 110380636800.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -13.845099383139136,
+      "ret20_pct": -15.210792580101185,
+      "ret60_pct": -9.241877256317688,
+      "ma20_prev5": 2840000.0
     },
     "002960": {
       "ticker": "002960",
@@ -4529,7 +5093,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.6241273387321977,
       "mean_value20": 483658550.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 7.707509881422925,
+      "ret20_pct": 9.327983951855568,
+      "ret60_pct": 9.547738693467345,
+      "ma20_prev5": 506200.0
     },
     "098460": {
       "ticker": "098460",
@@ -4550,7 +5120,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.7052089062309306,
       "mean_value20": 47871009275.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 30.36649214659686,
+      "ret20_pct": 32.91814946619218,
+      "ret60_pct": 47.337278106508876,
+      "ma20_prev5": 28287.5
     },
     "006260": {
       "ticker": "006260",
@@ -4571,7 +5147,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.620206097299942,
       "mean_value20": 39140826025.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -17.76416539050536,
+      "ret20_pct": -15.165876777251185,
+      "ret60_pct": -14.35406698564593,
+      "ma20_prev5": 312600.0
     },
     "000240": {
       "ticker": "000240",
@@ -4592,7 +5174,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 2.020308524173028,
       "mean_value20": 1661852800.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 6.288032454361048,
+      "ret20_pct": 6.720977596741351,
+      "ret60_pct": 2.946954813359537,
+      "ma20_prev5": 24572.5
     },
     "066570": {
       "ticker": "066570",
@@ -4613,7 +5201,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.3521042252303637,
       "mean_value20": 153913873955.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.9852216748768461,
+      "ret20_pct": -6.0747663551401825,
+      "ret60_pct": 12.921348314606739,
+      "ma20_prev5": 205240.0
     },
     "212560": {
       "ticker": "212560",
@@ -4634,7 +5228,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.2718122478818099,
       "mean_value20": 3453925259.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.9867549668874163,
+      "ret20_pct": -12.794612794612792,
+      "ret60_pct": -4.954128440366967,
+      "ma20_prev5": 10480.5
     },
     "015750": {
       "ticker": "015750",
@@ -4655,7 +5255,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7222091339992028,
       "mean_value20": 976560187.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.6825938566552892,
+      "ret20_pct": -4.433497536945808,
+      "ret60_pct": 2.8268551236749095,
+      "ma20_prev5": 5933.5
     },
     "006650": {
       "ticker": "006650",
@@ -4676,7 +5282,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.5099939272050137,
       "mean_value20": 4867058070.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -8.811475409836067,
+      "ret20_pct": -8.71794871794872,
+      "ret60_pct": -12.315270935960587,
+      "ma20_prev5": 97590.0
     },
     "049070": {
       "ticker": "049070",
@@ -4697,7 +5309,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6633331116474156,
       "mean_value20": 1164637145.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.641717116125486,
+      "ret20_pct": -3.2676348547717837,
+      "ret60_pct": 10.029498525073755,
+      "ma20_prev5": 18227.0
     },
     "089030": {
       "ticker": "089030",
@@ -4718,7 +5336,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8437147680622806,
       "mean_value20": 36980631165.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 13.664596273291929,
+      "ret20_pct": 14.137214137214137,
+      "ret60_pct": 39.16349809885931,
+      "ma20_prev5": 47510.0
     },
     "187790": {
       "ticker": "187790",
@@ -4739,7 +5363,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.20856671487056236,
       "mean_value20": 695890608.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.1475409836065653,
+      "ret20_pct": 0.8169934640522847,
+      "ret60_pct": 0.0,
+      "ma20_prev5": 3038.25
     },
     "005930": {
       "ticker": "005930",
@@ -4760,7 +5390,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.2079057943769638,
       "mean_value20": 4498100075275.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -4.363636363636358,
+      "ret20_pct": -2.592592592592591,
+      "ret60_pct": -5.39568345323741,
+      "ma20_prev5": 263825.0
     },
     "067630": {
       "ticker": "067630",
@@ -4781,7 +5417,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.5919916423828038,
       "mean_value20": 4411566114.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 68.97196261682244,
+      "ret20_pct": 69.92481203007519,
+      "ret60_pct": 42.1383647798742,
+      "ma20_prev5": 2747.5
     },
     "088980": {
       "ticker": "088980",
@@ -4802,7 +5444,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7521287593469979,
       "mean_value20": 6673215034.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.5096839959225274,
+      "ret20_pct": -1.5136226034308753,
+      "ret60_pct": -2.6919242273180433,
+      "ma20_prev5": 9848.0
     },
     "033270": {
       "ticker": "033270",
@@ -4823,7 +5471,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.3903879453066054,
       "mean_value20": 487957075.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.5019520356943641,
+      "ret20_pct": -2.139330773450354,
+      "ret60_pct": 3.962703962703973,
+      "ma20_prev5": 18056.5
     },
     "104620": {
       "ticker": "104620",
@@ -4844,7 +5498,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.14373965399849647,
       "mean_value20": 926121084.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.2187004754358197,
+      "ret20_pct": -2.0634920634920673,
+      "ret60_pct": -5.657492354740057,
+      "ma20_prev5": 3177.5
     },
     "102710": {
       "ticker": "102710",
@@ -4865,7 +5525,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.4659717617376398,
       "mean_value20": 3421917510.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 15.874855156431057,
+      "ret20_pct": 18.483412322274884,
+      "ret60_pct": 29.53367875647668,
+      "ma20_prev5": 42992.5
     },
     "189330": {
       "ticker": "189330",
@@ -4886,7 +5552,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.3661975739347134,
       "mean_value20": 3021153891.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -11.369740376007165,
+      "ret20_pct": -14.3598615916955,
+      "ret60_pct": -24.600152322924597,
+      "ma20_prev5": 11271.0
     },
     "014940": {
       "ticker": "014940",
@@ -4907,7 +5579,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.990491269979828,
       "mean_value20": 538773812.75,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.286343612334798,
+      "ret20_pct": -7.027027027027022,
+      "ret60_pct": -0.11614401858304202,
+      "ma20_prev5": 4575.5
     },
     "140860": {
       "ticker": "140860",
@@ -4928,7 +5606,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.6918935030097257,
       "mean_value20": 9076052125.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 22.637795275590555,
+      "ret20_pct": 16.885553470919334,
+      "ret60_pct": 7.9722703639514725,
+      "ma20_prev5": 258000.0
     },
     "454910": {
       "ticker": "454910",
@@ -4949,7 +5633,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.284405520957703,
       "mean_value20": 20739142785.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.7021276595744705,
+      "ret20_pct": -1.5625,
+      "ret60_pct": -1.5625,
+      "ma20_prev5": 69600.0
     },
     "011200": {
       "ticker": "011200",
@@ -4970,7 +5660,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.5811814994333275,
       "mean_value20": 16295976382.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.9501187648456089,
+      "ret20_pct": -2.7972027972028024,
+      "ret60_pct": 7.9192546583851,
+      "ma20_prev5": 21010.0
     },
     "236200": {
       "ticker": "236200",
@@ -4991,7 +5687,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6970197068245801,
       "mean_value20": 1459267690.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 7.269155206286837,
+      "ret20_pct": 7.269155206286837,
+      "ret60_pct": 21.333333333333336,
+      "ma20_prev5": 52615.0
     },
     "263750": {
       "ticker": "263750",
@@ -5012,7 +5714,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7900149328888194,
       "mean_value20": 7694651917.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.763688760806918,
+      "ret20_pct": -2.3880597014925398,
+      "ret60_pct": -10.288065843621396,
+      "ma20_prev5": 33825.0
     },
     "033780": {
       "ticker": "033780",
@@ -5033,7 +5741,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.946473616528755,
       "mean_value20": 38450602530.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.13133640552996,
+      "ret20_pct": 4.1103934233705175,
+      "ret60_pct": 0.5102040816326481,
+      "ma20_prev5": 172905.0
     },
     "489790": {
       "ticker": "489790",
@@ -5054,7 +5768,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6837959485597247,
       "mean_value20": 8454234265.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.5031847133758065,
+      "ret20_pct": -1.9114688128772594,
+      "ret60_pct": 12.977983777520286,
+      "ma20_prev5": 47720.0
     },
     "058860": {
       "ticker": "058860",
@@ -5075,7 +5795,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.11490015360983102,
       "mean_value20": 831432342.25,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 5.070993914807298,
+      "ret20_pct": 0.5825242718446644,
+      "ret60_pct": 1.9685039370078705,
+      "ma20_prev5": 2556.0
     },
     "034730": {
       "ticker": "034730",
@@ -5096,7 +5822,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.6024964899230905,
       "mean_value20": 72380295500.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.941176470588236,
+      "ret20_pct": -8.183306055646478,
+      "ret60_pct": -8.032786885245901,
+      "ma20_prev5": 577350.0
     },
     "004980": {
       "ticker": "004980",
@@ -5117,7 +5849,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.8895878370352773,
       "mean_value20": 406257507.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.3199023199023228,
+      "ret20_pct": -5.771495877502941,
+      "ret60_pct": -9.297052154195008,
+      "ma20_prev5": 8274.5
     },
     "004440": {
       "ticker": "004440",
@@ -5138,7 +5876,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.2901002842966409,
       "mean_value20": 523563169.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.9505703422053147,
+      "ret20_pct": -0.9328358208955279,
+      "ret60_pct": -2.7472527472527486,
+      "ma20_prev5": 5255.0
     },
     "093320": {
       "ticker": "093320",
@@ -5159,7 +5903,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.40795645241515244,
       "mean_value20": 1436866430.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.308919506889055,
+      "ret20_pct": -10.650069156293219,
+      "ret60_pct": -3.293413173652693,
+      "ma20_prev5": 137225.0
     },
     "123690": {
       "ticker": "123690",
@@ -5180,7 +5930,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.23335288341633836,
       "mean_value20": 1794541276.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.31347962382444194,
+      "ret20_pct": 0.15649452269170805,
+      "ret60_pct": 3.059581320450877,
+      "ma20_prev5": 6390.0
     },
     "272290": {
       "ticker": "272290",
@@ -5201,7 +5957,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.2742456349798537,
       "mean_value20": 1828115707.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 7.211538461538458,
+      "ret20_pct": 8.252427184466015,
+      "ret60_pct": 3.962703962703973,
+      "ma20_prev5": 20670.0
     },
     "420570": {
       "ticker": "420570",
@@ -5222,7 +5984,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.5011129124447071,
       "mean_value20": 579312357.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.7056277056277,
+      "ret20_pct": 3.9430449069003393,
+      "ret60_pct": 22.60981912144704,
+      "ma20_prev5": 9203.0
     },
     "000440": {
       "ticker": "000440",
@@ -5243,7 +6011,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.1639203833410358,
       "mean_value20": 1254625013.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.7282010997643371,
+      "ret20_pct": 2.79375513557929,
+      "ret60_pct": -9.413468501086165,
+      "ma20_prev5": 12561.0
     },
     "008060": {
       "ticker": "008060",
@@ -5264,7 +6038,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7310940026233755,
       "mean_value20": 1197470002.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 15.600843288826427,
+      "ret20_pct": 11.44986449864498,
+      "ret60_pct": 20.07299270072993,
+      "ma20_prev5": 14697.0
     },
     "105840": {
       "ticker": "105840",
@@ -5285,7 +6065,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.5274903177092358,
       "mean_value20": 6601915660.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -16.82368775235532,
+      "ret20_pct": -10.239651416122008,
+      "ret60_pct": -14.404432132963985,
+      "ma20_prev5": 14190.0
     },
     "009830": {
       "ticker": "009830",
@@ -5306,7 +6092,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7508489117605126,
       "mean_value20": 104204554215.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 28.41726618705036,
+      "ret20_pct": 20.404721753794263,
+      "ret60_pct": 15.909090909090917,
+      "ma20_prev5": 30052.5
     },
     "078520": {
       "ticker": "078520",
@@ -5327,7 +6119,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7436556717163624,
       "mean_value20": 874610718.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 8.646616541353392,
+      "ret20_pct": 6.347746090156403,
+      "ret60_pct": 22.19873150105709,
+      "ma20_prev5": 10683.0
     },
     "003030": {
       "ticker": "003030",
@@ -5348,7 +6146,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.157456774129254,
       "mean_value20": 2273739895.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -4.629629629629628,
+      "ret20_pct": -2.3696682464455,
+      "ret60_pct": -1.4354066985645897,
+      "ma20_prev5": 106405.0
     },
     "086280": {
       "ticker": "086280",
@@ -5369,7 +6173,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.5465701925885107,
       "mean_value20": 29249233660.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -10.196078431372547,
+      "ret20_pct": -12.761904761904763,
+      "ret60_pct": -0.5968529571351078,
+      "ma20_prev5": 202960.0
     },
     "066430": {
       "ticker": "066430",
@@ -5390,7 +6200,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.4314564466754746,
       "mean_value20": 931527149.25,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.511627906976747,
+      "ret20_pct": -3.597122302158273,
+      "ret60_pct": -4.057279236276845,
+      "ma20_prev5": 2083.25
     },
     "214180": {
       "ticker": "214180",
@@ -5411,7 +6227,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.9296620799140967,
       "mean_value20": 592024628.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.07132667617688604,
+      "ret20_pct": -3.645116918844571,
+      "ret60_pct": 6.702208682406696,
+      "ma20_prev5": 14206.0
     },
     "012860": {
       "ticker": "012860",
@@ -5432,7 +6254,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.1513115062538861,
       "mean_value20": 1215517634.75,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 7.221006564551424,
+      "ret20_pct": 8.64745011086474,
+      "ret60_pct": 10.1123595505618,
+      "ma20_prev5": 2263.0
     },
     "365550": {
       "ticker": "365550",
@@ -5453,7 +6281,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.5293613428616627,
       "mean_value20": 722788815.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.9569377990430672,
+      "ret20_pct": 1.4705882352941124,
+      "ret60_pct": -2.6645768025078342,
+      "ma20_prev5": 3140.75
     },
     "030520": {
       "ticker": "030520",
@@ -5474,7 +6308,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 2.3999122204752887,
       "mean_value20": 2687918580.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.2796660703637404,
+      "ret20_pct": -0.345224395857302,
+      "ret60_pct": 1.1091652072387603,
+      "ma20_prev5": 17187.5
     },
     "097520": {
       "ticker": "097520",
@@ -5495,7 +6335,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.0373287527755668,
       "mean_value20": 527076385.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.481121898597616,
+      "ret20_pct": -0.2624671916010457,
+      "ret60_pct": 3.88190267905959,
+      "ma20_prev5": 18999.0
     },
     "247540": {
       "ticker": "247540",
@@ -5516,7 +6362,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.64346686237704,
       "mean_value20": 45360591610.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 21.751684311838314,
+      "ret20_pct": 18.556701030927837,
+      "ret60_pct": 15.268260679399326,
+      "ma20_prev5": 107668.5
     },
     "006340": {
       "ticker": "006340",
@@ -5537,7 +6389,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.46619095145992284,
       "mean_value20": 33090873204.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -8.102189781021895,
+      "ret20_pct": -5.2671181339352895,
+      "ret60_pct": 30.73727933541017,
+      "ma20_prev5": 13179.0
     },
     "194370": {
       "ticker": "194370",
@@ -5558,7 +6416,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.3522430560976661,
       "mean_value20": 503347473.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.642633228840122,
+      "ret20_pct": -5.122143420015757,
+      "ret60_pct": 2.6427962489343537,
+      "ma20_prev5": 12862.0
     },
     "259630": {
       "ticker": "259630",
@@ -5579,7 +6443,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.3528365439812684,
       "mean_value20": 1003429641.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 16.795580110497244,
+      "ret20_pct": 12.446808510638308,
+      "ret60_pct": 12.208067940552025,
+      "ma20_prev5": 9264.0
     },
     "388720": {
       "ticker": "388720",
@@ -5600,7 +6470,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.8130886233288765,
       "mean_value20": 2277584090.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.4204545454545414,
+      "ret20_pct": 4.8338368580060465,
+      "ret60_pct": 1.3138686131386912,
+      "ma20_prev5": 67365.0
     },
     "475580": {
       "ticker": "475580",
@@ -5621,7 +6497,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.2219922368719398,
       "mean_value20": 1702500115.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.69291338582677,
+      "ret20_pct": 0.0,
+      "ret60_pct": 2.302158273381294,
+      "ma20_prev5": 7365.5
     },
     "003720": {
       "ticker": "003720",
@@ -5642,7 +6524,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.9560359025120866,
       "mean_value20": 868042696.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.314814814814814,
+      "ret20_pct": 2.4271844660194164,
+      "ret60_pct": 9.326424870466333,
+      "ma20_prev5": 6266.0
     },
     "138930": {
       "ticker": "138930",
@@ -5663,7 +6551,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.924664271320134,
       "mean_value20": 16155684076.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.0476190476190435,
+      "ret20_pct": -3.354430379746831,
+      "ret60_pct": -11.324041811846685,
+      "ma20_prev5": 15804.5
     },
     "348370": {
       "ticker": "348370",
@@ -5684,7 +6578,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.9815482109846434,
       "mean_value20": 4297868707.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 6.8627450980392135,
+      "ret20_pct": 2.5882352941176467,
+      "ret60_pct": -2.460850111856827,
+      "ma20_prev5": 20763.0
     },
     "006280": {
       "ticker": "006280",
@@ -5705,7 +6605,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.2860336988499599,
       "mean_value20": 3035490690.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.0733652312599604,
+      "ret20_pct": 0.54988216810683,
+      "ret60_pct": 6.135986733001664,
+      "ma20_prev5": 125600.0
     },
     "450080": {
       "ticker": "450080",
@@ -5726,7 +6632,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.5705533998295576,
       "mean_value20": 11174937592.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 8.645533141210372,
+      "ret20_pct": 3.287671232876721,
+      "ret60_pct": 6.197183098591541,
+      "ma20_prev5": 35690.0
     },
     "003000": {
       "ticker": "003000",
@@ -5747,7 +6659,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.114226139109102,
       "mean_value20": 1667596024.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.4962593516209433,
+      "ret20_pct": -0.8526187576126665,
+      "ret60_pct": 4.6272493573264795,
+      "ma20_prev5": 4028.75
     },
     "206650": {
       "ticker": "206650",
@@ -5768,7 +6686,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 3.861499661904354,
       "mean_value20": 755726112.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.952380952380949,
+      "ret20_pct": -1.6241299303944357,
+      "ret60_pct": 5.867665418227208,
+      "ma20_prev5": 8555.0
     },
     "007690": {
       "ticker": "007690",
@@ -5789,7 +6713,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.49664262034123524,
       "mean_value20": 550269487.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.3937007874015741,
+      "ret20_pct": -1.4285714285714235,
+      "ret60_pct": 6.451612903225801,
+      "ma20_prev5": 38542.5
     },
     "001040": {
       "ticker": "001040",
@@ -5810,7 +6740,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.8097389531580986,
       "mean_value20": 13524077960.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.0911925175370207,
+      "ret20_pct": -2.2607385079125852,
+      "ret60_pct": -5.397520058351568,
+      "ma20_prev5": 130920.0
     },
     "195940": {
       "ticker": "195940",
@@ -5831,7 +6767,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.4809264741545374,
       "mean_value20": 3595837280.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.8659793814433074,
+      "ret20_pct": -1.4669926650366705,
+      "ret60_pct": 2.675159235668789,
+      "ma20_prev5": 40172.5
     },
     "302440": {
       "ticker": "302440",
@@ -5852,7 +6794,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.3990651980182645,
       "mean_value20": 2345370667.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.076923076923066,
+      "ret20_pct": -1.9946808510638347,
+      "ret60_pct": 1.9363762102351245,
+      "ma20_prev5": 36820.0
     },
     "000810": {
       "ticker": "000810",
@@ -5873,7 +6821,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.3572320887355025,
       "mean_value20": 55039854000.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -6.727828746177367,
+      "ret20_pct": -7.012195121951215,
+      "ret60_pct": -1.9292604501607746,
+      "ma20_prev5": 659650.0
     },
     "086520": {
       "ticker": "086520",
@@ -5894,7 +6848,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.5381116980215959,
       "mean_value20": 56018201715.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 13.574097135740981,
+      "ret20_pct": 10.545454545454547,
+      "ret60_pct": 14.86146095717884,
+      "ma20_prev5": 82365.0
     },
     "006140": {
       "ticker": "006140",
@@ -5915,7 +6875,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.4238539466738314,
       "mean_value20": 1608233914.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 26.599326599326602,
+      "ret20_pct": 18.98734177215189,
+      "ret60_pct": 31.010452961672463,
+      "ma20_prev5": 4597.75
     },
     "032300": {
       "ticker": "032300",
@@ -5936,7 +6902,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.6807770832196294,
       "mean_value20": 1674128035.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 12.383488681757647,
+      "ret20_pct": 6.970849176172367,
+      "ret60_pct": 8.483290488431884,
+      "ma20_prev5": 7560.0
     },
     "025320": {
       "ticker": "025320",
@@ -5957,7 +6929,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.9001383330427367,
       "mean_value20": 1153143040.75,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.255208333333326,
+      "ret20_pct": 2.05920205920207,
+      "ret60_pct": -2.5798525798525818,
+      "ma20_prev5": 3830.5
     },
     "056080": {
       "ticker": "056080",
@@ -5978,7 +6956,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.3014957126665108,
       "mean_value20": 5949298134.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.0077220077220126,
+      "ret20_pct": 3.9312039312039415,
+      "ret60_pct": 4.358552631578938,
+      "ma20_prev5": 12008.0
     },
     "018880": {
       "ticker": "018880",
@@ -5999,7 +6983,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.2530986642198623,
       "mean_value20": 24778270496.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 19.287833827893188,
+      "ret20_pct": 13.080168776371304,
+      "ret60_pct": 12.605042016806722,
+      "ma20_prev5": 3425.0
     },
     "064400": {
       "ticker": "064400",
@@ -6020,7 +7010,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.5984078530805352,
       "mean_value20": 32895084310.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.008595988538687,
+      "ret20_pct": -11.271297509829626,
+      "ret60_pct": -2.026049204052094,
+      "ma20_prev5": 71695.0
     },
     "002790": {
       "ticker": "002790",
@@ -6041,7 +7037,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.6664932745534069,
       "mean_value20": 3037256815.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.9473684210526327,
+      "ret20_pct": -3.402646502835538,
+      "ret60_pct": 8.723404255319146,
+      "ma20_prev5": 26302.5
     },
     "014820": {
       "ticker": "014820",
@@ -6062,7 +7064,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.5017822558479936,
       "mean_value20": 519069322.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.7906976744185963,
+      "ret20_pct": 1.3761467889908285,
+      "ret60_pct": 9.950248756218905,
+      "ma20_prev5": 21437.5
     },
     "036220": {
       "ticker": "036220",
@@ -6083,7 +7091,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.11611185201756588,
       "mean_value20": 2254684074.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.511450381679393,
+      "ret20_pct": 2.108433734939763,
+      "ret60_pct": 20.21276595744681,
+      "ma20_prev5": 6567.5
     },
     "003240": {
       "ticker": "003240",
@@ -6104,7 +7118,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.1146564560731758,
       "mean_value20": 874042700.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.439560439560438,
+      "ret20_pct": 0.21929824561404132,
+      "ret60_pct": 13.399503722084361,
+      "ma20_prev5": 913550.0
     },
     "000020": {
       "ticker": "000020",
@@ -6125,7 +7145,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 0.7801291599017468,
       "mean_value20": 2609069293.5,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 7.768924302788838,
+      "ret20_pct": 3.6398467432950277,
+      "ret60_pct": 8.853118712273634,
+      "ma20_prev5": 5126.5
     },
     "002240": {
       "ticker": "002240",
@@ -6146,7 +7172,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.5005859957419955,
       "mean_value20": 621871250.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.7827116637063387,
+      "ret20_pct": -4.368083867210249,
+      "ret60_pct": -4.976851851851849,
+      "ma20_prev5": 17029.0
     },
     "336570": {
       "ticker": "336570",
@@ -6167,7 +7199,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.5387671751251266,
       "mean_value20": 1992100480.25,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.10101010101009056,
+      "ret20_pct": -1.8811881188118829,
+      "ret60_pct": -9.580291970802923,
+      "ma20_prev5": 4943.0
     },
     "036460": {
       "ticker": "036460",
@@ -6188,7 +7226,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.0107159998482966,
       "mean_value20": 5373071210.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.14025245441795509,
+      "ret20_pct": 1.7094017094017033,
+      "ret60_pct": 10.526315789473696,
+      "ma20_prev5": 36057.5
     },
     "085620": {
       "ticker": "085620",
@@ -6209,7 +7253,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 2.0225036817050404,
       "mean_value20": 2764881859.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 4.734945959855885,
+      "ret20_pct": 2.467270896273921,
+      "ret60_pct": 21.63777644949194,
+      "ma20_prev5": 19815.5
     },
     "004370": {
       "ticker": "004370",
@@ -6230,7 +7280,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7557723520480288,
       "mean_value20": 8738081950.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.12658227848101333,
+      "ret20_pct": -4.939759036144576,
+      "ret60_pct": 12.875536480686689,
+      "ma20_prev5": 410425.0
     },
     "023410": {
       "ticker": "023410",
@@ -6251,7 +7307,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7583180989007762,
       "mean_value20": 656629930.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.127659574468088,
+      "ret20_pct": -0.3095975232198178,
+      "ret60_pct": -5.571847507331373,
+      "ma20_prev5": 3237.25
     },
     "383800": {
       "ticker": "383800",
@@ -6272,7 +7334,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.8714221244703984,
       "mean_value20": 593244151.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.24906600249066102,
+      "ret20_pct": -2.5423728813559365,
+      "ret60_pct": 7.62032085561497,
+      "ma20_prev5": 8101.0
     },
     "277810": {
       "ticker": "277810",
@@ -6293,7 +7361,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.0176631346640383,
       "mean_value20": 27180975550.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.8202502844141044,
+      "ret20_pct": -3.6830357142857095,
+      "ret60_pct": 0.11600928074246841,
+      "ma20_prev5": 435950.0
     },
     "389260": {
       "ticker": "389260",
@@ -6314,7 +7388,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.6659985448694684,
       "mean_value20": 1166288561.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.6042944785276143,
+      "ret20_pct": 3.683806600153483,
+      "ret60_pct": 8.863819500402892,
+      "ma20_prev5": 13041.5
     },
     "003850": {
       "ticker": "003850",
@@ -6335,7 +7415,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.4844703837335555,
       "mean_value20": 993895738.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 3.5024154589371914,
+      "ret20_pct": -2.0571428571428574,
+      "ret60_pct": 6.1957868649318515,
+      "ma20_prev5": 8675.0
     },
     "005250": {
       "ticker": "005250",
@@ -6356,7 +7442,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.9656090533735974,
       "mean_value20": 548196747.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.1458333333333348,
+      "ret20_pct": -1.1201629327902252,
+      "ret60_pct": -1.2207527975584997,
+      "ma20_prev5": 9702.0
     },
     "484870": {
       "ticker": "484870",
@@ -6377,7 +7469,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.6877793502114897,
       "mean_value20": 2326007919.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.250274423710219,
+      "ret20_pct": 9.266862170087986,
+      "ret60_pct": -34.86013986013986,
+      "ma20_prev5": 17903.5
     },
     "108670": {
       "ticker": "108670",
@@ -6398,7 +7496,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7146086890990617,
       "mean_value20": 517634437.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.7231467473525006,
+      "ret20_pct": -9.052333804809054,
+      "ret60_pct": 3.37620578778135,
+      "ma20_prev5": 34022.5
     },
     "453340": {
       "ticker": "453340",
@@ -6419,7 +7523,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.8548025282626336,
       "mean_value20": 715011104.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -0.5205622071837612,
+      "ret20_pct": 2.30192719486082,
+      "ret60_pct": 6.759776536312856,
+      "ma20_prev5": 18903.5
     },
     "007610": {
       "ticker": "007610",
@@ -6440,7 +7550,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.29464015328136356,
       "mean_value20": 4254243216.25,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -14.435146443514647,
+      "ret20_pct": 3.9390088945362223,
+      "ret60_pct": -6.192660550458717,
+      "ma20_prev5": 4160.25
     },
     "018260": {
       "ticker": "018260",
@@ -6461,7 +7577,13 @@
       "state": "⚪ 비수렴",
       "volume_ratio": 1.9178609908059914,
       "mean_value20": 31629436370.0,
-      "candidate": false
+      "candidate": false,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -12.844444444444447,
+      "ret20_pct": -19.1340206185567,
+      "ret60_pct": 4.142326075411584,
+      "ma20_prev5": 225300.0
     },
     "060250": {
       "ticker": "060250",
@@ -6482,7 +7604,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.4684568043220209,
       "mean_value20": 3091183410.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -1.3392857142857095,
+      "ret20_pct": -13.33333333333333,
+      "ret60_pct": 8.244897959183684,
+      "ma20_prev5": 14113.0
     },
     "008350": {
       "ticker": "008350",
@@ -6503,7 +7631,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.6178217591452935,
       "mean_value20": 758347640.75,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 2.2492970946579094,
+      "ret20_pct": 3.2166508987701015,
+      "ret60_pct": 5.512572533849136,
+      "ma20_prev5": 1064.25
     },
     "052020": {
       "ticker": "052020",
@@ -6524,7 +7658,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7097496923276597,
       "mean_value20": 1233272049.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.075226977950717,
+      "ret20_pct": -9.036144578313255,
+      "ret60_pct": 1.206434316353877,
+      "ma20_prev5": 7797.0
     },
     "298050": {
       "ticker": "298050",
@@ -6545,7 +7685,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.2304452268913093,
       "mean_value20": 1292554235.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 0.06172839506173311,
+      "ret20_pct": -5.755813953488376,
+      "ret60_pct": 9.305461901550904,
+      "ma20_prev5": 168530.0
     },
     "014970": {
       "ticker": "014970",
@@ -6566,7 +7712,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.11640467657027641,
       "mean_value20": 502600213.25,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.6707452725250334,
+      "ret20_pct": -1.7026106696935273,
+      "ret60_pct": 1.5240328253223856,
+      "ma20_prev5": 4470.75
     },
     "035000": {
       "ticker": "035000",
@@ -6587,7 +7739,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.14663386558245883,
       "mean_value20": 1137624921.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 1.1075949367088667,
+      "ret20_pct": -2.591463414634143,
+      "ret60_pct": 5.44554455445545,
+      "ma20_prev5": 6305.0
     },
     "035810": {
       "ticker": "035810",
@@ -6608,7 +7766,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.7022057502066767,
       "mean_value20": 545440986.25,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -4.229934924078094,
+      "ret20_pct": -6.954689146469972,
+      "ret60_pct": 5.369928400954649,
+      "ma20_prev5": 4612.75
     },
     "025820": {
       "ticker": "025820",
@@ -6629,7 +7793,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.49334959557594693,
       "mean_value20": 750839209.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -3.4682080924855474,
+      "ret20_pct": -2.1101992966002348,
+      "ret60_pct": 9.580052493438318,
+      "ma20_prev5": 4323.75
     },
     "020710": {
       "ticker": "020710",
@@ -6650,7 +7820,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.11804184668389552,
       "mean_value20": 1105935225.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.0188425302826385,
+      "ret20_pct": -1.6216216216216162,
+      "ret60_pct": 2.390998593530247,
+      "ma20_prev5": 3694.25
     },
     "017800": {
       "ticker": "017800",
@@ -6671,7 +7847,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 1.8253596372929888,
       "mean_value20": 5960245095.0,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -5.39083557951483,
+      "ret20_pct": -7.019867549668879,
+      "ret60_pct": 2.9325513196480912,
+      "ma20_prev5": 74205.0
     },
     "054210": {
       "ticker": "054210",
@@ -6692,7 +7874,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 1.3570447701340937,
       "mean_value20": 761281412.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": 4.692082111436946,
+      "ret20_pct": 2.0000000000000018,
+      "ret60_pct": 6.408345752608047,
+      "ma20_prev5": 6847.5
     },
     "003780": {
       "ticker": "003780",
@@ -6713,7 +7901,13 @@
       "state": "🔵 수렴 관찰",
       "volume_ratio": 0.8478756659824844,
       "mean_value20": 874162997.5,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -2.3014959723820505,
+      "ret20_pct": 9.407216494845372,
+      "ret60_pct": -9.584664536741217,
+      "ma20_prev5": 4102.25
     },
     "001510": {
       "ticker": "001510",
@@ -6734,7 +7928,13 @@
       "state": "🟠 수렴·하방주의",
       "volume_ratio": 0.5718161693698915,
       "mean_value20": 4959530312.75,
-      "candidate": true
+      "candidate": true,
+      "ordinary": true,
+      "strength_version": 1,
+      "ret10_pct": -7.306889352818368,
+      "ret20_pct": -9.756097560975608,
+      "ret60_pct": -1.9867549668874163,
+      "ma20_prev5": 2389.5
     }
   },
   "errors": [],
@@ -7123,5 +8323,59 @@
     "484870",
     "489790",
     "499660"
-  ]
+  ],
+  "leader_version": 1,
+  "benchmarks": {
+    "KOSPI": {
+      "strength_version": 1,
+      "ret10_pct": -5.448134343267141,
+      "ret20_pct": -5.281478230663339,
+      "ret60_pct": -9.13313521423056,
+      "ma20_prev5": 6847.7485,
+      "eligible": true,
+      "date": "2026-10-08",
+      "close": 6625.93,
+      "ma5": 6869.262,
+      "ma20": 6882.034,
+      "ma60": 6728.135166666667,
+      "span_pct": 2.2544400586256432,
+      "span_5_sessions_ago_pct": 2.1117061907072916,
+      "narrowing": false,
+      "cluster_now": true,
+      "position": "세 선 아래",
+      "state": "🟠 수렴·하방주의",
+      "volume_ratio": 1.0986444656519043,
+      "mean_value20": 1917752740.8895,
+      "candidate": true
+    },
+    "KOSDAQ": {
+      "strength_version": 1,
+      "ret10_pct": 6.696401879775671,
+      "ret20_pct": 8.523577275325644,
+      "ret60_pct": 12.37657430730479,
+      "ma20_prev5": 825.142,
+      "eligible": true,
+      "date": "2026-10-08",
+      "close": 892.27,
+      "ma5": 899.64,
+      "ma20": 847.4955,
+      "ma60": 813.8025,
+      "span_pct": 10.05539767069722,
+      "span_5_sessions_ago_pct": 4.67561815751431,
+      "narrowing": false,
+      "cluster_now": false,
+      "position": "세 선 사이",
+      "state": "⚪ 비수렴",
+      "volume_ratio": 0.8934065158548218,
+      "mean_value20": 556597569.9495,
+      "candidate": false
+    }
+  },
+  "leader_metadata_backfill": {
+    "asof": "2026-10-08",
+    "public_source": "Naver daily OHLCV; close * volume is approximate turnover",
+    "retrieved_at": "2026-10-09T08:41:23+09:00",
+    "items_verified": 200,
+    "note": "Added leadership fields only after matching all existing price/convergence values; no saved/cohort changes."
+  }
 }
