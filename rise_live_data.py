@@ -9,7 +9,7 @@ import requests
 import streamlit as st
 
 from korea_live_price import KIS_BASE_URL, _secret, get_kis_access_token
-from rise_live_analysis import KST, market_context, number
+from rise_live_analysis import KST, market_context, index_market_context, number
 
 
 @st.cache_resource(show_spinner=False)
@@ -69,15 +69,14 @@ def get_market_context(retry_revision=0):
     if not context.get('error'):
         return context
     # Some keys can query market data but cannot use the account calendar API.
-    # Establish TODAY from a dated, traded KOSPI index bar; never infer a holiday
-    # from missing data or insert a weekday merely because the clock says Monday.
+    # Today requires a traded index bar. Older confirmed dates are separately
+    # labelled close references, never inferred to be live quotes or a holiday.
     dates, index_error = _index_trading_dates(now.strftime('%Y%m%d'), int(now.timestamp() // 60))
-    if not index_error and len(dates) >= 2 and dates[-1] == now.strftime('%Y%m%d') and now.hour >= 9:
-        intraday = (now.hour, now.minute) < (15, 30)
-        return {'day': dates[-1], 'previous': dates[-2], 'intraday': intraday,
-                'mode': '장중 잠정' if intraday else '최근 거래일 참고',
-                'notice': '휴장일 조회 대신 KIS 종합지수의 오늘 거래일·직전 거래일을 확인했습니다.'}
-    return {'error': context['error'] + ' · 시장 일봉으로도 오늘 거래일을 확인하지 못했습니다'}
+    if not index_error:
+        fallback = index_market_context(dates, now)
+        if not fallback.get('error'):
+            return fallback
+    return {'error': context['error'] + ' · 시장 일봉에서도 평가 기준 거래일을 확인하지 못했습니다'}
 
 
 @st.cache_data(ttl=60, max_entries=16, show_spinner=False)
@@ -167,7 +166,9 @@ def get_daily_history(code, day, revision=0):
         return pd.DataFrame()
     frame = frame[frame.stck_bsop_date.astype(str).str.fullmatch(r'\d{8}')].copy()
     frame.index = pd.to_datetime(frame.stck_bsop_date, format='%Y%m%d', errors='coerce')
-    return frame.rename(columns={'stck_clpr': 'Close', 'acml_vol': 'Volume'})[['Close', 'Volume']].sort_index()
+    frame = frame.rename(columns={'stck_clpr': 'Close', 'acml_vol': 'Volume'})[['Close', 'Volume']].sort_index()
+    frame.attrs['received_at'] = datetime.now(KST).isoformat(timespec='seconds')
+    return frame
 
 
 def get_histories(rows, revision=0, progress=None):
@@ -186,3 +187,5 @@ def get_histories(rows, revision=0, progress=None):
             if progress and (i % 20 == 0 or i == len(codes)):
                 progress(i, len(codes))
     return result
+
+

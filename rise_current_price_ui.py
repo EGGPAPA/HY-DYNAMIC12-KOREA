@@ -23,6 +23,13 @@ def won(value):
     return '—' if value is None else f'{value:,.0f}원'
 
 
+def _quotes_for_context(rows, context, seconds=10):
+    # Reference evaluation uses its dated daily bar, not an undated holiday quote.
+    if context.get('basis') == 'close':
+        return {}
+    return get_current_quotes([row['ticker'] for row in rows], refresh_seconds=seconds)
+
+
 def _evaluate(rows, namespace):
     now = datetime.now(KST)
     # A new trading date/hour or explicit refresh reloads daily input, not old verdicts.
@@ -47,7 +54,7 @@ def _evaluate(rows, namespace):
             saved['histories'].update(get_histories(failed, (revision, int(now.timestamp() // 60))))
         saved['retry_after'] = datetime.now(KST).timestamp() + 60
     context = get_market_context(revision)
-    quotes = get_current_quotes([row['ticker'] for row in rows])
+    quotes = _quotes_for_context(rows, context)
     evaluated_at = datetime.now(KST)
     results = [evaluate_current(row, saved['histories'].get(row['ticker']),
                                quotes.get(row['ticker']), context, evaluated_at) for row in rows]
@@ -71,7 +78,7 @@ def _build_watch_selection(rows, revision, histories, history_hour, observations
     if missing:
         histories.update(get_histories(missing, (revision, int(now.timestamp() // 60))))
     context = get_market_context(revision)
-    quotes = get_current_quotes([row['ticker'] for row in rows])
+    quotes = _quotes_for_context(rows, context)
     evaluated_at = datetime.now(KST)
     results = [evaluate_current(row, histories.get(row['ticker']), quotes.get(row['ticker']),
                                context, evaluated_at) for row in rows]
@@ -133,7 +140,7 @@ def _schedule_watch_selection(state, rows):
 def _evaluate_visible(rows, state):
     # At most 20 quotes: one KIS batch. No daily history or full-universe wait here.
     context = get_market_context(state['revision'])
-    quotes = get_current_quotes([row['ticker'] for row in rows], refresh_seconds=WATCHLIST_REFRESH_SECONDS)
+    quotes = _quotes_for_context(rows, context, WATCHLIST_REFRESH_SECONDS)
     now = datetime.now(KST)
     results = [evaluate_current(row, state['histories'].get(row['ticker']),
                                quotes.get(row['ticker']), context, now) for row in rows]
@@ -166,11 +173,14 @@ def _frame(results, *, compact=False):
             '세 선 수렴(현재가 반영)': item.get('convergence', '—'),
             '수렴 간격': f"{item['span']:.2f}%" if good else '—',
             '7조건 확인': ' · '.join(f"{name} {'✓' if checks[k] else '×'}" for name, k in descriptions) if good else '평가 보류',
-            '시세 수신시각(KST)': item.get('quote_received_at') or '수신 실패',
+            '시세 수신시각(KST)': item.get('quote_received_at') or ('해당 없음 · 확정 일봉 참고' if item.get('basis') == 'close' else '수신 실패'),
             '평가 기준일': item.get('analysis_day', '—'), '과거 일봉 마지막': item.get('history_day', '—'),
             '평가 구분': item.get('mode', '보류'),
         })
     frame = pd.DataFrame(rows)
+    if any(item.get('basis') == 'close' for item in results):
+        frame = frame.rename(columns={'현재가(KIS)': '기준가(KIS 종가)',
+            '누적거래량/20일평균': '마감거래량/20일평균', '세 선 수렴(현재가 반영)': '세 선 수렴(종가 기준)'})
     # Simplify only the personal table; keep calculations and diagnostics intact.
     return frame.drop(columns=list(WATCHLIST_HIDDEN_COLUMNS), errors='ignore') if compact else frame
 
@@ -179,13 +189,21 @@ def _status(results, context, seconds):
     good = sum(x['valid'] for x in results)
     received = [x['quote_received_at'] for x in results if x.get('quote_received_at')]
     stamps = f'{min(received)} ~ {max(received)}' if received else '수신 성공 없음'
-    st.caption(f'현재가·누적 거래량: KIS KRX(J) · {seconds}초 간격 조회 요청(통신 지연 가능) · 정상 평가 {good:,}/{len(results):,}개')
-    st.caption(f'실제 시세 수신시각(KST): {stamps} · 수신시각은 거래소 체결시각이 아닙니다.')
+    reference = context.get('basis') == 'close'
+    if reference:
+        st.info(f"{context['mode']} · 평가 기준일 {pd.Timestamp(context['day']).strftime('%Y-%m-%d')} · 종가와 하루 거래량으로 다시 계산한 참고 평가입니다. 실시간 시세가 아닙니다.")
+        st.caption(f'KIS 확정 일봉 기준 · 정상 평가 {good:,}/{len(results):,}개 · 휴일에는 가격이 변하지 않습니다. 장중 지속성은 판정하지 않습니다.')
+        receipts = [x['history_received_at'] for x in results if x.get('history_received_at')]
+        if receipts:
+            st.caption(f'일봉 조회 시각(KST): {min(receipts)} ~ {max(receipts)} · 거래소 체결시각이 아닙니다.')
+    else:
+        st.caption(f'현재가·누적 거래량: KIS KRX(J) · {seconds}초 간격 조회 요청(통신 지연 가능) · 정상 평가 {good:,}/{len(results):,}개')
+        st.caption(f'실제 시세 수신시각(KST): {stamps} · 수신시각은 거래소 체결시각이 아닙니다.')
     if context.get('notice'):
         st.caption(context['notice'])
     if context.get('error'):
         st.warning(context['error'] + ' · 거래일을 확인할 때까지 평가를 보류합니다.')
-    elif not context['intraday']:
+    elif not reference and not context['intraday']:
         st.info(f"정규장 외 참고 평가 · {context['day']} 거래일 기준입니다. 휴장·장 종료 후에는 재조회해도 가격이 같을 수 있습니다.")
     if good < len(results):
         st.warning(f'평가 보류 {len(results) - good:,}개 · 시세/거래량/직전 거래일 일봉이 확인되지 않은 종목에는 점수와 매수 조건을 표시하지 않습니다.')
@@ -215,14 +233,18 @@ def _detail(results):
         st.warning(item['reason'] + ' · 이전 분석값을 대신 표시하지 않습니다.')
         return
     a, b, c, d = st.columns(4)
-    a.metric('평가에 사용한 현재가', won(item['price']))
-    b.metric('현재가 반영 점수', f"{item['score']:.0f}점")
+    reference = item.get('basis') == 'close'
+    a.metric('평가에 사용한 종가' if reference else '평가에 사용한 현재가', won(item['price']))
+    b.metric('종가 기준 점수' if reference else '현재가 반영 점수', f"{item['score']:.0f}점")
     c.metric('1차 매수 참고', won(item['buy1']))
     d.metric('손절 참고', won(item['stop']))
     st.info(f"{item['label']} · {item['action']} · {item['mandatory_label']} / {item['auxiliary_label']}")
-    st.caption(f"{item['mode']} · {item['quote_received_at']} 수신 · 과거 일봉 {item['history_day']}까지 + {item['analysis_day']} 현재가 1개")
+    if reference:
+        st.caption(f"{item['mode']} · {item['analysis_day']} 확정 종가·하루 거래량 기준 · 오늘 일봉을 가상으로 추가하지 않습니다.")
+    else:
+        st.caption(f"{item['mode']} · {item['quote_received_at']} 수신 · 과거 일봉 {item['history_day']}까지 + {item['analysis_day']} 현재가 1개")
     st.line_chart(item['chart'], height=320)
-    st.caption('표·상세·차트는 동일한 현재가로 계산됩니다. 마지막 점은 확정 종가가 아닌 현재가일 수 있습니다. 실제 주문은 하지 않습니다.')
+    st.caption('표·상세·차트는 동일한 기준 가격으로 계산됩니다. 장중에는 잠정 현재가, 휴일에는 표시된 거래일 종가입니다. 실제 주문은 하지 않습니다.')
 
 
 @st.fragment(run_every=WATCHLIST_REFRESH_SECONDS)
@@ -243,7 +265,11 @@ def _render_live_watchlist(rows):
     started = monotonic()
     results, context = _evaluate_visible(chosen, state)
     selected = results[:DISPLAY_LIMIT]
-    st.caption(f'관찰 {len(selected)}개 유지 · 가격·조건 {WATCHLIST_REFRESH_SECONDS}초 간격 조회 · 장중 종목 교체 없음')
+    if context.get('basis') == 'close':
+        st.info(f"📅 {pd.Timestamp(context['day']).strftime('%Y-%m-%d')} 종가 기준 · 휴일에도 점수·필수·보조조건·매수가·손절 참고를 확인할 수 있습니다. 실시간 시세가 아닙니다.")
+        st.caption(f'관찰 {len(selected)}개 유지 · 최근 확정 일봉 참고 · 장중에는 가격·조건 10초 간격 조회로 전환')
+    else:
+        st.caption(f'관찰 {len(selected)}개 유지 · 가격·조건 {WATCHLIST_REFRESH_SECONDS}초 간격 조회 · 장중 종목 교체 없음')
     st.caption('같은 관찰 종목 안에서 필수 → 보조 → 단계·가격거리·거래량·점수 순으로 표시합니다. 주도력 선정 순위와는 다르며, 조건 약화·순위 하락만으로 자동 제외하지 않습니다. 순위는 매수 확정 신호가 아닙니다.')
     st.dataframe(_frame(selected, compact=True), key='rise_live_watchlist', use_container_width=True, hide_index=True,
                  column_config={'관찰 우선순위': st.column_config.NumberColumn(format='%d위')})
@@ -295,7 +321,8 @@ def render_new_discoveries(load_recent):
         return
     results, context = _evaluate_visible(rows, state)
     frame = _frame(results, compact=True)
-    columns = ['종목', '코드', '현재가(KIS)', '필수조건', '보조조건', '단계', '1차 매수 참고', '손절 참고']
+    price_column = '기준가(KIS 종가)' if '기준가(KIS 종가)' in frame.columns else '현재가(KIS)'
+    columns = ['종목', '코드', price_column, '필수조건', '보조조건', '단계', '1차 매수 참고', '손절 참고']
     frame = frame[columns].copy()
     status = {row['ticker']: row['discovery_status'] for row in rows}
     frame.insert(2, '관찰 상태', frame['코드'].map(status))
@@ -319,12 +346,13 @@ def _render_live_scan(rows, send_alerts, promote):
     a.metric('상승초입·1차구간', sum(x['label'].startswith(('🟢', '🟣')) for x in candidates))
     b.metric('돌파확인', sum(x['label'].startswith('🟡') for x in candidates))
     c.metric('준비구간', sum(x['label'].startswith('🔵') for x in candidates))
-    d.metric('현재가 평가 후보', len(candidates))
+    d.metric('종가 기준 후보' if context.get('basis') == 'close' else '현재가 평가 후보', len(candidates))
     if candidates:
         st.dataframe(_frame(candidates[:DISPLAY_LIMIT]), key='rise_current_scan_table', use_container_width=True, hide_index=True)
-        st.caption(f'현재가 평가 후보 {len(candidates):,}개 중 상위 {min(len(candidates), DISPLAY_LIMIT)}개 표시')
+        basis = '종가 기준' if context.get('basis') == 'close' else '현재가 평가'
+        st.caption(f'{basis} 후보 {len(candidates):,}개 중 상위 {min(len(candidates), DISPLAY_LIMIT)}개 표시')
     else:
-        st.info('최신 현재가와 일봉으로 확인된 상승 후보가 없습니다. 평가 보류 사유도 확인하세요.')
+        st.info('현재 평가 기준에서 확인된 상승 후보가 없습니다. 기준일과 평가 보류 사유도 확인하세요.')
     _status(results, context, 30)
     # Keep the existing explicit-search notifications, never send from timer reruns.
     if st.session_state.pop('rise_current_notify_once', False):
@@ -340,7 +368,7 @@ def _render_live_scan(rows, send_alerts, promote):
 
 def render_current_price_screen(universe, watchlist, send_alerts, promote, *, saved_count=None, cohort_asof='', cohort_policy='convergence_v1'):
     st.subheader('📍 현재가 기준 상승시점 평가')
-    st.caption('KIS 현재가·누적 거래량과 직전 거래일까지의 KIS 일봉으로 평가합니다. 과거 서버 판정은 현재 평가에 섞지 않습니다.')
+    st.caption('장중에는 KIS 현재가·누적 거래량, 휴일·장 시작 전에는 최근 확정 일봉의 종가·하루 거래량으로 평가합니다. 과거 서버 판정을 재사용하지 않고 같은 계산식으로 다시 평가합니다.')
     st.caption('현재가 돌파는 종가 확정이 아닙니다. 거래량 배수는 당일 누적 거래량 ÷ 직전 20일 하루 평균으로, 오전에는 낮을 수 있습니다.')
     if st.button('🔄 일봉·현재가 모두 다시 조회', key='rise_current_reload'):
         st.session_state['rise_live_revision'] = st.session_state.get('rise_live_revision', 0) + 1
@@ -373,5 +401,7 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
     total = len(watchlist) if saved_count is None else saved_count
     st.caption(f'관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 새 후보는 보관·대기 · 원본 기록 보존')
     _render_live_watchlist(watchlist)
+
+
 
 

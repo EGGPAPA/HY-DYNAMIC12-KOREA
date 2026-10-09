@@ -253,7 +253,7 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertFalse(result['000001']['ok'])
         self.assertNotIn('price', result['000001'])
 
-    def test_calendar_denied_uses_only_confirmed_today_index_dates(self):
+    def test_calendar_denied_distinguishes_live_dates_and_closed_references(self):
         class Clock:
             @staticmethod
             def now(tz):
@@ -269,7 +269,10 @@ class DataAndScreenTests(unittest.TestCase):
              patch.object(self.data, '_calendar', return_value=([], 'calendar denied')), \
              patch.object(self.data, '_index_trading_dates', return_value=(['20261001', '20261002'], '')):
             stale = self.data.get_market_context()
-        self.assertIn('error', stale)
+        self.assertNotIn('error', stale)
+        self.assertEqual(stale['basis'], 'close')
+        self.assertEqual(stale['day'], '20261002')
+        self.assertFalse(stale['intraday'])
 
     def test_index_context_rejects_zero_volume_future_and_invalid_dates(self):
         data = {'output2': [{'stck_bsop_date': date, 'acml_vol': vol} for date, vol in
@@ -443,3 +446,8 @@ class DataAndScreenTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+
+
+

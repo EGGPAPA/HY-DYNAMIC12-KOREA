@@ -6,6 +6,50 @@ import pandas as pd
 
 KST = timezone(timedelta(hours=9))
 MAX_QUOTE_AGE = 45
+MAX_REFERENCE_DAYS = 14
+
+
+def closed_context(dates, now, mode, notice=''):
+    """Confirmed historical dates are a reference, not proof that today is closed."""
+    now = now.astimezone(KST)
+    today = now.strftime('%Y%m%d')
+    valid = set()
+    for value in dates:
+        try:
+            day = datetime.strptime(str(value), '%Y%m%d').strftime('%Y%m%d')
+            if day == str(value) and (day < today or (day == today and now.hour >= 16)):
+                valid.add(day)
+        except (TypeError, ValueError):
+            pass
+    valid = sorted(valid)
+    if len(valid) < 2:
+        return {'error': '최근 확정 거래일·직전 거래일 확인 실패'}
+    if (now.date() - datetime.strptime(valid[-1], '%Y%m%d').date()).days > MAX_REFERENCE_DAYS:
+        return {'error': '최근 확정 거래일 자료가 14일 초과 지연됨'}
+    return {'day': valid[-1], 'previous': valid[-2], 'intraday': False,
+            'basis': 'close', 'mode': mode, 'notice': notice}
+
+
+def index_market_context(dates, now):
+    """Use a traded index bar for live evaluation; otherwise explicitly reference closes."""
+    now = now.astimezone(KST)
+    today = now.strftime('%Y%m%d')
+    valid = []
+    for value in set(dates):
+        try:
+            day = datetime.strptime(str(value), '%Y%m%d').strftime('%Y%m%d')
+            if day == str(value) and day <= today:
+                valid.append(day)
+        except (TypeError, ValueError):
+            pass
+    valid.sort()
+    if len(valid) >= 2 and valid[-1] == today and 9 <= now.hour < 16:
+        intraday = (now.hour, now.minute) < (15, 30)
+        return {'day': today, 'previous': valid[-2], 'intraday': intraday,
+                'basis': 'quote', 'mode': '장중 잠정' if intraday else '장 마감 확인 중',
+                'notice': 'KIS 종합지수의 오늘 거래일·직전 거래일을 확인했습니다.'}
+    return closed_context(valid, now, '최근 확인 거래일 · 종가 기준',
+        '휴장일 조회를 확인하지 못해 최근 확인된 거래일의 확정 일봉으로 참고 평가합니다. 오늘의 휴장 여부를 추정하거나 과거 값을 실시간으로 표시하지 않습니다.')
 
 
 def number(value):
@@ -20,7 +64,7 @@ def market_context(calendar, now):
     now = now.astimezone(KST)
     today = now.strftime('%Y%m%d')
     dated = {str(x.get('bass_dt')): x for x in calendar}
-    if today not in dated:
+    if today not in dated or dated[today].get('opnd_yn') not in ('Y', 'N'):
         return {'error': '거래일 달력 확인 실패'}
     opened = sorted(d for d, row in dated.items() if row.get('opnd_yn') == 'Y' and d <= today)
     # KRX cash-session quotes only (J). Before opening, use the last session.
@@ -30,8 +74,12 @@ def market_context(calendar, now):
         return {'error': '직전 거래일 확인 실패'}
     day, previous = opened[-1], opened[-2]
     intraday = day == today and (9, 0) <= (now.hour, now.minute) < (15, 30)
+    if day < today or now.hour >= 16:
+        mode = ('휴장일 · 종가 기준' if dated[today]['opnd_yn'] == 'N' else
+                '장 시작 전 · 직전 종가 기준' if day < today else '장 마감 · 종가 기준')
+        return closed_context(opened, now, mode)
     return {'day': day, 'previous': previous, 'intraday': intraday,
-            'mode': '장중 잠정' if intraday else '최근 거래일 참고'}
+            'basis': 'quote', 'mode': '장중 잠정' if intraday else '장 마감 확인 중'}
 
 
 def on_hold(row, reason, quote=None):
@@ -48,19 +96,25 @@ def on_hold(row, reason, quote=None):
 
 def evaluate_current(row, history, quote, context, now):
     now = now.astimezone(KST)
-    if not quote or not quote.get('ok'):
-        return on_hold(row, (quote or {}).get('error', 'KIS 현재가 수신 실패'))
-    try:
-        age = (now - datetime.fromisoformat(quote['received_at'])).total_seconds()
-    except (KeyError, ValueError, TypeError):
-        return on_hold(row, '시세 수신 시각 없음')
-    price, volume, previous_close = (number(quote.get(k)) for k in ('price', 'volume', 'previous_close'))
-    if age < -2 or age > MAX_QUOTE_AGE or price is None or price <= 0:
-        return on_hold(row, '시세 지연 또는 잘못된 가격')
-    if context.get('error'):
-        return on_hold(row, context['error'], quote)
-    if volume is None or volume <= 0 or previous_close is None or previous_close <= 0:
-        return on_hold(row, '누적 거래량·전일 종가 확인 필요', quote)
+    reference = context.get('basis') == 'close' and not context.get('error')
+    if reference:
+        # Never mix a holiday quote, zero cumulative volume or stale receipt into a close.
+        quote = None
+        price = volume = previous_close = None
+    else:
+        if not quote or not quote.get('ok'):
+            return on_hold(row, (quote or {}).get('error', 'KIS 현재가 수신 실패'))
+        try:
+            age = (now - datetime.fromisoformat(quote['received_at'])).total_seconds()
+        except (KeyError, ValueError, TypeError):
+            return on_hold(row, '시세 수신 시각 없음')
+        price, volume, previous_close = (number(quote.get(k)) for k in ('price', 'volume', 'previous_close'))
+        if age < -2 or age > MAX_QUOTE_AGE or price is None or price <= 0:
+            return on_hold(row, '시세 지연 또는 잘못된 가격')
+        if context.get('error'):
+            return on_hold(row, context['error'], quote)
+        if volume is None or volume <= 0 or previous_close is None or previous_close <= 0:
+            return on_hold(row, '누적 거래량·전일 종가 확인 필요', quote)
     if history is None or history.empty or not {'Close', 'Volume'}.issubset(history.columns):
         detail = history.attrs.get('error', '') if history is not None else ''
         return on_hold(row, 'KIS 일봉 수신 실패' + (f' · {detail}' if detail else ''), quote)
@@ -71,6 +125,16 @@ def evaluate_current(row, history, quote, context, now):
             return on_hold(row, '중복 일봉 확인 필요', quote)
         bars = bars.sort_index()
         day = pd.Timestamp(context['day'])
+        if reference:
+            age_days = (now.date() - day.date()).days
+            if (context.get('intraday') or age_days < 0 or age_days > MAX_REFERENCE_DAYS
+                    or (age_days == 0 and now.hour < 16)):
+                return on_hold(row, '확정 종가 기준일 확인 필요')
+            if day not in bars.index:
+                return on_hold(row, '기준 거래일 확정 일봉 누락')
+            price, volume = (number(bars.loc[day, col]) for col in ('Close', 'Volume'))
+            if price is None or price <= 0 or volume is None or volume <= 0:
+                return on_hold(row, '기준 거래일 종가·하루 거래량 확인 필요')
         past = bars[bars.index < day].copy()
         if past.empty or past.index[-1].strftime('%Y%m%d') != context['previous']:
             return on_hold(row, '직전 거래일 일봉 누락', quote)
@@ -80,11 +144,11 @@ def evaluate_current(row, history, quote, context, now):
             return on_hold(row, '유효한 64거래일 일봉 부족', quote)
         if (past.Close.tail(64) <= 0).any() or (past.Volume.tail(64) < 0).any():
             return on_hold(row, '잘못된 과거 가격·거래량', quote)
-        if abs(float(past.Close.iloc[-1]) / previous_close - 1) > .005:
+        if not reference and abs(float(past.Close.iloc[-1]) / previous_close - 1) > .005:
             return on_hold(row, '일봉과 시세의 전일 종가 불일치', quote)
     except (ValueError, TypeError, KeyError):
         return on_hold(row, '일봉 날짜·값 확인 필요', quote)
-    # Discard today's possibly cached bar, then add EXACTLY ONE live observation.
+    # Add exactly one dated observation: the confirmed daily bar OR a live quote.
     current = past.copy()
     current.loc[day] = [price, volume]
     close = current.Close
@@ -141,14 +205,16 @@ def evaluate_current(row, history, quote, context, now):
     span = (max(averages) - min(averages)) / (sum(averages) / 3) * 100
     convergence = ('🟠 수렴·하방주의' if price < min(averages) else '🔵 수렴 관찰') if span <= 3 else '⚪ 비수렴'
     result = {k: row.get(k) for k in ('ticker', 'name', 'market')}
-    result.update(valid=True, reason='', price=price, quote_received_at=quote['received_at'],
+    result.update(valid=True, reason='', price=price, quote_received_at=None if reference else quote['received_at'],
+                  history_received_at=history.attrs.get('received_at'), basis='close' if reference else 'quote',
                   analysis_day=day.strftime('%Y-%m-%d'), history_day=past.index[-1].strftime('%Y-%m-%d'),
                   mode=context['mode'], intraday=context['intraday'], label=label, score=score,
                   volume_ratio=volume_ratio, gap20=gap20, buy1=first, buy2=second, stop=stop,
                   breakout=prior_high, gap=gap, risk=risk, ma5=m5, ma20=m20, ma60=m60,
                   convergence=convergence, span=span, checks=checks,
                   average_value=float((past.Close * past.Volume).tail(20).mean()),
-                  chart=pd.DataFrame({'가격(마지막=현재가)': close, '5일선': ma5, '20일선': ma20, '60일선': ma60}).tail(100))
+                  chart=pd.DataFrame({'가격(마지막=종가)' if reference else '가격(마지막=현재가)': close,
+                                      '5일선': ma5, '20일선': ma20, '60일선': ma60}).tail(100))
     return apply_labels(result)
 
 
@@ -162,7 +228,7 @@ def apply_labels(result):
     if result['label'].startswith('🔴'):
         action = '추격주의 · 신규 진입 조건 미충족'
     elif mandatory == 4:
-        action = '필수 충족 · 장중 잠정 관찰' if result['intraday'] else '필수 충족 · 최근 거래일 참고'
+        action = '필수 충족 · 장중 잠정 관찰' if result['intraday'] else '필수 충족 · 최근 거래일 종가 참고'
     else:
         action = '조건 미충족 · 관찰'
     result['action'] = action
@@ -175,6 +241,11 @@ def observe_persistence(results, states):
         code = row['ticker']
         if not row['valid']:
             states.pop(code, None)
+            continue
+        if row.get('basis') == 'close':
+            states.pop(code, None)
+            row['checks']['persistence'] = False
+            apply_labels(row)
             continue
         current = datetime.fromisoformat(row['quote_received_at'])
         stable = all(row['checks'][k] for k in ('gap', 'close', 'risk')) and row['intraday']
@@ -194,3 +265,5 @@ def priority_key(row):
     stage = {'🟣': 0, '🟢': 1, '🟡': 2, '🔵': 3}.get(row['label'][0], 4)
     return (0, -row['mandatory_count'], -row['auxiliary_count'], stage,
             abs(row['gap']), -row['volume_ratio'], -row['score'], row['ticker'])
+
+
