@@ -149,3 +149,29 @@ def active_rows(saved_rows, cohort):
     return [{**saved[x['ticker']], 'watch_entry': dict(x)} for x in cohort['active'] if x['ticker'] in saved]
 
 
+def replace_leader(previous, saved_rows, snapshot, outgoing, incoming, stamp, expected_asof):
+    """One explicit user-confirmed swap, with all prior selection records intact."""
+    from watch_sector_context import leader_comparison
+    state = deepcopy(validate_cohort(previous))
+    comparison = leader_comparison(saved_rows, state, snapshot, stamp[:10])
+    if (state.get('policy') != LEADER_POLICY or not comparison['ready']
+            or comparison['asof'] != expected_asof):
+        raise ValueError('비교 자료가 변경되었거나 미확인 상태입니다. 새로고침 후 다시 비교해 주세요.')
+    candidate = next((x for x in comparison['rows'] if x['ticker'] == incoming), None)
+    index = next((i for i, x in enumerate(state['active']) if x['ticker'] == outgoing), None)
+    if candidate is None or index is None:
+        raise ValueError('관찰 대상 또는 후보가 변경되어 교체하지 않았습니다.')
+    member = state['active'][index]
+    state.setdefault('selection_history', []).append({
+        'policy': LEADER_POLICY, 'active': deepcopy(state['active']),
+        'changed_asof': expected_asof, 'changed_at': stamp,
+        'reason': '사용자 확인: 주도주 후보 1개 교체',
+    })
+    state['archived'][outgoing] = {**member, 'archived_asof': stamp,
+        'archive_reason': '사용자 확인 교체 · 원본 기록 보존'}
+    state['active'][index] = leader_entry(candidate, expected_asof)
+    state['last_review_asof'] = expected_asof
+    return validate_cohort(state)
+
+
+

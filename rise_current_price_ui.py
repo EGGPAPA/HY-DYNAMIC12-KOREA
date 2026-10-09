@@ -9,6 +9,7 @@ import streamlit as st
 
 from rise_live_analysis import KST, evaluate_current, observe_persistence, priority_key
 from rise_live_data import get_current_quotes, get_histories, get_market_context
+from watch_sector_context import business_context, sector_flow
 
 DISPLAY_LIMIT = 20
 WATCHLIST_REFRESH_SECONDS = 10
@@ -152,7 +153,7 @@ def _evaluate_visible(rows, state):
     return sorted(results, key=priority_key), context
 
 
-def _frame(results, *, compact=False):
+def _frame(results, *, compact=False, sector_snapshot=None):
     rows = []
     for rank, item in enumerate(results, 1):
         good = item['valid']
@@ -182,7 +183,18 @@ def _frame(results, *, compact=False):
         frame = frame.rename(columns={'현재가(KIS)': '기준가(KIS 종가)',
             '누적거래량/20일평균': '마감거래량/20일평균', '세 선 수렴(현재가 반영)': '세 선 수렴(종가 기준)'})
     # Simplify only the personal table; keep calculations and diagnostics intact.
-    return frame.drop(columns=list(WATCHLIST_HIDDEN_COLUMNS), errors='ignore') if compact else frame
+    if not compact or frame.empty:
+        return frame
+    frame = frame.drop(columns=list(WATCHLIST_HIDDEN_COLUMNS), errors='ignore')
+    frame['주요사업'] = [business_context(x['ticker'])['primary'] for x in results]
+    frame['업종 흐름(종가)'] = [sector_flow(x['ticker'], sector_snapshot,
+        x.get('analysis_day')) for x in results]
+    convergence = '세 선 수렴(종가 기준)' if '세 선 수렴(종가 기준)' in frame else '세 선 수렴(현재가 반영)'
+    frame = frame.rename(columns={convergence: '수렴 상태'})
+    # Failed current data must not borrow a former convergence label.
+    frame['수렴 상태'] = [x.get('convergence', '—') if x['valid'] else '— 평가 보류' for x in results]
+    first = ['관찰 우선순위', '종목', '주요사업', '업종 흐름(종가)', '수렴 상태']
+    return frame[first + [name for name in frame if name not in first]]
 
 
 def _status(results, context, seconds):
@@ -217,6 +229,11 @@ def _detail(results):
     labels = {f"{x['name']} ({x['ticker']})": x for x in results}
     selected = st.selectbox('현재가 기준 상세 종목', list(labels), key='rise_current_detail')
     item = labels[selected]
+    business = business_context(item['ticker'])
+    st.caption(f"주요사업: {business['primary']} · 관련 사업·테마: {business['themes']}")
+    st.caption(f"비교 업종: {business['group'] or '미지정 · 복합사업 또는 그래프 범위 밖'} · 사업 기반 관찰용 분류이며 공식 거래소 업종 분류가 아닙니다.")
+    if business['source']:
+        st.markdown(f"[사업 분류 근거]({business['source']}) · 확인일 {business['reviewed_on']}")
     entry = item.get('watch_entry')
     if entry:
         if entry.get('entry_policy') == 'leader_v1':
@@ -271,8 +288,16 @@ def _render_live_watchlist(rows):
     else:
         st.caption(f'관찰 {len(selected)}개 유지 · 가격·조건 {WATCHLIST_REFRESH_SECONDS}초 간격 조회 · 장중 종목 교체 없음')
     st.caption('같은 관찰 종목 안에서 필수 → 보조 → 단계·가격거리·거래량·점수 순으로 표시합니다. 주도력 선정 순위와는 다르며, 조건 약화·순위 하락만으로 자동 제외하지 않습니다. 순위는 매수 확정 신호가 아닙니다.')
-    st.dataframe(_frame(selected, compact=True), key='rise_live_watchlist', use_container_width=True, hide_index=True,
+    sector_snapshot = st.session_state.get('sector_observation_last_good')
+    sector_asof = sector_snapshot.get('asof', '확인 중') if sector_snapshot else '확인 중'
+    st.caption(f'업종 흐름: {sector_asof} 종가 · 위 업종 그래프의 대표 3종목 비교 지표입니다. 수렴은 5·20·60일선 간격 3% 이내 여부이며, 주도주 선정의 필수조건이 아닙니다.')
+    st.dataframe(_frame(selected, compact=True, sector_snapshot=sector_snapshot), key='rise_live_watchlist', use_container_width=True, hide_index=True,
                  column_config={'관찰 우선순위': st.column_config.NumberColumn(format='%d위')})
+    with st.expander('업종 흐름·수렴 상태 읽는 방법'):
+        st.caption('주도: 20거래일 시장 대비 강도가 양수이며 3거래일 연속 단독 1위. 주도 후보: 아직 3거래일 미충족. 추격: 현재 2위가 현재 1위와의 격차를 3거래일 연속 줄이는 중입니다.')
+        st.caption('강세·관찰은 시장 대비 강도가 양수인 나머지 업종, 시장 하회는 음수인 업종입니다. 가격 상승·하락 자체나 앞으로의 수익을 뜻하지 않습니다. 비교업종 미지정은 약세라는 뜻이 아닙니다.')
+        st.caption('주요사업은 사업자료 기반 관찰용 분류입니다. 업종 흐름은 대표 3종목의 참고 지표이며 개별 종목의 주도력을 대신하지 않습니다. 관련 사업·테마와 분류 근거는 상세에서 확인할 수 있습니다.')
+        st.caption('수렴 관찰: 5·20·60일선 간격 3% 이내. 수렴·하방주의: 이 조건에서 가격이 세 선 아래. 비수렴도 주도주 후보가 될 수 있으며 수렴 자체는 매수 신호가 아닙니다.')
     _status(selected, context, WATCHLIST_REFRESH_SECONDS)
     snapshot = state['snapshot']
     full_good = sum(item['valid'] for item in snapshot['results'])
@@ -401,6 +426,7 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
     total = len(watchlist) if saved_count is None else saved_count
     st.caption(f'관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 새 후보는 보관·대기 · 원본 기록 보존')
     _render_live_watchlist(watchlist)
+
 
 
 

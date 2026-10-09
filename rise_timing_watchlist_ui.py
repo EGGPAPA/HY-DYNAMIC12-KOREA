@@ -154,6 +154,39 @@ def _recent_discoveries():
                               today=pd.Timestamp.now(tz='Asia/Seoul').date().isoformat())
 
 
+def _leader_comparison_inputs():
+    rows, _ = _load_watchlist()
+    cohort, _ = _load_watch_cohort()
+    return rows, cohort, _load_convergence_state()
+
+
+def _replace_watch_leader(outgoing, incoming, asof):
+    from rise_watch_cohort import replace_leader
+    from watch_leader_comparison_ui import replacement_window
+    now = pd.Timestamp.now(tz='Asia/Seoul')
+    if not replacement_window(now):
+        raise RuntimeError('장중에는 관찰 종목을 교체하지 않습니다. 16시 이후 다시 확인해 주세요.')
+    if not _secret('GITHUB_PAT'):
+        raise RuntimeError('관찰 설정 저장 권한을 확인해 주세요.')
+    # Re-read, validate and CAS exactly once: a conflict requires a new user review.
+    _load_watch_cohort.clear()
+    _load_watchlist.clear()
+    _load_convergence_state.clear()
+    cohort, sha = _load_watch_cohort()
+    rows, _ = _load_watchlist()
+    snapshot = _load_convergence_state()
+    if cohort is None or not sha:
+        raise RuntimeError('관찰 설정을 읽지 못해 변경하지 않았습니다.')
+    updated = replace_leader(cohort, rows, snapshot, outgoing, incoming, now.isoformat(), asof)
+    payload = {'message': 'User-confirmed single leader observation swap (preserve records)',
+               'branch': LIVE_STATE_BRANCH, 'sha': sha,
+               'content': base64.b64encode(json.dumps(updated, ensure_ascii=False, indent=2).encode()).decode()}
+    response = requests.put(COHORT_API, headers=_headers(), json=payload, timeout=20)
+    if response.status_code not in (200, 201):
+        raise RuntimeError('저장 결과를 확인하지 못했습니다. 새로고침으로 관찰 목록을 확인한 뒤 다시 비교해 주세요.')
+    _load_watch_cohort.clear()
+
+
 def _symbol(code,market):
     return f"{str(code).zfill(6)}.{'KQ' if str(market).upper()=='KOSDAQ' else 'KS'}"
 
@@ -661,6 +694,7 @@ def _render_watchlist_detail(results):
 def render_rise_timing_watchlist(universe=None):
     # Lazy import keeps other application views independent of this screen.
     from rise_current_price_ui import render_current_price_screen, render_new_discoveries
+    from watch_leader_comparison_ui import render_leader_comparison
     rows, sha = _load_watchlist()
     cohort, _ = _load_watch_cohort()
     if cohort is None:
@@ -670,6 +704,7 @@ def render_rise_timing_watchlist(universe=None):
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
                                     saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''),
                                     cohort_policy=cohort.get('policy', 'convergence_v1'))
+    render_leader_comparison(_leader_comparison_inputs, _replace_watch_leader)
     render_new_discoveries(_recent_discoveries)
     if cohort is not None:
         _render_cohort_archive(rows, cohort)
@@ -695,5 +730,6 @@ def render_rise_timing_watchlist(universe=None):
                 idx=labels.index(remove);updated=rows[:idx]+rows[idx+1:]
                 try:_save_watchlist(updated,sha);st.success("관찰목록에서 삭제했습니다.");st.rerun()
                 except Exception as exc:st.error(str(exc))
+
 
 

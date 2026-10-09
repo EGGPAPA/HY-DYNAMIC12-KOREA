@@ -332,7 +332,7 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertEqual(len(frame), 20)
         self.assertEqual(config['key'], 'rise_live_watchlist')
         self.assertTrue(set(self.ui.WATCHLIST_HIDDEN_COLUMNS).isdisjoint(frame.columns))
-        self.assertEqual(len(frame.columns), 15)
+        self.assertEqual(len(frame.columns), 17)
         self.assertEqual(len(details), 20)
         self.assertIs(details[0], results[0])
 
@@ -344,8 +344,11 @@ class DataAndScreenTests(unittest.TestCase):
         compact = self.ui._frame(results, compact=True)
         removed = {'시세 수신시각(KST)', '평가 기준일', '과거 일봉 마지막', '평가 구분',
                    '7조건 확인', '수렴 간격', '1차가 거리', '현재가 평가'}
-        self.assertEqual(set(full.columns) - set(compact.columns), removed)
-        pd.testing.assert_frame_equal(compact, full.drop(columns=list(removed)))
+        self.assertEqual(set(full.columns) - set(compact.columns), removed | {'세 선 수렴(현재가 반영)'})
+        preserved = [c for c in full.columns if c not in removed and c != '세 선 수렴(현재가 반영)']
+        pd.testing.assert_frame_equal(compact[preserved], full[preserved])
+        self.assertEqual(compact.iloc[0]['수렴 상태'], good['convergence'])
+        self.assertEqual(compact.iloc[1]['수렴 상태'], '— 평가 보류')
         pd.testing.assert_frame_equal(self.ui._frame(results), full)
         self.assertEqual(compact.iloc[0]['현재가(KIS)'], '10,200원')
         self.assertEqual(compact.iloc[0]['필수조건'], good['mandatory_label'])
@@ -446,6 +449,7 @@ class DataAndScreenTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
 
 

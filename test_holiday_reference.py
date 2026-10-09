@@ -197,7 +197,7 @@ class HolidayScreenTests(unittest.TestCase):
     def test_closed_headers_and_status_are_not_labeled_live(self):
         item = result()
         frame = self.ui._frame([item],compact=True)
-        self.assertEqual(len(frame.columns),15)
+        self.assertEqual(len(frame.columns),17)
         self.assertIn('기준가(KIS 종가)',frame.columns)
         self.assertIn('마감거래량/20일평균',frame.columns)
         self.assertNotIn('현재가(KIS)',frame.columns)
@@ -233,4 +233,5 @@ class HolidayScreenTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
