@@ -189,11 +189,14 @@ def _frame(results, *, compact=False, sector_snapshot=None):
     frame['주요사업'] = [business_context(x['ticker'])['primary'] for x in results]
     frame['업종 흐름(종가)'] = [sector_flow(x['ticker'], sector_snapshot,
         x.get('analysis_day')) for x in results]
+    frame['업종 흐름(종가)'] = frame['업종 흐름(종가)'].map(lambda value: value.split(' · ', 1)[-1])
     convergence = '세 선 수렴(종가 기준)' if '세 선 수렴(종가 기준)' in frame else '세 선 수렴(현재가 반영)'
     frame = frame.rename(columns={convergence: '수렴 상태'})
     # Failed current data must not borrow a former convergence label.
     frame['수렴 상태'] = [x.get('convergence', '—') if x['valid'] else '— 평가 보류' for x in results]
-    first = ['관찰 우선순위', '종목', '주요사업', '업종 흐름(종가)', '수렴 상태']
+    first = ['관찰 우선순위', '종목', '주요사업', '필수조건', '보조조건', '수렴 상태', '업종 흐름(종가)']
+    # Keep the two conditions together; identifiers follow decision information.
+    first += [c for c in ('현재가(KIS)', '기준가(KIS 종가)') if c in frame]
     return frame[first + [name for name in frame if name not in first]]
 
 

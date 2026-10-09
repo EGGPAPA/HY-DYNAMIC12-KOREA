@@ -349,6 +349,8 @@ class DataAndScreenTests(unittest.TestCase):
         pd.testing.assert_frame_equal(compact[preserved], full[preserved])
         self.assertEqual(compact.iloc[0]['수렴 상태'], good['convergence'])
         self.assertEqual(compact.iloc[1]['수렴 상태'], '— 평가 보류')
+        self.assertEqual(list(compact.columns)[:7],
+            ['관찰 우선순위', '종목', '주요사업', '필수조건', '보조조건', '수렴 상태', '업종 흐름(종가)'])
         pd.testing.assert_frame_equal(self.ui._frame(results), full)
         self.assertEqual(compact.iloc[0]['현재가(KIS)'], '10,200원')
         self.assertEqual(compact.iloc[0]['필수조건'], good['mandatory_label'])

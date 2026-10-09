@@ -34,7 +34,7 @@ def sectors(values):
 
 class SectorContextTests(unittest.TestCase):
     def test_twenty_reviewed_businesses_have_sources(self):
-        self.assertEqual(len(BUSINESSES), 20)
+        self.assertGreaterEqual(len(BUSINESSES), 20)
         for code in BUSINESSES:
             self.assertTrue(business_context(code)['source'].startswith('https://'))
 
@@ -45,6 +45,10 @@ class SectorContextTests(unittest.TestCase):
 
     def test_unknown_is_not_inferred_from_name(self):
         self.assertEqual(business_context('999999')['primary'], '분류 확인 중')
+
+    def test_nexel_is_not_confused_with_sfa_semicon(self):
+        self.assertIsNone(business_context('222080')['group'])
+        self.assertEqual(business_context('222080')['primary'], '공정·검사장비')
 
     def test_sector_leader_requires_positive_strength_and_three_closes(self):
         s = sectors([(1, 2, 0), (3, 2, 0)])

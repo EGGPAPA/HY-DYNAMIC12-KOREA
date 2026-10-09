@@ -30,6 +30,13 @@ BUSINESSES = {
     '112290': ('반도체 공정소재', '반도체 / 디스플레이 화학재료', '반도체', 'https://www.ycchem.co.kr/eng/doc/intro1.php'),
     '084370': ('반도체 증착장비', 'LPCVD / ALD', '반도체', 'https://www.samsungpop.com/common.do?cmd=down&contentType=application%2Fpdf&fileName=2010%2F2025102015594494K_02_02.pdf&inlineYn=Y&saveKey=research.pdf'),
     '102710': ('전자재료·공정소재', '반도체 / 디스플레이', '반도체', 'https://www.enftech.com/en/'),
+    '247540': ('2차전지 양극재', '하이니켈 양극소재', '2차전지', 'https://www.ecoprobm.com/sub010101'),
+    '355150': ('반도체 방열소재', '전력반도체 / 패키지', '반도체', 'https://www.kostec.net/kr/sub/company/overview.asp'),
+    '000020': ('의약품', '일반·전문의약품', '헬스케어', 'https://dong-wha.co.kr/'),
+    '006280': ('의약품·백신', '혈액제제 / 백신', '헬스케어', 'https://www.gccorp.com/kor/pdf/GC_Sustainability_Report_2025_kor_v9.pdf'),
+    '086520': ('지주·전지소재·환경', '2차전지 / 환경', None, 'https://www.ecopro.co.kr/sub010101/view'),
+    '222080': ('공정·검사장비', '2차전지 / 반도체·PCB 검사', None, 'https://www.sfanexel.co.kr/'),
+    '039610': ('산업용 밸브', '가스 / 석유화학 밸브', None, 'https://www.hsvalve.com/new_hsvalve/contents/technology_01_view.php'),
 }
 
 
