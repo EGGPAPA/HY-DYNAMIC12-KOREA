@@ -1,7 +1,9 @@
 from pathlib import Path
+from copy import deepcopy
 import unittest
 
 from streamlit.testing.v1 import AppTest
+from leader_roadmap_ui import stage_members
 
 FIXTURE = Path(__file__).parent / 'fixtures' / 'strategy_app.py'
 
@@ -20,6 +22,53 @@ class RoadmapUITests(unittest.TestCase):
         self.assertIn('② 종목 > 업종', columns)
         self.assertIn('③ 진입 위치', columns)
         self.assertIn('종합 판단', columns)
+        self.assertEqual(at.session_state['fixture_revision'], 0)
+
+    def test_counts_and_names_use_the_same_cumulative_members(self):
+        rows = [
+            dict(ticker='held', sector_ok=None, stock_ok=None, ready=False),
+            dict(ticker='stock_only', sector_ok=False, stock_ok=True, ready=False),
+            dict(ticker='sector_only', sector_ok=True, stock_ok=False, ready=False),
+            dict(ticker='both', sector_ok=True, stock_ok=True, ready=False),
+            dict(ticker='ready', sector_ok=True, stock_ok=True, ready=True),
+        ]
+        before = deepcopy(rows)
+        self.assertEqual([[x['ticker'] for x in group] for group in stage_members(rows)],
+                         [['sector_only', 'both', 'ready'], ['both', 'ready'], ['ready']])
+        self.assertEqual(rows, before)
+        at = self.app()
+        self.assertEqual(sum('반도체 | 가상 종목' == x.value for x in at.markdown), 3)
+        self.assertIn('①과 ②는 같은 1종목', ' '.join(x.value for x in at.caption))
+
+    def test_stage_filters_keep_matching_table_and_detail_without_saving(self):
+        at = self.app()
+        for choice in ('① 업종 우위', '② 업종·종목 모두 우위', '③ 진입 조건까지 충족', '전체'):
+            at.radio(key='roadmap_filter_short').set_value(choice).run()
+            self.assertEqual(len(at.exception), 0)
+            self.assertEqual(at.dataframe[0].value['종목'].tolist(), ['가상 종목'])
+            self.assertEqual(at.selectbox(key='roadmap_detail_short').value, '가상 종목 (000001)')
+            self.assertEqual(at.session_state['fixture_revision'], 0)
+        self.assertEqual(at.session_state['fixture_state']['projects']['short']['watch'], [])
+
+    def test_zero_match_filter_does_not_fall_back_to_all_rows(self):
+        at = self.app()
+        at.radio(key='fixture_project').set_value('② 중기 · 1~3개월').run()
+        at.radio(key='roadmap_filter_medium').set_value('③ 진입 조건까지 충족').run()
+        self.assertEqual(len(at.exception), 0)
+        self.assertTrue(any('선택한 단계에 해당하는 종목이 없습니다' in x.value for x in at.info))
+        self.assertFalse(any('① 업종 > 시장' in x.value.columns for x in at.dataframe))
+        self.assertFalse(any(x.key == 'roadmap_detail_medium' for x in at.selectbox))
+        self.assertEqual(at.session_state['fixture_revision'], 0)
+        at.radio(key='roadmap_filter_medium').set_value('전체').run()
+        self.assertEqual(at.dataframe[0].value['종목'].tolist(), ['가상 종목'])
+
+    def test_filter_is_independent_between_projects_and_survives_rerun(self):
+        at = self.app()
+        at.radio(key='roadmap_filter_short').set_value('② 업종·종목 모두 우위').run()
+        at.run()
+        self.assertEqual(at.radio(key='roadmap_filter_short').value, '② 업종·종목 모두 우위')
+        at.radio(key='fixture_project').set_value('② 중기 · 1~3개월').run()
+        self.assertEqual(at.radio(key='roadmap_filter_medium').value, '전체')
         self.assertEqual(at.session_state['fixture_revision'], 0)
 
     def test_medium_shows_closed_price_and_manual_review_wait(self):

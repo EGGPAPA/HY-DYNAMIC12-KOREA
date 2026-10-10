@@ -28,6 +28,14 @@ def roadmap_frame(rows, project):
     } for x in rows])
 
 
+def stage_members(rows):
+    """Cumulative members, shared by the counts, names and table filters."""
+    first = [x for x in rows if x['sector_ok'] is True]
+    second = [x for x in first if x['stock_ok'] is True]
+    third = [x for x in second if x['ready']]
+    return first, second, third
+
+
 def render_roadmap(project, results, histories, snapshot, context, now, eligible_codes):
     rows = build_roadmap(project, results, histories, snapshot, context, now, eligible_codes)
     if not rows:
@@ -35,27 +43,54 @@ def render_roadmap(project, results, histories, snapshot, context, now, eligible
     st.markdown('#### 한눈에 보기 · 업종 → 종목 → 진입 위치')
     period = '20일' if project == 'short' else '20일·60일 모두'
     st.caption(f'{period} 우위 기준 · 표의 숫자는 20일 / 60일 수익률 차이(%p) · 🟢 충족 / 🟡 대기 / ⚪ 자료 확인')
-    first = sum(x['sector_ok'] is True for x in rows)
-    second = sum(x['sector_ok'] is True and x['stock_ok'] is True for x in rows)
-    third = sum(x['ready'] for x in rows)
-    a, b, c = st.columns(3)
-    a.metric('① 시장보다 강한 업종 소속', f'{first}종목')
-    b.metric('② 그중 업종보다 강한 종목', f'{second}종목')
-    c.metric('③ 그중 진입 조건까지 충족', f'{third}종목')
-    frame = roadmap_frame(rows, project)
-    st.dataframe(frame, hide_index=True, use_container_width=True,
-        height=min(600, 38 + 35 * len(rows)), key='leader_roadmap_' + project,
-        column_config={
-            '① 업종 > 시장': st.column_config.TextColumn(help='업종 참고지수 수익률 − KOSPI 수익률. 20거래일 / 60거래일, 단위 %p.'),
-            '② 종목 > 업종': st.column_config.TextColumn(help='종목 수익률 − 같은 업종 참고지수 수익률. 같은 61개 확정 일봉 날짜로 비교합니다.'),
-            '③ 진입 위치': st.column_config.TextColumn(help='기존 프로젝트의 돌파/눌림·거래량·손절거리 조건. 안전한 매수나 수익을 보장하지 않습니다.'),
-        })
+    first, second, third = stage_members(rows)
+    titles = ('① 시장보다 강한 업종 소속', '② 그중 업종보다 강한 종목', '③ 그중 진입 조건까지 충족')
+    for column, title, members in zip(st.columns(3), titles, (first, second, third)):
+        with column:
+            st.metric(title, f'{len(members)}종목')
+            if not members:
+                st.caption('해당 종목 없음')
+            else:
+                groups = {}
+                for item in members:
+                    groups.setdefault(item['group'] or '미지정', []).append(item['name'])
+                for group, names in groups.items():
+                    st.write(group + ' | ' + ' · '.join(names))
+    st.caption('②는 ① 중 종목도 업종보다 강한 경우, ③은 ② 중 진입 조건까지 충족한 경우입니다. 서로 별개의 목록이 아닙니다.')
+    if first and len(first) == len(second):
+        st.caption(f'①과 ②는 같은 {len(first)}종목입니다. 아래 종목명을 확인하거나 ② 필터로 모아 보세요.')
+    choices = {'전체': rows, '① 업종 우위': first, '② 업종·종목 모두 우위': second,
+               '③ 진입 조건까지 충족': third}
+    choice = st.radio('표에서 볼 종목', list(choices), horizontal=True, key='roadmap_filter_' + project)
+    visible_rows = choices[choice]
+    st.caption(f'선택: {choice} · {len(visible_rows)}종목 표시 / 전체 {len(rows)}종목 · 표와 종목별 상세에만 적용되며 저장목록은 바뀌지 않습니다.')
+    if visible_rows:
+        frame = roadmap_frame(visible_rows, project)
+        st.dataframe(frame, hide_index=True, use_container_width=True,
+            height=min(600, 38 + 35 * len(visible_rows)), key='leader_roadmap_' + project,
+            column_config={
+                '① 업종 > 시장': st.column_config.TextColumn(help='업종 참고지수 수익률 − KOSPI 수익률. 20거래일 / 60거래일, 단위 %p.'),
+                '② 종목 > 업종': st.column_config.TextColumn(help='종목 수익률 − 같은 업종 참고지수 수익률. 같은 61개 확정 일봉 날짜로 비교합니다.'),
+                '③ 진입 위치': st.column_config.TextColumn(help='기존 프로젝트의 돌파/눌림·거래량·손절거리 조건. 안전한 매수나 수익을 보장하지 않습니다.'),
+            })
+    else:
+        st.info('선택한 단계에 해당하는 종목이 없습니다. 전체 또는 다른 단계를 선택하세요.')
     held = sum(not x['strength']['valid'] for x in rows)
     days = sorted({x['strength']['asof'] for x in rows if x['strength']['valid']})
-    st.caption(f"상대강도: {', '.join(days) or '기준일 확인 중'} 확정 종가 · 표시 {len(rows)}종목 중 비교 보류 {held}종목 · 저장목록·종목 순서는 변경하지 않습니다.")
+    st.caption(f"상대강도: {', '.join(days) or '기준일 확인 중'} 확정 종가 · 전체 {len(rows)}종목 중 비교 보류 {held}종목 · 저장목록·종목 순서는 변경하지 않습니다.")
     st.caption('①·②는 마감 기준입니다. ③은 단기 장중 현재가·휴일 종가, 중기 확정 종가 기준입니다. 3단계 충족도 매수 확정·안전 보장이 아닙니다.')
     if project == 'medium':
         st.caption('중기는 기술조건 외에 직접 기록한 실적·공시 확인도 필요합니다. 장중 현재가가 아닌 평가종가를 위 표에 표시합니다.')
+    if visible_rows:
+        _render_details(project, visible_rows)
+    with st.expander('한눈에 보기 계산 기준·자료 범위'):
+        st.write('기존 10개 업종의 고정 대표 3종목 참고지수와 비교합니다. 업종 전체 공식지수·전체 시장 순위가 아니며, 대표 종목은 자기 자신도 포함된 지수와 비교될 수 있습니다.')
+        st.write('같은 61개 확정 거래일의 가격으로 20일·60일 수익률을 계산합니다. 업종/시장: Naver 일봉, 종목: 기존 KIS 일봉. 중간 날짜 누락·기준일 차이·오래된 자료는 보류하며 이전 값으로 채우지 않습니다.')
+        st.write('표는 수익률 차이(%p), 상세 선은 가격비율을 시작값 100으로 맞춘 상대강도입니다. RSI가 아닙니다. 상대 우위여도 실제 가격은 하락했을 수 있습니다.')
+        st.write('단기: 최근 20일의 업종>시장, 종목>업종. 중기: 두 비교 모두 20일과 60일 우위. 3단계 충족에는 기존 프로젝트 후보 조건·진입 조건도 필요합니다. 이 추가 표는 종목 편입·교체·매매·저장 기록을 변경하지 않습니다.')
+
+
+def _render_details(project, rows):
     with st.expander('종목별 근거 · 진입 참고가격 · 상대강도 변화'):
         labels = {f"{x['name']} ({x['ticker']})": x for x in rows}
         item = labels[st.selectbox('세 단계를 자세히 볼 종목', list(labels), key='roadmap_detail_' + project)]
@@ -95,8 +130,3 @@ def render_roadmap(project, results, histories, snapshot, context, now, eligible
             st.markdown('**상대강도 변화 · 시작값 100**')
             st.line_chart(strength['relative_chart'], height=230)
             st.caption('종목/업종 선이 올라가면 업종보다 강해지고, 업종/KOSPI 선이 올라가면 시장보다 강해집니다. 100은 비교 시작일이며 매수 기준선이 아닙니다. 두 선의 교차는 주도업종 교체 신호가 아닙니다.')
-    with st.expander('한눈에 보기 계산 기준·자료 범위'):
-        st.write('기존 10개 업종의 고정 대표 3종목 참고지수와 비교합니다. 업종 전체 공식지수·전체 시장 순위가 아니며, 대표 종목은 자기 자신도 포함된 지수와 비교될 수 있습니다.')
-        st.write('같은 61개 확정 거래일의 가격으로 20일·60일 수익률을 계산합니다. 업종/시장: Naver 일봉, 종목: 기존 KIS 일봉. 중간 날짜 누락·기준일 차이·오래된 자료는 보류하며 이전 값으로 채우지 않습니다.')
-        st.write('표는 수익률 차이(%p), 상세 선은 가격비율을 시작값 100으로 맞춘 상대강도입니다. RSI가 아닙니다. 상대 우위여도 실제 가격은 하락했을 수 있습니다.')
-        st.write('단기: 최근 20일의 업종>시장, 종목>업종. 중기: 두 비교 모두 20일과 60일 우위. 3단계 충족에는 기존 프로젝트 후보 조건·진입 조건도 필요합니다. 이 추가 표는 종목 편입·교체·매매·저장 기록을 변경하지 않습니다.')
