@@ -1,0 +1,185 @@
+{
+  "version": 1,
+  "projects": {
+    "short": {
+      "watch": [],
+      "archived": [],
+      "trades": [],
+      "reviews": {},
+      "budget": 0.0,
+      "risk_pct": 0.5,
+      "revision": 0
+    },
+    "medium": {
+      "watch": [
+        {
+          "ticker": "158430",
+          "name": "아톤",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "077360",
+          "name": "덕산하이메탈",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "098460",
+          "name": "고영",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "403870",
+          "name": "HPSP",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "059090",
+          "name": "미코",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "067630",
+          "name": "HLB생명과학",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "272210",
+          "name": "한화시스템",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "011930",
+          "name": "신성이엔지",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "009830",
+          "name": "한화솔루션",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "011790",
+          "name": "SKC",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "039030",
+          "name": "이오테크닉스",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "071090",
+          "name": "하이스틸",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "001120",
+          "name": "LX인터내셔널",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "089030",
+          "name": "테크윙",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "128820",
+          "name": "대성산업",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "089010",
+          "name": "켐트로닉스",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "112290",
+          "name": "와이씨켐",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "450080",
+          "name": "에코프로머티",
+          "market": "KOSPI",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "084370",
+          "name": "유진테크",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        },
+        {
+          "ticker": "102710",
+          "name": "이엔에프테크놀로지",
+          "market": "KOSDAQ",
+          "added_on": "2026-10-10",
+          "selection_asof": "2026-10-08",
+          "rule": "project_v1"
+        }
+      ],
+      "archived": [],
+      "trades": [],
+      "reviews": {},
+      "budget": 0.0,
+      "risk_pct": 0.5,
+      "revision": 1
+    }
+  },
+  "updated_on": "2026-10-10"
+}
