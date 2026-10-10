@@ -696,6 +696,13 @@ def render_rise_timing_watchlist(universe=None):
     from rise_current_price_ui import render_current_price_screen, render_new_discoveries
     from watch_leader_comparison_ui import render_leader_comparison
     rows, sha = _load_watchlist()
+    project = st.radio('투자 프로젝트 선택',
+        ['① 단기 · 며칠~몇 주', '② 중기 · 1~3개월', '기존 개인관찰·전종목 검색'],
+        horizontal=True, key='rise_investment_project')
+    if project != '기존 개인관찰·전종목 검색':
+        from strategy_projects_ui import render_strategy_project
+        render_strategy_project('short' if project.startswith('①') else 'medium', rows, _load_convergence_state())
+        return
     cohort, _ = _load_watch_cohort()
     if cohort is None:
         st.warning('저장된 관찰 대상을 불러오지 못했습니다. 임의로 다른 종목을 대신 선정하지 않습니다. 잠시 후 새로고침해 주세요.')
@@ -730,6 +737,7 @@ def render_rise_timing_watchlist(universe=None):
                 idx=labels.index(remove);updated=rows[:idx]+rows[idx+1:]
                 try:_save_watchlist(updated,sha);st.success("관찰목록에서 삭제했습니다.");st.rerun()
                 except Exception as exc:st.error(str(exc))
+
 
 
 

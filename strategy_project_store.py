@@ -4,7 +4,7 @@ import json
 
 import requests
 
-from projects.leader_investment.strategy_projects import PROJECT_PATH, empty_state, validate_state
+from strategy_projects import PROJECT_PATH, empty_state, validate_state
 
 API = f'https://api.github.com/repos/EGGPAPA/HY-DYNAMIC12-KOREA/contents/{PROJECT_PATH}'
 BRANCH = 'monitor-state'
