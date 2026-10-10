@@ -7,9 +7,9 @@ import requests
 import streamlit as st
 
 from rise_live_analysis import KST
-from strategy_projects import (PROJECTS, candidate_report, change_state, combined_positions,
+from projects.leader_investment.strategy_projects import (PROJECTS, candidate_report, change_state, combined_positions,
     ledger, risk_quantity, technical_view)
-from strategy_project_store import read_projects, save_projects
+from projects.leader_investment.strategy_project_store import read_projects, save_projects
 from watch_sector_context import business_context, sector_flow
 
 

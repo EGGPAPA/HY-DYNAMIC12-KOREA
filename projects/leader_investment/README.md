@@ -1,6 +1,43 @@
+# 별도 주도주 프로젝트
+
+기존 앱을 복잡하게 만들지 않도록 단기·중기 기능을 이 디렉터리로 분리했습니다.
+메인 `app.py`와 기존 상승시점관찰에서는 이 프로젝트를 불러오지 않습니다.
+별도 배포 URL은 아직 만들지 않았습니다.
+
+## 실행
+
+저장소 루트에서 기존 앱 의존성을 설치한 환경으로 실행합니다.
+
+```powershell
+python -m streamlit run projects/leader_investment/app.py --server.port 8502
+```
+
+다른 앱을 실행 중이면 사용하지 않는 포트를 지정합니다.
+단독 파일 모음이 아닌 **같은 저장소 안의 별도 앱 진입점**입니다.
+일봉·시세·업종분류·인증은 저장소 루트의 기존 모듈을 함께 사용합니다.
+기존 인증 설정을 사용하되 비밀값을 이 폴더나 소스에 복사하지 않습니다.
+별도 호스팅 시에는 서비스의 Secrets 설정에 직접 등록해야 합니다.
+
+## 기존 자료 보존
+
+기존 `rise_timing_watchlist.json`, `data/rise_watch_cohort.json`,
+`holdings.json`, `pension_holdings.json`은 이번 분리 작업으로 변경하지 않습니다.
+새 프로젝트에서 이미 저장한 기록도 `monitor-state:data/strategy_projects.json`에
+그대로 남습니다. 폴더를 옮겨도 저장 위치를 바꾸거나 기존 기록을 삭제하지 않습니다.
+
+## 검증
+
+저장소 루트에서 실행합니다.
+
+```powershell
+python -m unittest projects.leader_investment.test_strategy_projects projects.leader_investment.test_strategy_project_store projects.leader_investment.test_separation -v
+python -m unittest discover -s projects/leader_investment/tests -p 'test_strategy_projects_ui.py' -v
+```
+
 # 단기·중기 프로젝트
 
-상승시점관찰 → 투자 프로젝트 선택에서 단기, 중기, 기존 개인관찰을 전환합니다.
+기존 HY KOREA 화면에는 프로젝트 메뉴를 표시하지 않습니다.
+이 폴더의 별도 실행 화면에서 단기와 중기 프로젝트를 전환합니다.
 기존 개인관찰 20개와 원본 저장목록은 변경하지 않습니다. 프로젝트를 처음 열면
 완료된 일일 자료로 후보를 미리 보여주며, `현재 후보 최대 20개로 관찰 시작`을
 누른 경우에만 해당 프로젝트에 저장합니다. 가격 갱신으로 종목을 교체하지 않습니다.
@@ -26,3 +63,4 @@ short/medium 목록·계획·거래·배정금액을 분리합니다. 열람·�
 
 검증: 규칙/원장/동시수정 단위 테스트와 Streamlit 가상 UI 테스트. 가상 fixture는
 실제 시세·원격 저장·주문을 사용하지 않습니다. 과거 성과 백테스트는 포함하지 않습니다.
+

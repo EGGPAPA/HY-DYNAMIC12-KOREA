@@ -5,11 +5,11 @@ from pathlib import Path
 import sys
 import types
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[4]))
 import streamlit as st
-from test_strategy_projects import ROW, CTX, NOW, history, snapshot
-from strategy_projects import PROJECTS, empty_state
-import strategy_projects_ui as ui
+from projects.leader_investment.test_strategy_projects import ROW, CTX, NOW, history, snapshot
+from projects.leader_investment.strategy_projects import PROJECTS, empty_state
+from projects.leader_investment import strategy_projects_ui as ui
 
 
 class FixedDatetime(datetime):

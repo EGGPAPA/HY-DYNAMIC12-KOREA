@@ -4,7 +4,7 @@ import unittest
 
 import pandas as pd
 
-from strategy_projects import (KST, candidate_report, change_state, combined_positions,
+from projects.leader_investment.strategy_projects import (KST, candidate_report, change_state, combined_positions,
     empty_state, ledger, risk_quantity, technical_view, validate_state)
 
 NOW = datetime(2026, 10, 10, 12, tzinfo=KST)
