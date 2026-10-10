@@ -293,6 +293,8 @@ def technical_view(project, row, history, quote, context, now, review=None):
             return '기술 4/4 · 실적·공시 확인 대기'
         return '검토 4/4 · 장중 잠정' if base['intraday'] else '검토 4/4 · 종가 참고'
     return {**base, 'stop_reference': stop, 'trend_ok': trend, 'fundamental_verified': bool(verified),
+            'breakout_floor': peak, 'breakout_ceiling': peak * 1.03,
+            'stop_distance_pct': risk, 'risk_limit_pct': limit, 'overheated': bool(hot),
             'breakout_state': label(break_checks), 'pullback_state': label(pull_checks),
             'breakout_checks': break_checks, 'pullback_checks': pull_checks,
             'review_stop': review.get('stop', 0)}

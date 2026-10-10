@@ -10,6 +10,8 @@ import streamlit as st
 from test_strategy_projects import ROW, CTX, NOW, history, snapshot
 from strategy_projects import PROJECTS, empty_state
 import strategy_projects_ui as ui
+import leader_roadmap
+from test_leader_roadmap import sector_fixture
 
 
 class FixedDatetime(datetime):
@@ -21,6 +23,14 @@ class FixedDatetime(datetime):
 ui.datetime = FixedDatetime
 st.set_page_config(layout='wide')
 st.caption('검증용 가상 데이터 · 실제 주문·원격 저장 없음')
+# Synthetic mapping exists only in this isolated fixture, never in production.
+leader_roadmap.comparison_group = lambda code: '반도체' if code == '000001' else None
+if st.session_state.get('fixture_sector_missing'):
+    st.session_state.pop('sector_observation_last_good', None)
+else:
+    st.session_state['sector_observation_last_good'] = sector_fixture()
+    if st.session_state.get('fixture_sector_stale'):
+        st.session_state['sector_observation_last_good']['asof'] = '2026-10-07'
 fake_current = types.ModuleType('rise_current_price_ui')
 fake_current._watch_state = lambda rows, namespace=None: {
     'snapshot': {}, 'histories': {'000001': history()}, 'revision':0, 'error':''}

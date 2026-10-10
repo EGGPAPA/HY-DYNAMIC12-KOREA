@@ -100,6 +100,8 @@ def _live_project(project, rows, p, snapshot, preview=False):
             result['pullback_state'] = '주도력 재점검 · ' + result['pullback_state'].replace('검토', '기술')
         results.append(result)
     sector_snapshot = st.session_state.get('sector_observation_last_good')
+    from leader_roadmap_ui import render_roadmap
+    render_roadmap(project, results, state['histories'], sector_snapshot, context, now, eligible_codes)
     report_rows = []
     for x in results:
         matched_sector = sector_snapshot and sector_snapshot.get('asof') == snapshot.get('asof')
@@ -110,7 +112,8 @@ def _live_project(project, rows, p, snapshot, preview=False):
             '업종흐름': sector_flow(x['ticker'], sector_snapshot, snapshot.get('asof')) if matched_sector else '— 기준일 확인',
             '수렴': x.get('convergence', '—'), '돌파형': x['breakout_state'], '눌림형': x['pullback_state'],
             '손절 참고': won(x.get('stop_reference'))})
-    st.dataframe(pd.DataFrame(report_rows), hide_index=True, use_container_width=True, key='strategy_table_' + project)
+    with st.expander('기존 프로젝트 상세표 · 수렴·돌파·눌림'):
+        st.dataframe(pd.DataFrame(report_rows), hide_index=True, use_container_width=True, key='strategy_table_' + project)
     days = sorted({x['analysis_day'] for x in results if x.get('analysis_day')})
     st.caption(f"{'후보 미리보기 · 저장 전' if preview else '저장된 관찰종목 유지'} · 평가 기준일 {', '.join(days) or '확인 중'} · 장중 종목 자동 교체 없음")
     if project == 'medium':
