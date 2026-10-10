@@ -106,5 +106,21 @@ class RoadmapUITests(unittest.TestCase):
         self.assertEqual(at.session_state['fixture_revision'], 0)
         self.assertEqual(at.session_state['fixture_state']['projects']['short']['watch'], [])
 
+    def test_phase_chart_and_original_ratio_chart_are_present(self):
+        at = self.app()
+        self.assertTrue(any('강세 전환·다음 상승 준비 시점' in x.value for x in at.markdown))
+        self.assertTrue(any('현재 관찰 단계:' in x.value for x in at.markdown))
+        self.assertTrue(any(x.label == '시점 차트 기준·한계' for x in at.expander))
+        self.assertTrue(any(x.label == '기존 상대강도 비율 차트 · 시작값 100' for x in at.expander))
+        self.assertEqual(at.session_state['fixture_revision'], 0)
+
+    def test_unverified_sector_does_not_create_a_phase_chart(self):
+        at = self.app()
+        at.session_state['fixture_sector_missing'] = True
+        at.run()
+        self.assertEqual(len(at.exception), 0)
+        self.assertTrue(any('시점 차트 보류:' in x.value for x in at.info))
+        self.assertFalse(any('현재 관찰 단계:' in x.value for x in at.markdown))
+
 
 if __name__ == '__main__': unittest.main()

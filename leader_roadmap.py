@@ -87,6 +87,7 @@ def relative_strength(code, history, snapshot, context, now):
         result['relative_chart'] = pd.DataFrame({
             '종목 / 업종': stock_ratio / stock_ratio.iloc[0] * 100,
             '업종 / KOSPI': sector_ratio / sector_ratio.iloc[0] * 100})
+        result['closed_prices'] = pd.DataFrame({'Close': close, 'Sector': sector, 'Market': market})
         return result
     except (KeyError, TypeError, ValueError, AttributeError, IndexError, OverflowError) as exc:
         reason = str(exc) if isinstance(exc, ValueError) else '업종·종목 자료 확인 필요'

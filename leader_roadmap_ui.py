@@ -126,7 +126,9 @@ def _render_details(project, rows):
         if entry['valid']:
             st.caption('돌파 참고범위는 직전 20일 최고 종가 ~ 그 가격의 +3%입니다. 범위 안이어도 추세·거래량·손절거리 등 다른 조건을 모두 확인해야 합니다. 눌림형의 매수 구간이나 주문가격은 아닙니다.')
             st.caption('손절 참고는 직전 단기 10일/중기 20일 최저 종가의 99%입니다. 갭 하락·슬리피지로 실제 손실은 표시 거리보다 클 수 있습니다.')
+        from leader_roadmap_phase_ui import render_phase_history
+        render_phase_history(strength, project)
         if strength['valid']:
-            st.markdown('**상대강도 변화 · 시작값 100**')
-            st.line_chart(strength['relative_chart'], height=230)
-            st.caption('종목/업종 선이 올라가면 업종보다 강해지고, 업종/KOSPI 선이 올라가면 시장보다 강해집니다. 100은 비교 시작일이며 매수 기준선이 아닙니다. 두 선의 교차는 주도업종 교체 신호가 아닙니다.')
+            with st.expander('기존 상대강도 비율 차트 · 시작값 100'):
+                st.line_chart(strength['relative_chart'], height=230)
+                st.caption('종목/업종 선이 올라가면 업종보다 강해지고, 업종/KOSPI 선이 올라가면 시장보다 강해집니다. 100은 비교 시작일이며 매수 기준선이 아닙니다. 두 선의 교차는 주도업종 교체 신호가 아닙니다.')
