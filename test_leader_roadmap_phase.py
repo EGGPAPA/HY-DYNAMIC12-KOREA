@@ -120,6 +120,18 @@ class PhaseTests(unittest.TestCase):
         self.assertEqual(spec['vconcat'][0]['layer'][1]['encoding']['shape']['field'], 'phase')
         self.assertIn('tooltip', spec['vconcat'][0]['layer'][0]['encoding'])
 
+    def test_responsive_panels_share_date_range_without_concat_overflow(self):
+        from leader_roadmap_phase_ui import phase_panels
+        panels = [p.to_dict(validate=True) for p in phase_panels(phase_history(prepared()))]
+        self.assertEqual(len(panels), 3)
+        domains = []
+        for p in panels:
+            self.assertEqual(p['width'], 'container')
+            self.assertEqual(p['config']['axisY']['minExtent'], 60)
+            domains.extend(layer['encoding']['x']['scale']['domain'] for layer in p['layer']
+                           if 'x' in layer['encoding'])
+        self.assertTrue(all(d == domains[0] for d in domains))
+
     def test_closed_alignment_excludes_future_and_holds_bad_sector(self):
         h = history()
         snap = sector_fixture()

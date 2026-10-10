@@ -11,7 +11,8 @@ def phase_chart(result):
     tips = [alt.Tooltip('date:T', title='확정 종가일', format='%Y-%m-%d'),
             alt.Tooltip('phase:N', title='관찰 단계'),
             alt.Tooltip('close:Q', title='종가(원)', format=',.0f')]
-    x = alt.X('date:T', title=None, axis=alt.Axis(format='%m/%d', tickCount=6))
+    x = alt.X('date:T', title=None, axis=alt.Axis(format='%m/%d', tickCount=6),
+              scale=alt.Scale(domain=[f.index[0].isoformat(), f.index[-1].isoformat()]))
     lines = f.melt(id_vars=['date', 'phase', 'close'], value_vars=['ma20', 'prior_high5'],
                    var_name='series', value_name='value')
     lines['series'] = lines.series.map({'ma20': '20일선', 'prior_high5': '직전 5일 종가고점'})
@@ -28,9 +29,9 @@ def phase_chart(result):
                  alt.Tooltip('phase:N', title='관찰 단계')])
     marks = alt.Chart(f[f.change]).mark_point(filled=True, size=105, strokeWidth=1).encode(
         x=x, y=alt.Y('close:Q', title='가격 (원)', scale=alt.Scale(zero=False)),
-        color=alt.Color('phase:N', title=None, scale=alt.Scale(domain=list(MARKED),
+        color=alt.Color('phase:N', title=None, legend=None, scale=alt.Scale(domain=list(MARKED),
             range=['#53b6ff', '#58d5b6', '#ffbf69', '#f18ca7'])),
-        shape=alt.Shape('phase:N', title=None, scale=alt.Scale(domain=list(MARKED),
+        shape=alt.Shape('phase:N', title=None, legend=None, scale=alt.Scale(domain=list(MARKED),
             range=['circle', 'square', 'triangle-up', 'cross'])), tooltip=tips)
     points = alt.Chart(f).mark_point(opacity=0, size=130).encode(x=x,
         y=alt.Y('close:Q', title='가격 (원)', scale=alt.Scale(zero=False)), tooltip=tips)
@@ -59,6 +60,16 @@ def phase_chart(result):
                 columns=2).configure_axis(labelFontSize=11, titleFontSize=12)
 
 
+def phase_panels(result):
+    # Separate responsive charts: concatenated Vega charts include axes outside
+    # Streamlit's assigned width and overflow narrow detail containers.
+    return [panel.properties(width='container', height=300 if i == 0 else 185)
+            .configure_legend(orient='bottom', labelLimit=180, columns=3)
+            .configure_axis(labelFontSize=11, titleFontSize=12)
+            .configure_axisY(minExtent=60)
+            for i, panel in enumerate(phase_chart(result).vconcat)]
+
+
 def render_phase_history(strength, project):
     st.markdown('**강세 전환·다음 상승 준비 시점**')
     result = phase_history(strength.get('closed_prices')) if strength.get('valid') else {
@@ -68,9 +79,12 @@ def render_phase_history(strength, project):
         return
     st.write(f"현재 관찰 단계: {result['current']} · 이번 상태 시작 {result['since']} · {result['sessions']}거래일째")
     st.caption(result['reason'])
-    st.altair_chart(phase_chart(result), use_container_width=True, key='roadmap_phase_' + project)
+    for i, panel in enumerate(phase_panels(result)):
+        st.altair_chart(panel, use_container_width=True, key=f'roadmap_phase_{project}_{i}')
+        if i == 0:
+            st.caption('파란 원: 전환 후보 · 초록 네모: 유지·준비 후보 · 주황 삼각형: 재상승 후보 · 분홍 십자: 약화·관찰')
     st.caption('읽는 순서: 아래 두 강도에서 5일 개선 → 위 가격의 20일선 회복 → 준비 구간과 고점 돌파를 함께 확인합니다. 5일선·20일선이 아니라 각각 5일·20일 수익률 차이입니다.')
-    st.caption('파란 원: 전환 후보 · 초록 네모: 유지·준비 후보 · 주황 삼각형: 재상승 후보 · 분홍 십자: 약화·관찰. 준비 구간이 상승으로 이어진다는 보장은 없습니다.')
+    st.caption('준비 구간이 상승으로 이어진다는 보장은 없습니다.')
     changes = result['frame'].loc[result['frame'].change, ['date', 'phase']].tail(4)
     if changes.empty:
         st.caption('표시 기간에 확인된 단계 변경 없음')
