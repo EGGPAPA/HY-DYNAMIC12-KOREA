@@ -11,6 +11,8 @@ from strategy_projects import (PROJECTS, candidate_report, change_state, combine
     ledger, risk_quantity, technical_view)
 from strategy_project_store import read_projects, save_projects
 from watch_sector_context import business_context, sector_flow
+from leader_sector_focus import sector_focus, sector_codes, focused_candidates
+from leader_sector_data import load_focus_source
 
 
 @st.cache_data(ttl=30, show_spinner=False)
@@ -42,7 +44,7 @@ def won(value):
 def candidate_frame(rows, sector_snapshot, asof):
     return pd.DataFrame([{'종목': x['name'], '코드': x['ticker'],
         '주요사업': business_context(x['ticker'])['primary'],
-        '업종흐름': sector_flow(x['ticker'], sector_snapshot, asof)
+        '업종흐름': (x['focus_group'] + ' · 주도업종 후보') if x.get('focus_group') else sector_flow(x['ticker'], sector_snapshot, asof)
             if sector_snapshot and sector_snapshot.get('asof') == asof else '— 같은 기준일 업종자료 없음',
         '20일 시장대비': f"{x['excess20']:+.1f}%p", '60일 시장대비': f"{x['excess60']:+.1f}%p",
         '수렴': x.get('state', '확인 필요'), '급등 참고': '추격 주의' if x['overheated'] else '기준 초과 없음',
@@ -51,13 +53,13 @@ def candidate_frame(rows, sector_snapshot, asof):
 
 def _rules(project):
     with st.expander('프로젝트 기준 · 필수/보조와 기존 목록의 차이'):
-        st.write('기준 v1 · 검증 전 관찰 규칙입니다. 점수는 상승 확률이 아니며, 종목 편입·실제 매수·매도를 자동 실행하지 않습니다.')
+        st.write('주도업종 우선 · 검증 전 관찰 규칙입니다. 10개 업종의 20일 시장대비 강도 1위(공동 1위 포함)를 먼저 정하고, 해당 업종에서 후보를 찾습니다. 1위도 시장 하회 또는 전체 업종 자료 누락이면 보류합니다. 단기·중기의 업종 선택 기준은 같습니다.')
         if project == 'short':
             st.write('단기: 3~15거래일을 계획 예시로 사용합니다. 보통주·1,000원 이상·20일 평균 거래대금 약 20억원 이상, 10·20일 상승, 20일 시장 초과 상승, 상승하는 20일선 위의 종목이 후보입니다.')
-            st.caption('후보 정렬: 10일 상승률 40% + 20일 시장초과 40% + 거래대금 20%의 후보 내 백분위. 5일 강도는 별도 자료가 없어 임의로 추정하지 않습니다.')
+            st.caption('주도업종 후보 정렬: 업종 대비 20일 초과 등락률 → 60일 → 거래대금. 수렴은 필수 선발조건이 아닙니다.')
         else:
             st.write('중기: 1~3개월 보유 계획입니다. 같은 유동성 기준에 20·60일 상승 및 시장 초과 상승, 종가 > 20일선 > 60일선, 20일선 상승을 요구합니다.')
-            st.caption('후보 정렬: 20일 시장초과 30% + 60일 시장초과 50% + 거래대금 20%의 후보 내 백분위. 진입 평가에는 60일선 유지·상승도 확인합니다.')
+            st.caption('주도업종 후보 정렬: 업종 대비 60일 초과 등락률 → 20일 → 거래대금. 진입 평가에는 60일선 유지·상승도 확인합니다.')
             st.caption('실적·공시는 자동 분석하지 않습니다. 아래에 사용자가 확인한 주소·근거를 저장해야 기술조건 충족과 구분해 표시합니다. 확인 후 90일이 지나면 다시 확인 대기입니다.')
         st.write('돌파형: 상승 추세 / 이전 20거래일 최고 종가 돌파 후 3% 이내 / 거래량 1.5배 / 손절 참고거리의 네 항목입니다.')
         st.write('눌림형: 상승 추세 / 최근 조정 후 반등 / 거래량 1.1배 / 손절 참고거리의 네 항목입니다. 첫 눌림인지까지 자동 확정하지 않습니다.')
@@ -68,14 +70,14 @@ def _rules(project):
 
 
 @st.fragment(run_every=10)
-def _live_project(project, rows, p, snapshot, preview=False):
+def _live_project(project, rows, p, snapshot, preview=False, focus=None):
     from rise_current_price_ui import _watch_state, _schedule_watch_selection, _quotes_for_context
     from rise_live_data import get_market_context
     from rise_live_analysis import evaluate_current
     if not rows:
         st.info('표시할 종목이 없습니다. 조건 충족 후보가 없으면 숫자를 채우기 위해 다른 종목을 편입하지 않습니다.')
         return
-    state = _watch_state(rows, namespace='strategy_live_' + project)
+    state = _watch_state(rows, namespace=('strategy_focus_live_' if focus else 'strategy_live_') + project)
     if state['snapshot'] is None:
         st.info(f'{len(rows)}개 종목의 일봉 준비 중 · 준비되는 동안 화면과 입력 양식을 유지합니다.')
         if state['error']:
@@ -87,7 +89,8 @@ def _live_project(project, rows, p, snapshot, preview=False):
     now = datetime.now(KST)
     results = []
     latest_prices = {}
-    eligible_codes = {x['ticker'] for x in candidate_report(snapshot, rows, project, now.date().isoformat())['rows']}
+    report = focused_candidates(snapshot, focus, project, now) if focus else candidate_report(snapshot, rows, project, now.date().isoformat())
+    eligible_codes = {x['ticker'] for x in report['rows']}
     for row in rows:
         code = row['ticker']
         history = state['histories'].get(code)
@@ -101,7 +104,7 @@ def _live_project(project, rows, p, snapshot, preview=False):
         results.append(result)
     sector_snapshot = st.session_state.get('sector_observation_last_good')
     from leader_roadmap_ui import render_roadmap
-    render_roadmap(project, results, state['histories'], sector_snapshot, context, now, eligible_codes)
+    render_roadmap(project, results, state['histories'], sector_snapshot, context, now, eligible_codes, focus=focus)
     report_rows = []
     for x in results:
         matched_sector = sector_snapshot and sector_snapshot.get('asof') == snapshot.get('asof')
@@ -109,13 +112,13 @@ def _live_project(project, rows, p, snapshot, preview=False):
             '현재가' if context.get('basis') != 'close' else '최근 종가': won(x['display_price']),
             **({'중기 평가종가': won(x['price'])} if project == 'medium' else {}),
             '주도력 조건': '종가 기준 충족' if x['ticker'] in eligible_codes else '재점검·자료 확인',
-            '업종흐름': sector_flow(x['ticker'], sector_snapshot, snapshot.get('asof')) if matched_sector else '— 기준일 확인',
+            '업종흐름': (' · '.join(focus['groups']) + ' · 주도업종 후보') if focus else sector_flow(x['ticker'], sector_snapshot, snapshot.get('asof')) if matched_sector else '— 기준일 확인',
             '수렴': x.get('convergence', '—'), '돌파형': x['breakout_state'], '눌림형': x['pullback_state'],
             '손절 참고': won(x.get('stop_reference'))})
     with st.expander('기존 프로젝트 상세표 · 수렴·돌파·눌림'):
         st.dataframe(pd.DataFrame(report_rows), hide_index=True, use_container_width=True, key='strategy_table_' + project)
     days = sorted({x['analysis_day'] for x in results if x.get('analysis_day')})
-    st.caption(f"{'후보 미리보기 · 저장 전' if preview else '저장된 관찰종목 유지'} · 평가 기준일 {', '.join(days) or '확인 중'} · 장중 종목 자동 교체 없음")
+    st.caption(f"{'주도업종 후보 미리보기 · 자동 저장 없음' if focus else '저장된 관찰종목 유지'} · 평가 기준일 {', '.join(days) or '확인 중'} · 저장목록 자동 교체 없음")
     if project == 'medium':
         st.caption('중기 조건은 확정 종가로만 계산합니다. 장중 현재가 열이 변해도 중기 평가종가·조건은 다음 마감자료 확인 전까지 유지됩니다.')
     st.caption('장중 KIS 가격 10초 간격 조회 요청(통신 지연 가능) · 휴일/장 시작 전에는 최근 확인 거래일 종가 참고. 10초 조회는 실시간 체결 스트리밍이 아닙니다.')
@@ -125,7 +128,8 @@ def _live_project(project, rows, p, snapshot, preview=False):
         st.info(f"{context.get('mode', '종가 기준')} · 휴일에도 종목·조건을 확인할 수 있습니다. 휴일에는 가격이 변하지 않습니다.")
     if state['error']:
         st.warning(state['error'])
-    _positions(p, results, latest_prices, project, now)
+    if not focus:
+        _positions(p, results, latest_prices, project, now)
     with st.expander('선택 종목 조건 상세'):
         labels = {f"{x['name']} ({x['ticker']})": x for x in results}
         item = labels[st.selectbox('조건을 볼 종목', list(labels), key='strategy_detail_' + project)]
@@ -267,6 +271,7 @@ def render_strategy_project(project, saved_rows, snapshot):
         from rise_timing_watchlist_ui import _load_convergence_state
         _load.clear()
         _load_convergence_state.clear()
+        st.session_state['strategy_focus_revision'] = st.session_state.get('strategy_focus_revision', 0) + 1
         st.rerun()
     try:
         state, sha = _load()
@@ -277,20 +282,53 @@ def render_strategy_project(project, saved_rows, snapshot):
         st.success(st.session_state.pop('strategy_saved_notice'))
     p = state['projects'][project]
     _rules(project)
-    today = datetime.now(KST).date().isoformat()
-    report = candidate_report(snapshot, saved_rows, project, today)
+    now = datetime.now(KST)
+    sector_snapshot = st.session_state.get('sector_observation_last_good')
+    focus = sector_focus(sector_snapshot, now)
+    source = {}
+    report = {'ready': False, 'rows': [], 'reason': focus['reason']}
+    if focus['valid']:
+        groups = ' · '.join(focus['groups'])
+        st.markdown(f'#### 기본 후보 업종: {groups}')
+        st.caption(f"{focus['asof']} 확정 종가 · 20일 강도 1위 · {focus['status']} · 다른 업종은 기본 후보에 포함하지 않습니다.")
+        codes = sector_codes(focus['groups'])
+        try:
+            with st.spinner('주도업종 안에서 종목 자료를 확인합니다 · 기존 20종목 밖에서도 검색'):
+                source = load_focus_source(codes, focus['asof'], st.session_state.get('strategy_focus_revision', 0))
+            report = focused_candidates(source, focus, project, now)
+        except Exception:
+            report = {'ready': False, 'rows': [], 'reason': '주도업종 종목의 상장·거래상태·확정 일봉을 확인하지 못했습니다. 다른 업종으로 대체하지 않습니다.'}
+        st.caption(f'검색 범위: 기존 업종 대표 종목 + 사업 분류 확인 종목 {len(codes)}개 · 기존 저장 20개에 제한하지 않습니다. 업종 전체 종목을 망라한 검색은 아닙니다.')
+        if source.get('excluded'):
+            with st.expander('주도업종 자료 확인 보류'):
+                st.dataframe(pd.DataFrame(source['excluded']), hide_index=True, use_container_width=True)
     candidates = report['rows']
     if report['ready']:
-        st.caption(f"후보 선정: {report['asof']} 확정 종가 · 저장 {len(saved_rows)}개 범위 내 조건 충족 {len(candidates)}개 · 최대 20개 미리보기 · 전 시장을 새로 검색한 결과가 아닙니다.")
+        st.caption(f"후보 선정: {report['asof']} 확정 종가 · 주도업종 안의 프로젝트 조건 충족 {len(candidates)}개 · 최대 20개 표시 · 부족한 수를 다른 업종으로 채우지 않습니다.")
     else:
         st.warning(report['reason'] + ' · 저장된 프로젝트 종목은 유지합니다.')
-    preview = not p['watch']
-    rows = p['watch'] if not preview else candidates[:20]
-    if preview:
-        st.info('아직 이 프로젝트에 저장한 관찰종목이 없습니다. 아래는 후보 미리보기이며 자동 편입·매수가 아닙니다.')
+    view = st.radio('볼 목록', ['주도업종 후보', '기존 저장 관찰종목'], horizontal=True, key='strategy_scope_' + project)
+    if view == '주도업종 후보':
+        st.caption(f"기존 프로젝트 관찰 {len(p['watch'])}개와 매매 기록은 보존합니다. 기존 종목·보유 평가는 '기존 저장 관찰종목'에서 확인하세요.")
+        if candidates:
+            _live_project(project, candidates[:20], p, source, True, focus)
+        else:
+            st.info('표시할 주도업종 후보가 없습니다. 자료 보류와 조건 미충족을 확인하세요. 기존 저장종목이나 다른 업종으로 대신 채우지 않습니다.')
+    else:
+        st.markdown('#### 기존 저장 관찰종목 · 주도업종 전용 목록 아님')
+        st.caption('과거 관찰·보유 관리를 위한 별도 화면입니다. 업종 순위가 바뀌어도 저장 종목을 자동 삭제하거나 교체하지 않습니다.')
+        _live_project(project, p['watch'], p, snapshot)
+    with st.expander('다음 주도업종 관찰 · 기본 후보 미포함'):
+        if focus.get('others'):
+            st.dataframe(pd.DataFrame([{'업종': r['sector'], '20일 시장대비(%p)': round(r['excess20'], 2),
+                '60일 시장대비(%p)': round(r['excess60'], 2)} for r in focus['others']]), hide_index=True, use_container_width=True)
+            st.caption('시장보다 강하지만 현재 1위가 아닌 업종입니다. 다음 주도업종이 된다는 예측이 아닙니다.')
+        else:
+            st.caption('확인된 다른 강세 업종이 없습니다. 주도업종 자료 보류 시 임의로 순위를 표시하지 않습니다.')
+    if not p['watch']:
+        st.info('아직 이 프로젝트에 저장한 관찰종목이 없습니다. 후보는 자동 편입·매수되지 않습니다.')
         if candidates and st.button('현재 후보 최대 20개로 관찰 시작', key='start_' + project):
             _save(state, sha, project, 'add', {'rows': candidates[:20], 'asof': report['asof']})
-    _live_project(project, rows, p, snapshot, preview)
     with st.expander('후보 비교·관찰종목 추가·종료'):
         if candidates:
             st.dataframe(candidate_frame(candidates[:20], st.session_state.get('sector_observation_last_good'), report['asof']),

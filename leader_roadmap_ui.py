@@ -36,15 +36,20 @@ def stage_members(rows):
     return first, second, third
 
 
-def render_roadmap(project, results, histories, snapshot, context, now, eligible_codes):
+def render_roadmap(project, results, histories, snapshot, context, now, eligible_codes, focus=None):
     rows = build_roadmap(project, results, histories, snapshot, context, now, eligible_codes)
+    if focus is not None:
+        rows = [x for x in rows if focus.get('valid') and x['group'] in focus.get('groups', [])]
     if not rows:
         return
     st.markdown('#### 한눈에 보기 · 업종 → 종목 → 진입 위치')
     period = '20일' if project == 'short' else '20일·60일 모두'
     st.caption(f'{period} 우위 기준 · 표의 숫자는 20일 / 60일 수익률 차이(%p) · 🟢 충족 / 🟡 대기 / ⚪ 자료 확인')
     first, second, third = stage_members(rows)
-    titles = ('① 시장보다 강한 업종 소속', '② 그중 업종보다 강한 종목', '③ 그중 진입 조건까지 충족')
+    titles = ('① 주도업종 내 관찰 후보' if focus else '① 시장보다 강한 업종 소속',
+              '② 그중 업종보다 강한 종목', '③ 그중 진입 조건까지 충족')
+    if focus:
+        st.caption('현재 주도업종: ' + ' · '.join(focus['groups']) + ' · 아래 수와 이름은 이 업종 후보 안에서만 계산합니다.')
     for column, title, members in zip(st.columns(3), titles, (first, second, third)):
         with column:
             st.metric(title, f'{len(members)}종목')

@@ -86,17 +86,18 @@ class RoadmapUITests(unittest.TestCase):
         at.session_state['fixture_sector_missing'] = True
         at.run()
         self.assertEqual(len(at.exception), 0)
-        self.assertEqual(at.metric[2].value, '0종목')
-        self.assertIn('비교 보류', at.dataframe[0].value.iloc[0]['종합 판단'])
+        self.assertFalse(any('① 업종 > 시장' in x.value.columns for x in at.dataframe))
+        self.assertTrue(any('주도업종 자료 확인' in x.value for x in at.warning))
+        self.assertEqual(at.session_state['fixture_revision'], 0)
 
     def test_mismatched_dates_hold_without_losing_technical_columns(self):
         at = self.app()
         at.session_state['fixture_sector_stale'] = True
         at.run()
         self.assertEqual(len(at.exception), 0)
-        self.assertIn('기준일 불일치', ' '.join(x.value for x in at.markdown))
-        self.assertEqual(at.metric[2].value, '0종목')
-        self.assertIn('조건 충족', at.dataframe[0].value.iloc[0]['③ 진입 위치'])
+        self.assertTrue(any('순위 확인 전' in x.value for x in at.warning))
+        self.assertFalse(any('① 업종 > 시장' in x.value.columns for x in at.dataframe))
+        self.assertEqual(at.session_state['fixture_revision'], 0)
 
     def test_rerun_and_detail_selection_do_not_write(self):
         at = self.app()
@@ -119,8 +120,44 @@ class RoadmapUITests(unittest.TestCase):
         at.session_state['fixture_sector_missing'] = True
         at.run()
         self.assertEqual(len(at.exception), 0)
-        self.assertTrue(any('시점 차트 보류:' in x.value for x in at.info))
+        self.assertTrue(any('주도업종 후보가 없습니다' in x.value for x in at.info))
         self.assertFalse(any('현재 관찰 단계:' in x.value for x in at.markdown))
+
+    def test_default_focus_replaces_display_scope_not_saved_watch(self):
+        at = self.app()
+        next(x for x in at.button if x.label == '현재 후보 최대 20개로 관찰 시작').click().run()
+        original = deepcopy(at.session_state['fixture_state'])
+        at.session_state['fixture_focus_leader'] = '2차전지'
+        at.run()
+        self.assertEqual(len(at.exception), 0)
+        self.assertEqual(at.radio(key='strategy_scope_short').value, '주도업종 후보')
+        self.assertEqual(at.dataframe[0].value['종목'].tolist(), ['가상 2차전지'])
+        self.assertEqual(at.session_state['fixture_state'], original)
+        self.assertTrue(any(x.value == '2차전지 | 가상 2차전지' for x in at.markdown))
+        self.assertFalse(any(x.value == '반도체 | 가상 종목' for x in at.markdown))
+        at.radio(key='strategy_scope_short').set_value('기존 저장 관찰종목').run()
+        self.assertEqual(at.dataframe[0].value['종목'].tolist(), ['가상 종목'])
+        self.assertEqual(at.session_state['fixture_state'], original)
+
+    def test_failed_focus_fetch_has_no_legacy_fallback(self):
+        at = self.app()
+        next(x for x in at.button if x.label == '현재 후보 최대 20개로 관찰 시작').click().run()
+        original = deepcopy(at.session_state['fixture_state'])
+        at.session_state['fixture_focus_fetch_fail'] = True
+        at.run()
+        self.assertEqual(len(at.exception), 0)
+        self.assertFalse(any('① 업종 > 시장' in x.value.columns for x in at.dataframe))
+        self.assertTrue(any('다른 업종으로 대체하지 않습니다' in x.value for x in at.warning))
+        self.assertEqual(at.session_state['fixture_state'], original)
+
+    def test_focus_is_same_sector_for_both_projects(self):
+        at = self.app()
+        at.session_state['fixture_focus_leader'] = '2차전지'
+        for project in ('① 단기 · 며칠~몇 주', '② 중기 · 1~3개월'):
+            at.radio(key='fixture_project').set_value(project).run()
+            self.assertEqual(len(at.exception), 0)
+            self.assertEqual(at.dataframe[0].value['비교 업종'].tolist(), ['2차전지'])
+        self.assertEqual(at.session_state['fixture_revision'], 0)
 
 
 if __name__ == '__main__': unittest.main()

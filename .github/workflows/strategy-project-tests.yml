@@ -5,6 +5,9 @@ on:
     paths:
       - 'strategy_projects*.py'
       - 'leader_roadmap*.py'
+      - 'leader_sector*.py'
+      - 'test_leader_sector*.py'
+      - 'scripts/refresh_ma_convergence.py'
       - 'test_leader_roadmap*.py'
       - 'tests/test_leader_roadmap_ui.py'
       - 'strategy_project_store.py'
@@ -26,6 +29,6 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install 'streamlit==1.50.0' requests pandas
-      - run: python -m unittest test_strategy_projects test_strategy_project_store test_leader_roadmap test_leader_roadmap_phase -v
+      - run: python -m unittest test_strategy_projects test_strategy_project_store test_leader_roadmap test_leader_roadmap_phase test_leader_sector_focus -v
       - run: python -m unittest discover -s tests -p 'test_*ui.py' -v
-      - run: python -m py_compile leader_roadmap.py leader_roadmap_ui.py leader_roadmap_phase.py leader_roadmap_phase_ui.py strategy_projects.py strategy_project_store.py strategy_projects_ui.py rise_timing_watchlist_ui.py
+      - run: python -m py_compile leader_roadmap.py leader_roadmap_ui.py leader_roadmap_phase.py leader_roadmap_phase_ui.py leader_sector_focus.py leader_sector_data.py strategy_projects.py strategy_project_store.py strategy_projects_ui.py rise_timing_watchlist_ui.py
