@@ -87,6 +87,28 @@
       "cash_before": 14552.0,
       "cash_after": 14552.0,
       "memo": ""
+    },
+    {
+      "id": "e1ff9d14dff449c6b64b3a9f79a1c231",
+      "date": "2026-10-12",
+      "recorded_at": "2026-10-12T09:54:35+09:00",
+      "asset": "etf:375770.KS",
+      "ticker": "375770.KS",
+      "name": "KODEX 탄소효율 그린뉴딜",
+      "group": "korea",
+      "side": "buy",
+      "quantity": 169.0,
+      "price": 23825.0,
+      "amount": 4026425.0,
+      "realized_profit": null,
+      "quantity_before": 0.0,
+      "quantity_after": 169.0,
+      "average_before": 0.0,
+      "average_after": 23825.0,
+      "reflect_cash": false,
+      "cash_before": 14552.0,
+      "cash_after": 14552.0,
+      "memo": ""
     }
   ],
   "opening_balance": {
@@ -98,5 +120,14 @@
     "sp_avg": 26270,
     "safe_now": 128532
   },
-  "schema_version": 2
+  "schema_version": 3,
+  "etf_positions": {
+    "etf:375770.KS": {
+      "ticker": "375770.KS",
+      "name": "KODEX 탄소효율 그린뉴딜",
+      "group": "korea",
+      "qty": 169.0,
+      "avg": 23825.0
+    }
+  }
 }
