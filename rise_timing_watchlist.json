@@ -1358,5 +1358,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-08"
+  },
+  {
+    "ticker": "033240",
+    "name": "자화전자",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "002150",
+    "name": "도화엔지니어링",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "108860",
+    "name": "셀바스AI",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "333430",
+    "name": "일승",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "448900",
+    "name": "한국피아이엠",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "099320",
+    "name": "쎄트렉아이",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "402340",
+    "name": "SK스퀘어",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "136490",
+    "name": "선진",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "462350",
+    "name": "이노스페이스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "014830",
+    "name": "유니드",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-12"
   }
 ]
