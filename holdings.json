@@ -936,9 +936,9 @@
     "ticker": "058470",
     "name": "리노공업",
     "market": "KOSDAQ",
-    "status": "holding",
+    "status": "closed",
     "average_price": 84850.0,
-    "quantity": 60.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 85300.0,
@@ -961,9 +961,26 @@
         "source": "추가매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-10-02T04:12:38.842232+00:00"
+    "sales": [
+      {
+        "price": 82100.0,
+        "quantity": 60.0,
+        "average_cost": 84850.0,
+        "realized_pnl": -165000.0,
+        "realized_return_pct": -3.241013553329408,
+        "net_realized_pnl": -173892.0,
+        "net_realized_return_pct": -3.415162210974428,
+        "fee": 739,
+        "tax": 7389,
+        "buy_fee": 764,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-10-12T00:10:55.228353+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-10-12T00:10:55.228353+00:00",
+    "closed_at": "2026-10-12T00:10:55.228353+00:00"
   },
   {
     "ticker": "033100",
