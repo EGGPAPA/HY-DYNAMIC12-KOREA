@@ -9,6 +9,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from test_pension_transactions import opening, trade
+from test_pension_multi import new_trade
 
 
 class PensionStorageTest(unittest.TestCase):
@@ -92,6 +93,36 @@ class PensionStorageTest(unittest.TestCase):
         self.assertEqual(data, original)
         self.assertEqual(sha, "new")
 
+    def test_read_and_write_multi_fund_snapshot_preserves_all(self):
+        saved = new_trade(trade())
+        response = self.response(data={"sha": "old", "content": base64.b64encode(
+            json.dumps(saved).encode()).decode()})
+        with patch.object(self.ui.requests, "get", return_value=response):
+            data, sha = self.ui._load_pension()
+        self.assertEqual(data, saved)
+        with patch.object(self.ui, "_secret", return_value="TEST"), \
+             patch.object(self.ui.requests, "put", return_value=self.response(data={"content": {"sha": "new"}})) as put:
+            self.ui._save_pension(data, sha)
+        self.assertEqual(json.loads(base64.b64decode(put.call_args.kwargs["json"]["content"])), saved)
+
+    def test_invalid_extra_snapshot_blocks_editor_not_zero_fallback(self):
+        saved = opening()
+        saved["etf_positions"] = {"broken": {}}
+        response = self.response(data={"sha": "old", "content": base64.b64encode(
+            json.dumps(saved).encode()).decode()})
+        with patch.object(self.ui.requests, "get", return_value=response), self.assertRaises(RuntimeError):
+            self.ui._load_pension()
+
+    def test_new_trade_retry_after_lost_response_does_not_rebuy(self):
+        saved = new_trade()
+        with patch.object(self.ui, "_load_pension", return_value=(saved, "new")), \
+             patch.object(self.ui, "_save_pension") as save:
+            data, sha = self.ui._persist_trade("old", trade_id="new-1", asset="new")
+        save.assert_not_called()
+        self.assertEqual(data, saved)
+        self.assertEqual(sha, "new")
+
 
 if __name__ == "__main__":
     unittest.main()
+

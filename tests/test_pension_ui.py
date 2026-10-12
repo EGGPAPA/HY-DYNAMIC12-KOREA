@@ -16,9 +16,10 @@ class PensionUITest(unittest.TestCase):
         self.assertFalse(at.exception)
         return at
 
-    def buy(self, at, qty=5, price=26000, side="buy"):
-        widget(at, "selectbox", "거래 자산").select("sp")
+    def buy(self, at, qty=5, price=26000, side="buy", reflect_cash=False):
+        widget(at, "selectbox", "거래 자산").select("sp").run()
         widget(at, "selectbox", "매수 / 매도").select(side)
+        widget(at, "checkbox", "거래대금을 채권·현금성 평가액에도 반영").set_value(reflect_cash)
         widget(at, "number_input", "실제 체결수량 (주)").set_value(qty)
         widget(at, "number_input", "실제 체결가격 (원/주)").set_value(price)
         widget(at, "checkbox", "증권사에서 체결된 수량·가격을 확인했습니다.").check()
@@ -38,8 +39,7 @@ class PensionUITest(unittest.TestCase):
 
     def test_manual_cash_option_updates_cash_balance(self):
         at = self.app()
-        widget(at, "checkbox", "거래대금을 채권·현금성 평가액에도 반영").check()
-        self.buy(at, qty=2)
+        self.buy(at, qty=2, reflect_cash=True)
         self.assertEqual(at.session_state["fixture_data"]["safe_now"], 76532)
         self.assertEqual(widget(at, "text_input", "채권·현금성 평가액").value, "76,532원")
 
@@ -120,6 +120,106 @@ class PensionUITest(unittest.TestCase):
         self.assertEqual(widget(at, "number_input", "S&P500 ETF 보유수량").value, 25)
         self.assertFalse(widget(at, "button", "체결내역 저장").disabled)
 
+    def new_buy(self, at, code="375770", name="추가 ETF A"):
+        widget(at, "selectbox", "거래 자산").select("new").run()
+        widget(at, "text_input", "새 ETF 이름").set_value(name)
+        widget(at, "text_input", "새 ETF 종목코드").set_value(code)
+        widget(at, "number_input", "실제 체결수량 (주)").set_value(10)
+        widget(at, "number_input", "실제 체결가격 (원/주)").set_value(10000)
+        widget(at, "checkbox", "증권사에서 체결된 수량·가격을 확인했습니다.").check()
+        widget(at, "button", "체결내역 저장").click().run()
+        self.assertFalse(at.exception)
+
+    def test_multiple_new_funds_and_same_fund_buy_preserve_legacy(self):
+        at = self.app()
+        self.new_buy(at)
+        self.new_buy(at, "123450", "추가 ETF B")
+        data = at.session_state["fixture_data"]
+        self.assertEqual(len(data["etf_positions"]), 2)
+        self.assertEqual(data["korea_qty"], 85)
+        self.assertEqual(data["sp_qty"], 15)
+        self.assertIn("추가 ETF A", str(at.dataframe[-1].value))
+        self.assertIn("추가 ETF B", str(at.dataframe[-1].value))
+        widget(at, "selectbox", "거래 자산").select("etf:375770.KS").run()
+        widget(at, "number_input", "실제 체결수량 (주)").set_value(5)
+        widget(at, "number_input", "실제 체결가격 (원/주)").set_value(12000)
+        widget(at, "checkbox", "증권사에서 체결된 수량·가격을 확인했습니다.").check()
+        widget(at, "button", "체결내역 저장").click().run()
+        self.assertFalse(at.exception)
+        self.assertEqual(at.session_state["fixture_data"]["etf_positions"]["etf:375770.KS"]["qty"], 15)
+        self.assertAlmostEqual(at.session_state["fixture_data"]["etf_positions"]["etf:375770.KS"]["avg"], 160000/15)
+        self.assertEqual(at.session_state["fixture_writes"], 3)
+
+    def test_new_duplicate_base_or_extra_does_not_save(self):
+        at = self.app()
+        self.new_buy(at, "292150")
+        self.assertTrue(any("이미 등록" in e.value for e in at.error))
+        self.assertEqual(at.session_state["fixture_writes"], 0)
+        self.new_buy(at)
+        self.new_buy(at)
+        self.assertTrue(any("이미 등록" in e.value for e in at.error))
+        self.assertEqual(at.session_state["fixture_writes"], 1)
+
+    def test_new_invalid_input_no_save(self):
+        at = self.app()
+        self.new_buy(at, "bad")
+        self.assertTrue(at.error)
+        self.assertEqual(at.session_state["fixture_writes"], 0)
+
+    def test_settings_preserve_extras_and_transaction_names(self):
+        at = self.app()
+        self.new_buy(at)
+        expected = dict(at.session_state["fixture_data"]["etf_positions"])
+        widget(at, "number_input", "월 납입액").set_value(600000).run()
+        widget(at, "button", "💾 연금 보유정보 저장").click().run()
+        self.assertFalse(at.exception)
+        self.assertEqual(at.session_state["fixture_data"]["etf_positions"], expected)
+        self.assertEqual(at.session_state["fixture_data"]["transactions"][-1]["name"], "추가 ETF A")
+
+    def test_extra_missing_price_holds_totals_not_record_input(self):
+        at = self.app()
+        self.new_buy(at)
+        at.session_state["fixture_missing_extra"] = True
+        at.run()
+        self.assertFalse(at.exception)
+        self.assertEqual(widget(at, "metric", "총 평가액").value, "-")
+        self.assertFalse(widget(at, "button", "체결내역 저장").disabled)
+        self.assertNotIn("-100.00%", str(at.dataframe[-1].value))
+        widget(at, "number_input", "추가 ETF A (375770.KS) 수동 현재가 (0=미입력)").set_value(11000).run()
+        self.assertEqual(widget(at, "metric", "총 평가액").value, "4,020,082원")
+
+    def test_extra_correction_requires_confirmation_and_keeps_trade(self):
+        at = self.app()
+        self.new_buy(at)
+        widget(at, "number_input", "보정 보유수량").set_value(12)
+        widget(at, "button", "추가 ETF 잔고 보정 저장").click().run()
+        self.assertEqual(at.session_state["fixture_writes"], 1)
+        widget(at, "checkbox", "해당 ETF 잔고를 직접 보정하는 것을 확인했습니다.").check()
+        widget(at, "button", "추가 ETF 잔고 보정 저장").click().run()
+        self.assertFalse(at.exception)
+        data = at.session_state["fixture_data"]
+        self.assertEqual(len(data["transactions"]), 1)
+        self.assertEqual(data["etf_positions"]["etf:375770.KS"]["qty"], 12)
+        self.assertEqual(len(data["balance_adjustments"]), 1)
+
+    def test_held_base_ticker_cannot_be_replaced(self):
+        at = self.app()
+        widget(at, "text_input", "KOREA TOP10 티커").set_value("375770").run()
+        widget(at, "button", "💾 연금 보유정보 저장").click().run()
+        self.assertTrue(any("덮어쓸" in e.value for e in at.error))
+        self.assertEqual(at.session_state["fixture_writes"], 0)
+
+    def test_quote_rerun_keeps_new_form_and_never_saves(self):
+        at = self.app()
+        widget(at, "selectbox", "거래 자산").select("new").run()
+        widget(at, "text_input", "새 ETF 이름").set_value("임시 ETF")
+        widget(at, "number_input", "실제 체결수량 (주)").set_value(3)
+        widget(at, "button", "🔄 현재가 다시 조회").click().run()
+        self.assertEqual(widget(at, "text_input", "새 ETF 이름").value, "임시 ETF")
+        self.assertEqual(widget(at, "number_input", "실제 체결수량 (주)").value, 3)
+        self.assertEqual(at.session_state["fixture_writes"], 0)
+
 
 if __name__ == "__main__":
     unittest.main()
+

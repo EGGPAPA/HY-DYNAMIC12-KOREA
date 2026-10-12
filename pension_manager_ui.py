@@ -8,7 +8,8 @@ import pandas as pd
 import requests
 import streamlit as st
 from korea_live_price import get_live_price, price_source_label
-from pension_transactions import ASSETS, KST, apply_trade, portfolio_summary, valid_price, value_position
+from pension_transactions import (ASSETS, GROUPS, KST, apply_trade, portfolio_summary,
+    valid_price, value_position, pension_positions, normalize_ticker, adjust_extra_position)
 
 DEFAULT_KOREA_TICKER = "292150.KS"
 DEFAULT_SP_TICKER = "360750.KS"
@@ -101,7 +102,7 @@ def _save_pension(data, sha):
         raise RuntimeError("기존 잔고 버전을 확인할 수 없어 저장하지 않았습니다.")
     payload = {
         "message":"Update pension holdings",
-        "content":base64.b64encode(json.dumps(data, ensure_ascii=False, indent=2).encode()).decode(),
+        "content":base64.b64encode(json.dumps(data, ensure_ascii=False, indent=2, allow_nan=False).encode()).decode(),
         "branch":BRANCH,
     }
     if sha: payload["sha"] = sha
@@ -141,7 +142,7 @@ def _holding(name, qty, avg, current, target):
         "매입금액": _won(position["cost"]), "평가금액": _won(position["value"]),
         "수익금": _won(position["profit"]),
         "수익률": "-" if rate is None else f"{rate:+.2f}%",
-        "목표비중": f"{target:.0f}%",
+        "목표비중": f"{target:.0f}%" if target is not None else "자산군 합산",
     }
 
 
@@ -179,16 +180,30 @@ def _sync_editor():
 
 
 def _render_trade_form(saved, sha, *, disabled=False):
-    st.markdown("### ➕ 추가 매수 · 매도 체결 등록")
+    st.markdown("### ➕ 여러 ETF 매수 · 매도 체결 등록")
     st.caption("실제 체결한 거래만 기록합니다. 증권사 주문은 전송하지 않습니다. "
                "기존 잔고부터 계산하며 수수료·세금은 미반영입니다.")
+    st.caption("새 ETF는 '＋ 새 ETF 등록'을 선택하세요. 같은 ETF 추가 매수는 기존 자산을 선택하면 수량·평균매수가가 합산됩니다. "
+               "국내상장 ETF용이며, 연금계좌에서 매수 가능한 상품인지는 증권사에서 확인하세요.")
     if disabled:
         st.info("상단의 변경사항을 먼저 저장하거나 최신 잔고를 불러온 뒤 거래를 등록하세요.")
     trade_id = st.session_state.setdefault("pension_trade_id", uuid4().hex)
-    with st.form(f"pension_trade_form_{trade_id}"):
-        a, b = st.columns(2)
-        asset = a.selectbox("거래 자산", list(ASSETS), format_func=lambda key: ASSETS[key])
-        side = b.selectbox("매수 / 매도", ["buy", "sell"],
+    positions = pension_positions(saved)
+    labels = {key: f"{p['name']} ({p['ticker']}) · 보유 {p['qty']:g}주" for key, p in positions.items()}
+    labels["new"] = "＋ 새 ETF 등록"
+    # Outside the form so selecting a new/existing ETF immediately updates fields.
+    asset = st.selectbox("거래 자산", list(labels), format_func=labels.get, key="pension_trade_asset")
+    with st.form(f"pension_trade_form_{trade_id}_{asset}"):
+        new_etf = None
+        if asset == "new":
+            a, b = st.columns(2)
+            name = a.text_input("새 ETF 이름", max_chars=100, placeholder="예: KODEX 탄소효율그린뉴딜")
+            ticker = b.text_input("새 ETF 종목코드", max_chars=9, placeholder="6자리 코드 또는 코드.KS")
+            group = st.selectbox("ETF 자산 구분", list(GROUPS), format_func=GROUPS.get)
+            st.caption("자산 구분은 기존 30% 국내 / 50% 해외 / 20% 채권·현금성 배분에 합산합니다. "
+                       "개별 ETF별 목표비중을 자동으로 정하지 않습니다.")
+            new_etf = {"name": name, "ticker": ticker, "group": group}
+        side = st.selectbox("매수 / 매도", ["buy"] if asset == "new" else ["buy", "sell"],
                            format_func=lambda key: "추가 매수" if key == "buy" else "매도")
         a, b, c = st.columns(3)
         filled_on = a.date_input("실제 체결일", value=datetime.now(KST).date(),
@@ -210,7 +225,7 @@ def _render_trade_form(saved, sha, *, disabled=False):
                 updated, new_sha = _persist_trade(
                     sha, trade_id=trade_id, asset=asset, side=side, quantity=quantity,
                     price=price, trade_date=filled_on.isoformat(),
-                    reflect_cash=reflect_cash, memo=memo)
+                    reflect_cash=reflect_cash, memo=memo, new_etf=new_etf)
             except (ValueError, RuntimeError) as error:
                 st.error(str(error))
             else:
@@ -226,7 +241,7 @@ def _render_trade_form(saved, sha, *, disabled=False):
     rows = []
     for trade in reversed(trades):
         rows.append({
-            "체결일": trade["date"], "자산": ASSETS.get(trade["asset"], trade["asset"]),
+            "체결일": trade["date"], "자산": trade.get("name") or ASSETS.get(trade["asset"], trade["asset"]),
             "티커": trade.get("ticker", ""), "구분": "매수" if trade["side"] == "buy" else "매도",
             "수량": trade["quantity"], "체결가격": _won(trade["price"]),
             "체결금액": _won(trade["amount"]), "매도 실현손익": _won(trade.get("realized_profit")),
@@ -238,9 +253,47 @@ def _render_trade_form(saved, sha, *, disabled=False):
     st.caption(f"등록한 매도의 누적 실현손익: {_won(realized)} · 수수료·세금 제외 · 미등록 과거 거래 제외")
 
 
+def _render_extra_adjustment(saved, sha, *, disabled=False):
+    extras = saved.get("etf_positions", {})
+    if not extras:
+        return
+    with st.expander("추가 ETF 잔고 보정 · 기록 보존"):
+        st.caption("실제 매수·매도는 위 체결 등록을 사용하세요. 이곳의 직접 보정은 별도로 기록되며 체결내역을 삭제하지 않습니다.")
+        asset = st.selectbox("보정할 ETF", list(extras),
+            format_func=lambda key: f"{extras[key]['name']} ({extras[key]['ticker']})")
+        row = extras[asset]
+        with st.form(f"pension_extra_adjust_{asset}_{sha}"):
+            name = st.text_input("보정 ETF 이름", value=row["name"], max_chars=100)
+            group = st.selectbox("보정 자산 구분", list(GROUPS),
+                index=list(GROUPS).index(row["group"]), format_func=GROUPS.get)
+            a, b = st.columns(2)
+            qty = a.number_input("보정 보유수량", min_value=0, step=1, value=int(row["qty"]))
+            avg = b.number_input("보정 평균매수가", min_value=0.0, step=1.0,
+                                 value=float(row["avg"]), format="%.4f")
+            confirmed = st.checkbox("해당 ETF 잔고를 직접 보정하는 것을 확인했습니다.")
+            submitted = st.form_submit_button("추가 ETF 잔고 보정 저장", disabled=disabled)
+        if submitted:
+            if not confirmed:
+                st.error("잔고 보정 확인에 체크해 주세요.")
+            else:
+                try:
+                    latest, latest_sha = _load_pension()
+                    if latest_sha != sha:
+                        raise RuntimeError("잔고가 변경되었습니다. 최신 정보를 불러온 뒤 보정하세요.")
+                    updated = adjust_extra_position(latest, asset, quantity=qty, average=avg,
+                                                     name=name, group=group)
+                    new_sha = _save_pension(updated, latest_sha)
+                except (ValueError, RuntimeError) as error:
+                    st.error(str(error))
+                else:
+                    _queue_reload(updated, new_sha, "추가 ETF 잔고 보정 완료 · 기존 체결기록 보존")
+                    st.rerun()
+
+
 @st.fragment(run_every="10s")
 def _render_pension_prices(snapshot, korea_signal):
     prices = {}
+    holdings = pension_positions(snapshot)
     c1, c2, c3 = st.columns(3)
     with c3:
         if st.button("🔄 현재가 다시 조회", use_container_width=True):
@@ -262,18 +315,45 @@ def _render_pension_prices(snapshot, korea_signal):
                 prices[asset] = manual if valid_price(manual) else None
                 if prices[asset] is not None:
                     st.caption("사용자 수동 입력가 기준 · 실시간 시세 아님")
+    extras = {key: row for key, row in holdings.items() if key not in ASSETS}
+    for asset, row in extras.items():
+        if row["qty"] == 0:
+            prices[asset] = None
+            continue
+        auto, asof = _auto_price(row["ticker"])
+        prices[asset] = auto
+        if auto is None:
+            st.warning(f"{row['name']} ({row['ticker']}) 현재가 조회 불가")
+            manual = st.number_input(f"{row['name']} ({row['ticker']}) 수동 현재가 (0=미입력)",
+                min_value=0, step=1, value=0, key=f"pension_manual_{asset}")
+            prices[asset] = manual if valid_price(manual) else None
+            if prices[asset] is not None:
+                st.caption("사용자 수동 입력가 기준 · 실시간 시세 아님")
+        else:
+            st.caption(f"{row['name']} · 조회 {asof} · {price_source_label()} · {row['ticker']}")
     summary = portfolio_summary(snapshot, prices)
     rows = []
     for asset, target in (("sp", 50), ("korea", 30)):
         row = _holding(ASSETS[asset], snapshot[f"{asset}_qty"],
-                       snapshot[f"{asset}_avg"], prices[asset], target)
+                       snapshot[f"{asset}_avg"], prices[asset], None if extras else target)
+        row["종목코드"] = holdings[asset]["ticker"]
+        row["자산 구분"] = GROUPS[asset]
+        row["현재비중"] = f"{summary['weights'][asset]:.1f}%" if summary["complete"] else "-"
+        rows.append(row)
+    for asset, position in extras.items():
+        row = _holding(position["name"], position["qty"], position["avg"], prices[asset], None)
+        if position["qty"] == 0:
+            row["현재가"] = "미보유 · 거래기록 보존"
+        row["종목코드"] = position["ticker"]
+        row["자산 구분"] = GROUPS[position["group"]]
         row["현재비중"] = f"{summary['weights'][asset]:.1f}%" if summary["complete"] else "-"
         rows.append(row)
     rows.append({
         "자산": "채권·현금성", "보유수량": "-", "평균매수가": "-", "현재가": "-",
         "매입금액": "-", "평가금액": _won(snapshot["safe_now"]), "수익금": "-",
-        "수익률": "-", "목표비중": "20%",
+        "수익률": "-", "목표비중": "자산군 합산" if extras else "20%",
         "현재비중": f"{summary['weights']['safe']:.1f}%" if summary["complete"] else "-",
+        "종목코드": "-", "자산 구분": "채권·현금성",
     })
     st.markdown("### 💼 현재 연금 포트폴리오")
     st.dataframe(pd.DataFrame(rows).style.map(_return_color, subset=["수익금", "수익률"])
@@ -282,19 +362,21 @@ def _render_pension_prices(snapshot, korea_signal):
     p1, p2, p3 = st.columns(3)
     p1.metric("총 평가액", _won(summary["total"]))
     if summary["complete"]:
-        _colored_metric(p2, "주식 평가손익", _won(summary["profit"]), summary["profit"])
-        _colored_metric(p3, "주식 평가수익률", f"{summary['rate']:+.2f}%", summary["rate"])
+        _colored_metric(p2, "ETF 평가손익", _won(summary["profit"]), summary["profit"])
+        _colored_metric(p3, "ETF 평가수익률", f"{summary['rate']:+.2f}%", summary["rate"])
     else:
-        p2.metric("주식 평가손익", "계산 보류")
-        p3.metric("주식 평가수익률", "계산 보류")
+        p2.metric("ETF 평가손익", "계산 보류")
+        p3.metric("ETF 평가수익률", "계산 보류")
         st.warning("보유 중인 ETF 시세가 없어 전체 평가·비중·정기매수 배분 계산을 보류합니다. "
                    "조회 실패를 0원 또는 -100% 손실로 처리하지 않습니다.")
     st.markdown("### 🎯 장기 목표비중")
-    st.write("S&P500 **50%** · KOREA TOP10 **30%** · 채권·현금성 **20%**")
+    st.write("해외주식 ETF 합산 **50%** · 국내주식 ETF 합산 **30%** · 채권·현금성 합산 **20%**")
+    st.caption("기존 50:30:20 참고배분을 유지합니다. 추가 ETF도 선택한 자산군에 합산하며 개별 상품의 매수 추천이 아닙니다. "
+               "채권 ETF를 별도 등록한 경우 위 채권·현금성 평가액에 같은 금액을 중복 입력하지 마세요.")
     st.markdown("### ⚡ 이번 달 정기매수")
     if summary["complete"]:
         a, b, c = st.columns(3)
-        for slot, asset, label in ((a, "sp", "S&P500"), (b, "korea", "KOREA TOP10"),
+        for slot, asset, label in ((a, "sp", "해외주식 ETF 합산"), (b, "korea", "국내주식 ETF 합산"),
                                    (c, "safe", "채권·현금성")):
             slot.metric(label, _won(summary["buys"][asset]))
         st.caption("목표비중과 입력한 월 납입액 기준 참고 배분입니다. 실제 주문은 실행하지 않습니다.")
@@ -310,6 +392,9 @@ def render_pension_manager_tab():
     _sync_editor()
     st.subheader("🏦 연금저축 · 월간 실행판")
     st.caption("보유정보와 체결내역은 GitHub에 함께 저장됩니다. 시세·평가는 10초마다 자동 갱신됩니다.")
+    st.caption("기록의 열람 범위는 저장소 공개·접근 설정을 따릅니다. 거래 메모에 계좌번호나 비밀번호를 입력하지 마세요.")
+    st.info("여러 ETF를 함께 등록할 수 있습니다. 아래 '여러 ETF 매수 · 매도 체결 등록'에서 '＋ 새 ETF 등록'을 선택하세요. "
+            "기존 기준 ETF와 보유·체결 기록은 유지합니다. ETF 비교 화면의 기준 ETF를 자동 변경하지 않습니다.")
     try:
         saved, saved_sha = _load_pension()
     except RuntimeError as error:
@@ -368,9 +453,10 @@ def render_pension_manager_tab():
     if st.button("💾 연금 보유정보 저장", type="primary", use_container_width=True, disabled=stale):
         try:
             for asset in ASSETS:
-                code = fields[f"{asset}_ticker"].split(".")[0]
-                if len(code) != 6 or not code.isascii() or not code.isalnum():
-                    raise ValueError("국내 ETF 6자리 종목코드(.KS 또는 .KQ)를 확인하세요.")
+                fields[f"{asset}_ticker"] = normalize_ticker(fields[f"{asset}_ticker"])
+                if (fields[f"{asset}_ticker"] != normalize_ticker(saved[f"{asset}_ticker"])
+                        and saved[f"{asset}_qty"] > 0):
+                    raise ValueError("보유 중인 기준 ETF를 다른 종목코드로 덮어쓸 수 없습니다. 새 ETF 매수 등록을 사용하세요.")
                 if fields[f"{asset}_qty"] > 0 and fields[f"{asset}_avg"] <= 0:
                     raise ValueError("보유 중인 ETF의 평균매수가를 입력하세요.")
             latest, latest_sha = _load_pension()
@@ -378,6 +464,7 @@ def render_pension_manager_tab():
                 raise RuntimeError("저장된 잔고가 변경되었습니다. 최신 정보를 불러와 주세요.")
             updated = dict(latest)
             updated.update(fields)  # Preserve transactions, opening balances and other metadata.
+            pension_positions(updated)  # Reject duplicate codes across base/extra holdings.
             changes = {k: {"before": latest.get(k), "after": v} for k, v in fields.items()
                        if k.endswith(("_qty", "_avg", "_ticker")) and latest.get(k) != v}
             if changes:
@@ -391,6 +478,8 @@ def render_pension_manager_tab():
             st.rerun()
 
     _render_trade_form(saved, saved_sha, disabled=stale or dirty)
+    _render_extra_adjustment(saved, saved_sha, disabled=stale or dirty)
     if stale or dirty:
         st.info("아래 시세·평가는 저장된 잔고 기준입니다. 미저장 입력값은 반영하지 않습니다.")
     _render_pension_prices(saved, korea_signal)
+
