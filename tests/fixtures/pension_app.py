@@ -38,9 +38,14 @@ def save(data, sha):
 
 ui._load_pension = load
 ui._save_pension = save
-ui._auto_price = lambda ticker: ((None, None) if (st.session_state.get("fixture_missing") and ticker == "360750.KS")
-                                or (st.session_state.get("fixture_missing_extra") and ticker == "375770.KS")
-                                else (26230 if ticker == "360750.KS" else 39860, "TEST KST"))
+st.session_state["fixture_quote_calls"] = []
+def price(ticker):
+    st.session_state["fixture_quote_calls"].append(ticker)
+    if (st.session_state.get("fixture_missing") and ticker == "360750.KS") or (
+            st.session_state.get("fixture_missing_extra") and ticker == "375770.KS"):
+        return None, None
+    return (26230 if ticker == "360750.KS" else 39860, "TEST KST")
+ui._auto_price = price
 ui._auto_price.clear = lambda: None
 ui.get_live_price = fake_live.get_live_price
 ui.render_pension_manager_tab()

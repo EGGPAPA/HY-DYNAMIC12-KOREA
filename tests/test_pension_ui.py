@@ -219,6 +219,73 @@ class PensionUITest(unittest.TestCase):
         self.assertEqual(widget(at, "number_input", "실제 체결수량 (주)").value, 3)
         self.assertEqual(at.session_state["fixture_writes"], 0)
 
+    def clear_base_holdings(self, at):
+        data = dict(at.session_state["fixture_data"])
+        data.update(korea_qty=0, korea_avg=0, sp_qty=0, sp_avg=0)
+        at.session_state["fixture_data"] = data
+        at.run()
+        self.assertFalse(at.exception)
+
+    def test_replacement_only_held_etf_gets_price_card_and_table_row(self):
+        at = self.app()
+        self.new_buy(at)
+        self.clear_base_holdings(at)
+        labels = [m.label for m in at.metric]
+        self.assertIn("추가 ETF A 현재가", labels)
+        self.assertNotIn("KOREA TOP10 현재가", labels)
+        self.assertNotIn("S&P500 현재가", labels)
+        self.assertEqual(at.session_state["fixture_quote_calls"], ["375770.KS"])
+        self.assertEqual(list(at.dataframe[-1].value["자산"]), ["추가 ETF A", "채권·현금성"])
+        self.assertEqual(len(at.session_state["fixture_data"]["transactions"]), 1)
+        self.assertEqual(at.session_state["fixture_writes"], 1)
+
+    def test_all_held_etfs_have_cards_including_more_than_three(self):
+        at = self.app()
+        self.new_buy(at)
+        self.new_buy(at, "123450", "추가 ETF B")
+        self.assertEqual({m.label for m in at.metric if m.label.endswith(" 현재가")},
+                         {"KOREA TOP10 현재가", "S&P500 현재가", "추가 ETF A 현재가", "추가 ETF B 현재가"})
+        self.assertEqual(set(at.session_state["fixture_quote_calls"]), {"292150.KS", "360750.KS", "375770.KS", "123450.KS"})
+        self.assertEqual(len(at.dataframe[-1].value), 5)
+
+    def test_no_holdings_no_quote_calls_and_no_phantom_etf_rows(self):
+        at = self.app()
+        self.clear_base_holdings(at)
+        self.assertFalse(any(m.label.endswith(" 현재가") for m in at.metric))
+        self.assertEqual(at.session_state["fixture_quote_calls"], [])
+        self.assertTrue(any("현재 보유 중인 ETF가 없습니다" in i.value for i in at.info))
+        self.assertEqual(list(at.dataframe[-1].value["자산"]), ["채권·현금성"])
+        self.assertEqual(widget(at, "metric", "총 평가액").value, "128,532원")
+        self.assertEqual(at.session_state["fixture_writes"], 0)
+
+    def test_full_sale_hides_card_preserves_history_and_reentry_option(self):
+        at = self.app()
+        self.new_buy(at)
+        widget(at, "selectbox", "거래 자산").select("etf:375770.KS").run()
+        widget(at, "selectbox", "매수 / 매도").select("sell")
+        widget(at, "number_input", "실제 체결수량 (주)").set_value(10)
+        widget(at, "number_input", "실제 체결가격 (원/주)").set_value(11000)
+        widget(at, "checkbox", "증권사에서 체결된 수량·가격을 확인했습니다.").check()
+        widget(at, "button", "체결내역 저장").click().run()
+        self.assertFalse(at.exception)
+        self.assertNotIn("추가 ETF A 현재가", [m.label for m in at.metric])
+        self.assertNotIn("375770.KS", at.session_state["fixture_quote_calls"])
+        self.assertNotIn("추가 ETF A", list(at.dataframe[-1].value["자산"]))
+        self.assertEqual(len(at.session_state["fixture_data"]["transactions"]), 2)
+        self.assertTrue(any("추가 ETF A" in option for option in widget(at, "selectbox", "거래 자산").options))
+        self.assertEqual(at.session_state["fixture_writes"], 2)
+
+    def test_failed_held_quote_still_shows_card_without_old_etfs(self):
+        at = self.app()
+        self.new_buy(at)
+        self.clear_base_holdings(at)
+        at.session_state["fixture_missing_extra"] = True
+        at.run()
+        self.assertFalse(at.exception)
+        self.assertEqual(widget(at, "metric", "추가 ETF A 현재가").value, "조회 불가")
+        self.assertEqual(widget(at, "metric", "총 평가액").value, "-")
+        self.assertEqual(at.session_state["fixture_quote_calls"], ["375770.KS"])
+
 
 if __name__ == "__main__":
     unittest.main()

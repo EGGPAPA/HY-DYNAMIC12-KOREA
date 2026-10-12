@@ -294,56 +294,40 @@ def _render_extra_adjustment(saved, sha, *, disabled=False):
 def _render_pension_prices(snapshot, korea_signal):
     prices = {}
     holdings = pension_positions(snapshot)
-    c1, c2, c3 = st.columns(3)
-    with c3:
+    held = [(asset, row) for asset, row in holdings.items() if row["qty"] > 0]
+    title, controls = st.columns([2, 1])
+    title.markdown("### 📈 보유 ETF 현재가")
+    with controls:
         if st.button("🔄 현재가 다시 조회", use_container_width=True):
             _auto_price.clear()
             get_live_price.clear()
         st.caption("이 시세·평가 영역만 10초마다 갱신합니다. 체결 입력값은 유지됩니다.")
-    for asset, column in (("korea", c1), ("sp", c2)):
-        ticker = snapshot[f"{asset}_ticker"].strip()
-        auto, asof = _auto_price(ticker)
-        with column:
-            if auto is not None:
-                st.metric(f"{ASSETS[asset]} 현재가", _won(auto))
-                st.caption(f"조회 {asof} · {price_source_label()} · {ticker}")
-                prices[asset] = auto
-            else:
-                st.warning(f"{ASSETS[asset]} 현재가 조회 불가")
-                manual = st.number_input(f"{ASSETS[asset]} 수동 현재가 (0=미입력)",
-                    min_value=0, step=1, value=0, key=f"pension_manual_{asset}_{ticker}")
-                prices[asset] = manual if valid_price(manual) else None
+    st.caption("저장된 보유수량이 있는 ETF만 표시합니다. 전량 매도한 종목의 거래기록은 위 매수·매도 내역에 보존됩니다.")
+    if not held:
+        st.info("현재 보유 중인 ETF가 없습니다. 매수 체결 등록 후 해당 ETF의 현재가가 표시됩니다.")
+    for start in range(0, len(held), 3):
+        batch = held[start:start + 3]
+        for column, (asset, row) in zip(st.columns(len(batch)), batch):
+            ticker, name = row["ticker"], row["name"]
+            auto, asof = _auto_price(ticker)
+            prices[asset] = auto if valid_price(auto) else None
+            with column:
+                st.metric(f"{name} 현재가", _won(prices[asset]) if prices[asset] is not None else "조회 불가", border=True)
+                st.caption(f"{ticker} · 보유 {row['qty']:g}주")
                 if prices[asset] is not None:
-                    st.caption("사용자 수동 입력가 기준 · 실시간 시세 아님")
-    extras = {key: row for key, row in holdings.items() if key not in ASSETS}
-    for asset, row in extras.items():
-        if row["qty"] == 0:
-            prices[asset] = None
-            continue
-        auto, asof = _auto_price(row["ticker"])
-        prices[asset] = auto
-        if auto is None:
-            st.warning(f"{row['name']} ({row['ticker']}) 현재가 조회 불가")
-            manual = st.number_input(f"{row['name']} ({row['ticker']}) 수동 현재가 (0=미입력)",
-                min_value=0, step=1, value=0, key=f"pension_manual_{asset}")
-            prices[asset] = manual if valid_price(manual) else None
-            if prices[asset] is not None:
-                st.caption("사용자 수동 입력가 기준 · 실시간 시세 아님")
-        else:
-            st.caption(f"{row['name']} · 조회 {asof} · {price_source_label()} · {row['ticker']}")
+                    st.caption(f"조회 {asof} · {price_source_label()}")
+                else:
+                    st.warning(f"{name} 현재가 조회 불가")
+                    manual_label = name if asset in ASSETS else f"{name} ({ticker})"
+                    manual = st.number_input(f"{manual_label} 수동 현재가 (0=미입력)",
+                        min_value=0, step=1, value=0, key=f"pension_manual_{asset}_{ticker}")
+                    prices[asset] = manual if valid_price(manual) else None
+                    if prices[asset] is not None:
+                        st.caption("사용자 수동 입력가 기준 · 실시간 시세 아님")
     summary = portfolio_summary(snapshot, prices)
     rows = []
-    for asset, target in (("sp", 50), ("korea", 30)):
-        row = _holding(ASSETS[asset], snapshot[f"{asset}_qty"],
-                       snapshot[f"{asset}_avg"], prices[asset], None if extras else target)
-        row["종목코드"] = holdings[asset]["ticker"]
-        row["자산 구분"] = GROUPS[asset]
-        row["현재비중"] = f"{summary['weights'][asset]:.1f}%" if summary["complete"] else "-"
-        rows.append(row)
-    for asset, position in extras.items():
+    for asset, position in held:
         row = _holding(position["name"], position["qty"], position["avg"], prices[asset], None)
-        if position["qty"] == 0:
-            row["현재가"] = "미보유 · 거래기록 보존"
         row["종목코드"] = position["ticker"]
         row["자산 구분"] = GROUPS[position["group"]]
         row["현재비중"] = f"{summary['weights'][asset]:.1f}%" if summary["complete"] else "-"
@@ -351,7 +335,7 @@ def _render_pension_prices(snapshot, korea_signal):
     rows.append({
         "자산": "채권·현금성", "보유수량": "-", "평균매수가": "-", "현재가": "-",
         "매입금액": "-", "평가금액": _won(snapshot["safe_now"]), "수익금": "-",
-        "수익률": "-", "목표비중": "자산군 합산" if extras else "20%",
+        "수익률": "-", "목표비중": "자산군 합산",
         "현재비중": f"{summary['weights']['safe']:.1f}%" if summary["complete"] else "-",
         "종목코드": "-", "자산 구분": "채권·현금성",
     })
@@ -380,9 +364,9 @@ def _render_pension_prices(snapshot, korea_signal):
                                    (c, "safe", "채권·현금성")):
             slot.metric(label, _won(summary["buys"][asset]))
         st.caption("목표비중과 입력한 월 납입액 기준 참고 배분입니다. 실제 주문은 실행하지 않습니다.")
-        if "2개월 이탈" in korea_signal:
+        if holdings["korea"]["qty"] > 0 and "2개월 이탈" in korea_signal:
             st.warning("MA5 방어신호: 기존 KOREA TOP10 전술비중 조정 여부를 월말에 점검하세요.")
-        elif "1개월 이탈" in korea_signal or "MA5 부근" in korea_signal:
+        elif holdings["korea"]["qty"] > 0 and ("1개월 이탈" in korea_signal or "MA5 부근" in korea_signal):
             st.info("MA5 주의신호: 기존 보유분은 관찰합니다.")
     else:
         st.info("정상 현재가가 확보되면 매수 배분금액을 다시 계산합니다.")
