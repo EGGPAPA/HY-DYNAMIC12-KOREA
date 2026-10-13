@@ -853,9 +853,9 @@
     "ticker": "011930",
     "name": "신성이엔지",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 16594.379905808477,
-    "quantity": 637.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 16633.0,
@@ -888,9 +888,26 @@
         "source": "추가매수"
       }
     ],
-    "sales": [],
-    "enabled": true,
-    "updated_at": "2026-09-22T06:10:11.013623+00:00"
+    "sales": [
+      {
+        "price": 17729.0,
+        "quantity": 637.0,
+        "average_cost": 16594.379905808477,
+        "realized_pnl": 722753.0000000002,
+        "realized_return_pct": 6.837375669544454,
+        "net_realized_pnl": 702533.0000000002,
+        "net_realized_return_pct": 6.645093748646216,
+        "fee": 1694,
+        "tax": 16940,
+        "buy_fee": 1586,
+        "reason": "1차 익절",
+        "memo": "",
+        "executed_at": "2026-10-13T01:11:23.460604+00:00"
+      }
+    ],
+    "enabled": false,
+    "updated_at": "2026-10-13T01:11:23.460604+00:00",
+    "closed_at": "2026-10-13T01:11:23.460604+00:00"
   },
   {
     "ticker": "046890",
