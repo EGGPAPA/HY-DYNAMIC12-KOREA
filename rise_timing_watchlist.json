@@ -1428,5 +1428,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-12"
+  },
+  {
+    "ticker": "486990",
+    "name": "노타",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "065450",
+    "name": "빅텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "108320",
+    "name": "LX세미콘",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "023790",
+    "name": "동일스틸럭스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "067000",
+    "name": "조이시티",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "215600",
+    "name": "신라젠",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "365270",
+    "name": "큐라클",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "189300",
+    "name": "인텔리안테크",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "112040",
+    "name": "위메이드",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "082270",
+    "name": "젬백스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-13"
   }
 ]
