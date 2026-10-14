@@ -1083,9 +1083,9 @@
     "ticker": "010120",
     "name": "LS ELECTRIC",
     "market": "KOSPI",
-    "status": "holding",
+    "status": "closed",
     "average_price": 213835.57046979867,
-    "quantity": 50.0,
+    "quantity": 0,
     "purchases": [
       {
         "price": 213500.0,
@@ -1153,10 +1153,26 @@
         "reason": "손절",
         "memo": "",
         "executed_at": "2026-10-14T00:51:43.940408+00:00"
+      },
+      {
+        "price": 179800.0,
+        "quantity": 50.0,
+        "average_cost": 213835.57046979867,
+        "realized_pnl": -1701778.5234899332,
+        "realized_return_pct": -15.916701975738745,
+        "net_realized_pnl": -1718215.5234899332,
+        "net_realized_return_pct": -16.068026367854742,
+        "fee": 1348,
+        "tax": 13485,
+        "buy_fee": 1604,
+        "reason": "손절",
+        "memo": "",
+        "executed_at": "2026-10-14T00:52:10.093786+00:00"
       }
     ],
-    "enabled": true,
-    "updated_at": "2026-10-14T00:51:43.940408+00:00"
+    "enabled": false,
+    "updated_at": "2026-10-14T00:52:10.093786+00:00",
+    "closed_at": "2026-10-14T00:52:10.093786+00:00"
   },
   {
     "ticker": "206650",
