@@ -1498,5 +1498,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-13"
+  },
+  {
+    "ticker": "220100",
+    "name": "퓨쳐켐",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "138610",
+    "name": "나이벡",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "008730",
+    "name": "율촌화학",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "200710",
+    "name": "에이디테크놀로지",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "034230",
+    "name": "파라다이스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "265520",
+    "name": "AP시스템",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "208370",
+    "name": "셀바스헬스케어",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "022100",
+    "name": "포스코DX",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "016380",
+    "name": "KG스틸",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "117580",
+    "name": "대성에너지",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-14"
   }
 ]
