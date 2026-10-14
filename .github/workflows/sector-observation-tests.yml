@@ -7,6 +7,9 @@ on:
       - 'sector_observation.py'
       - 'sector_observation_ui.py'
       - 'sector_rotation.py'
+      - 'sector_selection_store.py'
+      - 'sector_selection_ui.py'
+      - 'test_sector_selection.py'
       - 'test_sector_observation.py'
       - 'test_sector_rotation.py'
       - 'app.py'
@@ -25,7 +28,8 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      - run: python -m pip install 'pandas>=2.2,<3'
-      - run: python -m unittest test_sector_observation test_sector_rotation test_current_price_analysis test_holiday_reference -v
-      - run: python -m py_compile app.py sector_observation.py sector_observation_ui.py sector_rotation.py
+      - run: python -m pip install 'pandas>=2.2,<3' 'streamlit>=1.50,<2' 'requests>=2.31'
+      - run: python -m unittest test_sector_observation test_sector_rotation test_sector_selection test_current_price_analysis test_holiday_reference -v
+      - run: python -m py_compile app.py sector_observation.py sector_observation_ui.py sector_rotation.py sector_selection_store.py sector_selection_ui.py
+
 

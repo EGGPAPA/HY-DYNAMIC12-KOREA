@@ -9,6 +9,7 @@ import streamlit as st
 
 from sector_observation import KST, SECTORS, build_snapshot, closed_cutoff, parse_bars
 from sector_rotation import build_rotation
+from sector_selection_ui import render_comparison_selection
 
 
 def _fetch_one(code):
@@ -172,15 +173,7 @@ def render_sector_observation():
     st.altair_chart(strength_chart(snapshot), use_container_width=True)
     st.markdown('#### 주도업종이 교체되는지 확인')
     options = [row['sector'] for row in snapshot['rows']]
-    key = 'sector_observation_selected'
-    if key in st.session_state:
-        old_selection = st.session_state[key]
-        retained = [x for x in old_selection if x in options]
-        if retained != old_selection:
-            st.session_state[key] = retained
-        selected = st.multiselect('비교할 업종', options, key=key)
-    else:
-        selected = st.multiselect('비교할 업종', options, default=options[:3], key=key)
+    selected = render_comparison_selection(options)
     crossing_tab, cumulative_tab = st.tabs(['주도력 교차 · 20거래일', '기존 누적 추세 · 시작값 100'])
     rotation = snapshot.get('rotation', {})
     with crossing_tab:
@@ -211,4 +204,5 @@ def render_sector_observation():
         st.caption('현재 대표 종목 구성으로 과거 가격을 비교하는 참고 그래프입니다. 업종 전체 수급·실적·거래대금 평가나 매매 전략의 성과 검증은 아닙니다. 기존 20개 관찰종목 선정 기준과 별개입니다.')
         if snapshot['excluded']:
             st.dataframe(pd.DataFrame(snapshot['excluded']).rename(columns={'sector': '업종', 'reason': '제외 사유'}), hide_index=True)
+
 
