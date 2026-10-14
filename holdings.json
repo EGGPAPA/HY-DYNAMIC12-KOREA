@@ -1220,7 +1220,7 @@
     "market": "KOSPI",
     "status": "holding",
     "average_price": 421500.0,
-    "quantity": 30.0,
+    "quantity": 55.0,
     "purchases": [
       {
         "price": 421500.0,
@@ -1231,10 +1231,20 @@
         "memo": "",
         "executed_at": "2026-10-14T00:41:57.648891+00:00",
         "source": "신규매수"
+      },
+      {
+        "price": 421500.0,
+        "quantity": 25.0,
+        "fee": 1581,
+        "tax": 0,
+        "reason": "통합 적극매수",
+        "memo": "",
+        "executed_at": "2026-10-14T06:15:56.978119+00:00",
+        "source": "추가매수"
       }
     ],
     "sales": [],
     "enabled": true,
-    "updated_at": "2026-10-14T00:41:57.648891+00:00"
+    "updated_at": "2026-10-14T06:15:56.978119+00:00"
   }
 ]
