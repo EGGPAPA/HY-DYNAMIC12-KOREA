@@ -1568,5 +1568,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-14"
+  },
+  {
+    "ticker": "001340",
+    "name": "PKC",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "114190",
+    "name": "강원에너지",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "322310",
+    "name": "오로스테크놀로지",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "114450",
+    "name": "그린생명과학",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "278280",
+    "name": "천보",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "093050",
+    "name": "LF",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "394280",
+    "name": "오픈엣지테크놀로지",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "063160",
+    "name": "종근당바이오",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "095500",
+    "name": "미래나노텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
+  },
+  {
+    "ticker": "001680",
+    "name": "대상",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-15"
   }
 ]
