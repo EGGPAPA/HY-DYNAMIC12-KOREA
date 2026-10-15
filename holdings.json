@@ -1219,8 +1219,8 @@
     "name": "LG에너지솔루션",
     "market": "KOSPI",
     "status": "holding",
-    "average_price": 421500.0,
-    "quantity": 55.0,
+    "average_price": 415093.75,
+    "quantity": 80.0,
     "purchases": [
       {
         "price": 421500.0,
@@ -1241,10 +1241,20 @@
         "memo": "",
         "executed_at": "2026-10-14T06:15:56.978119+00:00",
         "source": "추가매수"
+      },
+      {
+        "price": 401000.0,
+        "quantity": 25.0,
+        "fee": 1504,
+        "tax": 0,
+        "reason": "추가매수",
+        "memo": "",
+        "executed_at": "2026-10-15T05:00:13.116400+00:00",
+        "source": "추가매수"
       }
     ],
     "sales": [],
     "enabled": true,
-    "updated_at": "2026-10-14T06:15:56.978119+00:00"
+    "updated_at": "2026-10-15T05:00:13.116400+00:00"
   }
 ]
