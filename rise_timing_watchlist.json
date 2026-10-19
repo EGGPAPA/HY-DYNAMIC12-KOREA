@@ -1708,5 +1708,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-16"
+  },
+  {
+    "ticker": "192400",
+    "name": "쿠쿠홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "009240",
+    "name": "한샘",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "042520",
+    "name": "한스바이오메드",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "003690",
+    "name": "코리안리",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "475430",
+    "name": "키스트론",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "338220",
+    "name": "뷰노",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "205470",
+    "name": "휴마시스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "068270",
+    "name": "셀트리온",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "900070",
+    "name": "글로벌에스엠",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "007310",
+    "name": "오뚜기",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-19"
   }
 ]
