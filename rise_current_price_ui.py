@@ -11,6 +11,31 @@ from rise_live_analysis import KST, evaluate_current, observe_persistence, prior
 from rise_live_data import get_current_quotes, get_histories, get_market_context
 from watch_sector_context import business_context, sector_flow
 
+@st.cache_data(ttl=300, show_spinner=False)
+def _early_watch_snapshot():
+    """Read-only completed daily scan; never changes persistent B membership."""
+    import base64
+    import json
+    import requests
+    from dual_leader_watch import early_candidates
+    root = "https://api.github.com/repos/EGGPAPA/HY-DYNAMIC12-KOREA/contents/"
+    def load(path, branch):
+        response = requests.get(root + path, params={"ref": branch}, timeout=12)
+        response.raise_for_status()
+        return json.loads(base64.b64decode(response.json()["content"]).decode("utf-8"))
+    try:
+        saved = load("rise_timing_watchlist.json", "main")
+        snapshot = load("data/ma_convergence_daily.json", "monitor-state")
+        if not isinstance(saved, list) or not isinstance(snapshot, dict):
+            return [], "", "일일 검색 자료 형식 확인 필요"
+        from rise_leaders import leader_snapshot_ready
+        if not leader_snapshot_ready(snapshot):
+            return [], "", "확정 일봉 검증 대기"
+        return early_candidates(snapshot, saved), snapshot["asof"], ""
+    except Exception:
+        return [], "", "일일 검색 자료 연결 실패 · 재시도 대기"
+
+
 DISPLAY_LIMIT = 20
 WATCHLIST_REFRESH_SECONDS = 10
 WATCHLIST_SELECTION_SECONDS = 60
@@ -428,7 +453,37 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
         st.caption('수렴 후보를 선정해 계속 관찰합니다. 상승·돌파로 수렴이 풀려도 유지하고, 현재가와 필수·보조조건만 갱신합니다.')
     total = len(watchlist) if saved_count is None else saved_count
     st.caption(f'관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 새 후보는 보관·대기 · 원본 기록 보존')
-    _render_live_watchlist(watchlist)
+    if cohort_policy == 'leader_v1':
+        st.caption('A 상승 초기 · B 상승 지속 · 통합 보기 (2트랙 일봉 감시)')
+        tab_all, tab_early, tab_trend = st.tabs(['통합 관찰', 'A 상승 초기', 'B 상승 지속'])
+        # Existing persisted leader cohort is B-only. Do not present unscanned
+        # early candidates as screened or silently change membership.
+        with tab_all:
+            st.caption('현재 저장된 주도주 관찰목록입니다. 기존 10초 현재가 평가와 알림은 유지됩니다.')
+            _render_live_watchlist(watchlist)
+        with tab_early:
+            early, early_asof, early_error = _early_watch_snapshot()
+            if early_error:
+                st.warning(early_error)
+            else:
+                st.caption(f'{early_asof} 확정 일봉 · A그룹 {len(early)}종목 / 최대 20 · 5분마다 일일 자료 확인')
+                st.caption('20일선 상승·거래량 1.5배·시장 대비 강도 개선 기반. 외국인·기관 수급은 미확인, 실시간 매수 신호가 아닙니다.')
+                if early:
+                    st.dataframe(pd.DataFrame([{'종목': r.get('name', r['ticker']),
+                        '코드': r['ticker'], '초기 점수': r['early_score'],
+                        '거래량 배수': round(r['volume_ratio'], 2),
+                        '시장 초과 20일(%)': round(r['excess20_pct'], 2)} for r in early]),
+                        hide_index=True, use_container_width=True)
+                else:
+                    st.info('현재 확인된 상승 초기 후보가 없습니다. 기준 미충족 종목은 채우지 않습니다.')
+        with tab_trend:
+            st.caption(f'B그룹 기존 주도주 {len(watchlist)}개 · 확정 일봉 선정, 현재가 감시는 통합 탭에서 유지')
+            if watchlist:
+                st.dataframe(pd.DataFrame([{'종목': r.get('name', r.get('ticker')), '코드': r.get('ticker'),
+                                           '최초 선정일': r.get('entry_asof', '확인 대기')} for r in watchlist]),
+                             hide_index=True, use_container_width=True)
+    else:
+        _render_live_watchlist(watchlist)
 
 
 
