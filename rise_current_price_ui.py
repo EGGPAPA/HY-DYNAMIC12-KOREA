@@ -428,7 +428,25 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
         st.caption('수렴 후보를 선정해 계속 관찰합니다. 상승·돌파로 수렴이 풀려도 유지하고, 현재가와 필수·보조조건만 갱신합니다.')
     total = len(watchlist) if saved_count is None else saved_count
     st.caption(f'관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 새 후보는 보관·대기 · 원본 기록 보존')
-    _render_live_watchlist(watchlist)
+    if cohort_policy == 'leader_v1':
+        st.caption('A 상승 초기 · B 상승 지속 · 통합 보기 (2트랙 준비 단계)')
+        tab_all, tab_early, tab_trend = st.tabs(['통합 관찰', 'A 상승 초기', 'B 상승 지속'])
+        # Existing persisted leader cohort is B-only. Do not present unscanned
+        # early candidates as screened or silently change membership.
+        with tab_all:
+            st.caption('현재 저장된 주도주 관찰목록입니다. 기존 10초 현재가 평가와 알림은 유지됩니다.')
+            _render_live_watchlist(watchlist)
+        with tab_early:
+            st.info('A그룹 신규 선정은 아직 일일 스캐너에 연결되지 않았습니다. 검증되지 않은 종목을 상승 초기 후보로 표시하지 않습니다.')
+            st.caption('향후 확정 일봉 거래량 1.5배·20일선 상승 전환·시장 상대강도 개선을 검증해 별도 최대 20종목을 구성합니다. 외국인·기관 수급은 데이터 연결 전까지 미확인입니다.')
+        with tab_trend:
+            st.caption(f'B그룹 기존 주도주 {len(watchlist)}개 · 확정 일봉 선정, 현재가 감시는 통합 탭에서 유지')
+            if watchlist:
+                st.dataframe(pd.DataFrame([{'종목': r.get('name', r.get('ticker')), '코드': r.get('ticker'),
+                                           '최초 선정일': r.get('entry_asof', '확인 대기')} for r in watchlist]),
+                             hide_index=True, use_container_width=True)
+    else:
+        _render_live_watchlist(watchlist)
 
 
 
