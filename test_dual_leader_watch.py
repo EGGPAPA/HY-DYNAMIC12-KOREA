@@ -1,5 +1,5 @@
 import unittest
-from dual_leader_watch import classify_candidate, split_leader_watch
+from dual_leader_watch import classify_candidate, split_leader_watch, early_candidates
 
 def sample(ticker, **changes):
     row = dict(ticker=ticker, ordinary=True, tradable=True, eligible=True,
@@ -25,6 +25,9 @@ class DualLeaderWatchTests(unittest.TestCase):
         self.assertEqual([r['ticker'] for r in groups['A']], ['000005'])
         self.assertEqual([r['ticker'] for r in groups['B']], ['000006'])
         self.assertNotIn('watch_group', a)
+    def test_invalid_snapshot_returns_no_early_candidates(self):
+        self.assertEqual(early_candidates({'complete': False}, [sample('000001')]), [])
+
     def test_caps(self):
         rows = [sample(f'{i:06d}') for i in range(30)]
         rows += [sample(f'{i:06d}', leader_eligible=True) for i in range(30, 60)]
