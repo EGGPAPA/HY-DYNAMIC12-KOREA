@@ -1778,5 +1778,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-19"
+  },
+  {
+    "ticker": "300080",
+    "name": "플리토",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "122870",
+    "name": "와이지엔터테인먼트",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "090430",
+    "name": "아모레퍼시픽",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "005870",
+    "name": "휴니드",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "005880",
+    "name": "대한해운",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "950190",
+    "name": "고스트스튜디오",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "462870",
+    "name": "시프트업",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "000640",
+    "name": "동아제약",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "137400",
+    "name": "피엔티",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "025860",
+    "name": "남해화학",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-20"
   }
 ]
