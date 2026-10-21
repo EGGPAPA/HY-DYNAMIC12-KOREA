@@ -448,6 +448,58 @@ class DataAndScreenTests(unittest.TestCase):
         self.assertEqual(self.st.frames[0][1]['key'], 'rise_current_scan_table')
         self.assertTrue(set(self.ui.WATCHLIST_HIDDEN_COLUMNS).issubset(self.st.frames[0][0].columns))
 
+    def test_group_tables_show_current_metrics_and_dated_selection_evidence(self):
+        item = evaluate_current(ROW, bars(), quote(), CONTEXT, NOW)
+        self.assertAlmostEqual(item['change_pct'], (10200 / 10178 - 1) * 100)
+        self.assertEqual(item['traded_value'], 10200 * 2000)
+        source = dict(ROW, early_score=84.5, excess20_pct=27.44,
+                      watch_entry={'entry_asof': '2026-10-01', 'entry_leader_score': 77.2,
+                                   'entry_excess20_pct': 12.3})
+        before = copy.deepcopy(source)
+        for group in ('A', 'B'):
+            frame = self.ui._group_frame([item], [source], group, '2026-10-20')
+            for column in ('전일 대비(%)', '20일 평균 거래대금(억원)', '필수조건', '보조조건',
+                           '7조건 확인', '1차 매수 참고', '2차 눌림 참고', '손절 참고', '돌파 기준',
+                           '20일선 이격', '평가 기준일', '시세 수신시각(KST)', '가격 자료 상태'):
+                self.assertIn(column, frame)
+            self.assertEqual(frame.iloc[0]['현재가(KIS)'], '10,200원')
+            self.assertEqual(frame.iloc[0]['거래대금 근사(억원)'], .2)
+            if group == 'A':
+                self.assertEqual(frame.iloc[0]['초기 점수(선정일)'], 84.5)
+                self.assertEqual(frame.iloc[0]['선정 기준일'], '2026-10-20')
+            else:
+                self.assertEqual(frame.iloc[0]['주도력 점수(최초 선정)'], 77.2)
+                self.assertEqual(frame.iloc[0]['최초 선정일'], '2026-10-01')
+        self.assertEqual(source, before)
+
+    def test_group_missing_feeds_do_not_borrow_selection_prices_or_scores(self):
+        from rise_live_analysis import on_hold
+        source = dict(ROW, close=99999, early_score=84.5)
+        for group in ('A', 'B'):
+            frame = self.ui._group_frame([on_hold(ROW, 'KIS 현재가 수신 실패')], [source], group)
+            row = frame.iloc[0]
+            self.assertEqual(row['현재가(KIS)'], '—')
+            self.assertEqual(row['전일 대비(%)'], '미확인')
+            self.assertEqual(row['20일 평균 거래대금(억원)'], '미확인')
+            self.assertEqual(row['가격 자료 상태'], 'KIS 현재가 수신 실패')
+            self.assertEqual(row['7조건 확인'], '평가 보류')
+
+    def test_group_renderer_keeps_a_state_separate_and_b_shared_without_callbacks(self):
+        from unittest.mock import Mock
+        item = evaluate_current(ROW, bars(), quote(), CONTEXT, NOW)
+        state = {'snapshot': {}, 'error': ''}
+        with patch.object(self.ui, '_watch_state', return_value=state) as read, \
+             patch.object(self.ui, '_evaluate_visible', return_value=([item], CONTEXT)), \
+             patch.object(self.ui, '_schedule_watch_selection') as schedule, \
+             patch.object(self.ui, '_status'):
+            self.ui._render_group_data([ROW], 'A', '2026-10-20')
+            self.assertEqual(read.call_args.args[1], 'rise_early_fast_state')
+            self.ui._render_group_data([ROW], 'B')
+            self.assertEqual(read.call_args.args[1], 'rise_watch_fast_state')
+            self.assertEqual(schedule.call_count, 2)
+        self.assertEqual([kw['key'] for _, kw in self.st.frames], ['rise_group_A', 'rise_group_B'])
+
+
 
 if __name__ == '__main__':
     unittest.main()
