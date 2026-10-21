@@ -35,7 +35,7 @@ def _early_watch_snapshot():
         return [], '', '일일 검색 자료 연결 실패 · 30초 후 재시도'
 
 
-@st.fragment(run_every=30)
+@st.fragment(run_every=10)
 def _render_early_watch():
     early, early_asof, early_error = _early_watch_snapshot()
     if early_error:
@@ -44,11 +44,7 @@ def _render_early_watch():
     st.caption(f'{early_asof} 확정 일봉 · A그룹 {len(early)}종목 / 최대 20 · 5분마다 일일 자료 확인')
     st.caption('20일선 상승·거래량 1.5배·시장 대비 강도 개선 기반. 외국인·기관 수급은 미확인, 실시간 매수 신호가 아닙니다.')
     if early:
-        st.dataframe(pd.DataFrame([{'종목': r.get('name', r['ticker']),
-            '코드': r['ticker'], '초기 점수': r['early_score'],
-            '거래량 배수': round(r['volume_ratio'], 2),
-            '시장 초과 20일(%)': round(r['excess20_pct'], 2)} for r in early]),
-            hide_index=True, use_container_width=True)
+        _render_group_data(early, 'A', early_asof)
     else:
         st.info('현재 확인된 상승 초기 후보가 없습니다. 기준 미충족 종목은 채우지 않습니다.')
 
@@ -240,6 +236,62 @@ def _frame(results, *, compact=False, sector_snapshot=None):
     # Keep the two conditions together; identifiers follow decision information.
     first += [c for c in ('현재가(KIS)', '기준가(KIS 종가)') if c in frame]
     return frame[first + [name for name in frame if name not in first]]
+
+
+
+def _group_frame(results, rows, group, selection_asof=''):
+    """Read-only display: selection evidence stays separate from current evaluation."""
+    frame = _frame(results)
+    source = {row['ticker']: row for row in rows}
+    metadata = [source[item['ticker']] for item in results]
+    frame['전일 대비(%)'] = [round(item['change_pct'], 2) if item.get('valid') and item.get('change_pct') is not None else '미확인' for item in results]
+    frame['거래대금 근사(억원)'] = [round(item['traded_value'] / 1e8, 2) if item.get('valid') and item.get('traded_value') is not None else '미확인' for item in results]
+    frame['20일 평균 거래대금(억원)'] = [round(item['average_value'] / 1e8, 2) if item.get('valid') else '미확인' for item in results]
+    frame['가격 자료 상태'] = [item.get('mode', '미확인') if item['valid'] else item.get('reason', '미확인') for item in results]
+    if group == 'A':
+        frame['초기 점수(선정일)'] = [row.get('early_score', '미확인') for row in metadata]
+        frame['시장 초과 20일(%·선정일)'] = [round(row['excess20_pct'], 2) if row.get('excess20_pct') is not None else '미확인' for row in metadata]
+        frame['선정 기준일'] = selection_asof
+    else:
+        entries = [row.get('watch_entry') or {} for row in metadata]
+        frame['주도력 점수(최초 선정)'] = [row.get('entry_leader_score', '미확인') for row in entries]
+        frame['최초 선정일'] = [row.get('entry_asof', '미확인') for row in entries]
+        frame['시장 초과 20일(%·최초 선정)'] = [round(row['entry_excess20_pct'], 2) if row.get('entry_excess20_pct') is not None else '미확인' for row in entries]
+    first = ['종목', '코드'] + [c for c in ('현재가(KIS)', '기준가(KIS 종가)') if c in frame]
+    first += ['전일 대비(%)', '필수조건', '보조조건', '단계', '시점점수', '20일선 이격']
+    return frame[first + [c for c in frame if c not in first]]
+
+
+def _render_group_data(rows, group, selection_asof=''):
+    if not rows:
+        st.info('현재 확인된 관찰 종목이 없습니다.')
+        return
+    rows = rows[:DISPLAY_LIMIT]
+    # B shares the durable cohort's cached input; A has independent observations.
+    state = _watch_state(rows, 'rise_early_fast_state' if group == 'A' else 'rise_watch_fast_state')
+    if state['snapshot'] is None:
+        st.info(f'{group}그룹 {len(rows)}개 가격·조건 자료 준비 중 · 10초마다 확인')
+        st.dataframe(pd.DataFrame([{'종목': row.get('name', row['ticker']), '코드': row['ticker'],
+                                   '자료 상태': '조회 중 · 가격·조건 미확인'} for row in rows]),
+                     key=f'rise_group_{group}', hide_index=True, use_container_width=True)
+        if state['error']:
+            st.warning(state['error'])
+        _schedule_watch_selection(state, rows)
+        return
+    results, context = _evaluate_visible(rows, state)
+    st.dataframe(_group_frame(results, rows, group, selection_asof), key=f'rise_group_{group}',
+                 hide_index=True, use_container_width=True)
+    _status(results, context, WATCHLIST_REFRESH_SECONDS)
+    st.caption('거래대금은 기준가격×거래량 근사치입니다. 선정일 점수·시장 강도와 현재 가격 평가의 기준일은 별도입니다. 지속성 충족 여부는 7조건 확인 열에서 확인하세요. 외국인·기관 수급은 미확인입니다.')
+    if state['error']:
+        st.warning(state['error'])
+    _schedule_watch_selection(state, rows)
+
+
+@st.fragment(run_every=WATCHLIST_REFRESH_SECONDS)
+def _render_trend_watch(rows):
+    st.caption(f'B그룹 기존 주도주 {len(rows)}개 · 관찰 대상 유지 · 가격·조건 10초 간격 조회')
+    _render_group_data(rows, 'B')
 
 
 def _status(results, context, seconds):
@@ -481,11 +533,8 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
         with tab_early:
             _render_early_watch()
         with tab_trend:
-            st.caption(f'B그룹 기존 주도주 {len(watchlist)}개 · 확정 일봉 선정, 현재가 감시는 통합 탭에서 유지')
-            if watchlist:
-                st.dataframe(pd.DataFrame([{'종목': r.get('name', r.get('ticker')), '코드': r.get('ticker'),
-                                           '최초 선정일': r.get('entry_asof', '확인 대기')} for r in watchlist]),
-                             hide_index=True, use_container_width=True)
+            _render_trend_watch(watchlist)
+
     else:
         _render_live_watchlist(watchlist)
 
