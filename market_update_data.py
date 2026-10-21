@@ -1,9 +1,7 @@
 """Bounded, read-only inputs for the manual market update."""
 from concurrent.futures import Future
-import json
 from threading import Lock, Thread
 from time import monotonic
-from urllib.request import Request, urlopen
 
 _lock = Lock()
 _inflight = {}
@@ -36,6 +34,16 @@ def bounded_call(key, function, seconds=12):
     return future.result(timeout=seconds)
 
 
+def _read_market_page(url, seconds):
+    # Match the requests transport already used by the app's working Naver feeds.
+    import requests
+    response = requests.get(url, headers={
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/151 Safari/537.36',
+        'Referer': 'https://m.stock.naver.com/'}, timeout=(3, seconds))
+    response.raise_for_status()
+    return response.json()
+
+
 def fetch_market_universe(progress=None):
     """Require both paginated stock markets; never label 32 fallback names full."""
     stocks = {}
@@ -49,10 +57,7 @@ def fetch_market_universe(progress=None):
             if progress:
                 progress(f'{market} 종목목록 확인 · {page}페이지')
             url = f'https://m.stock.naver.com/api/stocks/marketValue/{market}?page={page}&pageSize=100'
-            request = Request(url, headers={'User-Agent': 'Mozilla/5.0',
-                                           'Referer': 'https://m.stock.naver.com/'})
-            with urlopen(request, timeout=min(8, max(.1, deadline - monotonic()))) as response:
-                doc = json.loads(response.read().decode('utf-8'))
+            doc = _read_market_page(url, min(8, max(.1, deadline - monotonic())))
             rows, count = doc.get('stocks'), doc.get('totalCount')
             if (not isinstance(rows, list) or not rows or type(count) is not int
                     or count < 500 or (total is not None and total != count)):
@@ -60,8 +65,10 @@ def fetch_market_universe(progress=None):
             total = count
             for row in rows:
                 code = str(row.get('itemCode', ''))
-                if not code.isdigit() or len(code) != 6:
+                if not code.isalnum() or len(code) != 6:
                     continue
+                # Funds and newer alphanumeric Korean codes count toward source
+                # pagination coverage even when they are not stock candidates.
                 seen.add(code)
                 if row.get('stockEndType') == 'stock' and row.get('stockName'):
                     if code in stocks and stocks[code]['시장'] != market:

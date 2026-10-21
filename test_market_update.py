@@ -70,17 +70,15 @@ class MarketDataTests(unittest.TestCase):
             self.assertTrue(history.empty)
             provider.get_market_ohlcv_by_ticker.assert_not_called()
 
-    @patch('market_update_data.urlopen')
+    @patch('market_update_data._read_market_page')
     def test_complete_two_market_pagination_and_no_partial_result(self, get):
-        def page(request, **kwargs):
-            market = 'KOSPI' if '/KOSPI?' in request.full_url else 'KOSDAQ'
-            number = int(request.full_url.split('page=')[1].split('&')[0])
+        def page(url, seconds):
+            market = 'KOSPI' if '/KOSPI?' in url else 'KOSDAQ'
+            number = int(url.split('page=')[1].split('&')[0])
             offset = (0 if market == 'KOSPI' else 2000) + (number - 1) * 100
             body = {'totalCount': 1000, 'stocks': [dict(itemCode=f'{offset+i:06d}',
                     stockEndType='stock', stockName=f'Stock {offset+i}') for i in range(100)]}
-            response = MagicMock()
-            response.__enter__.return_value.read.return_value = json.dumps(body).encode()
-            return response
+            return body
         get.side_effect = page
         progress = MagicMock()
         result = fetch_market_universe(progress)
@@ -90,6 +88,23 @@ class MarketDataTests(unittest.TestCase):
         get.side_effect = OSError('offline')
         with self.assertRaises(OSError):
             fetch_market_universe()
+
+    @patch('market_update_data._read_market_page')
+    def test_alphanumeric_funds_are_in_coverage_but_not_stock_candidates(self, get):
+        def page(url, seconds):
+            market = 'KOSPI' if '/KOSPI?' in url else 'KOSDAQ'
+            number = int(url.split('page=')[1].split('&')[0])
+            offset = (0 if market == 'KOSPI' else 2000) + (number - 1) * 100
+            stocks = [dict(itemCode=f'{offset+i:06d}', stockEndType='stock', stockName='name')
+                      for i in range(100)]
+            # Ten percent newer fund codes must not make a complete feed look partial.
+            for i in range(10):
+                stocks[i] = dict(itemCode=f'{offset+i:05d}A', stockEndType='etf', stockName='fund')
+            return {'stocks': stocks, 'totalCount': 1100}
+        get.side_effect = page
+        rows = fetch_market_universe()
+        self.assertEqual(len(rows), 1980)
+        self.assertTrue(all(row['종목코드'].isdigit() for row in rows))
 
 
 class UpdateFlowTests(unittest.TestCase):
