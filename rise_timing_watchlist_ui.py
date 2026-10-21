@@ -693,8 +693,7 @@ def _render_watchlist_detail(results):
 
 def render_rise_timing_watchlist(universe=None):
     # Lazy import keeps other application views independent of this screen.
-    from rise_current_price_ui import render_current_price_screen, render_new_discoveries
-    from watch_leader_comparison_ui import render_leader_comparison
+    from rise_current_price_ui import render_current_price_screen
     rows, sha = _load_watchlist()
     project = st.radio('투자 프로젝트 선택',
         ['① 단기 · 며칠~몇 주', '② 중기 · 1~3개월', '기존 개인관찰·전종목 검색'],
@@ -711,8 +710,6 @@ def render_rise_timing_watchlist(universe=None):
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
                                     saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''),
                                     cohort_policy=cohort.get('policy', 'convergence_v1'))
-    render_leader_comparison(_leader_comparison_inputs, _replace_watch_leader)
-    render_new_discoveries(_recent_discoveries)
     if cohort is not None:
         _render_cohort_archive(rows, cohort)
 
