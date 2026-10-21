@@ -12,28 +12,45 @@ from rise_live_data import get_current_quotes, get_histories, get_market_context
 from watch_sector_context import business_context, sector_flow
 
 @st.cache_data(ttl=300, show_spinner=False)
-def _early_watch_snapshot():
+def _early_watch_data():
     """Read-only completed daily scan; never changes persistent B membership."""
-    import base64
-    import json
-    import requests
-    from dual_leader_watch import early_candidates
-    root = "https://api.github.com/repos/EGGPAPA/HY-DYNAMIC12-KOREA/contents/"
-    def load(path, branch):
-        response = requests.get(root + path, params={"ref": branch}, timeout=12)
-        response.raise_for_status()
-        return json.loads(base64.b64decode(response.json()["content"]).decode("utf-8"))
+    from early_watch_data import load_early_watch
     try:
-        saved = load("rise_timing_watchlist.json", "main")
-        snapshot = load("data/ma_convergence_daily.json", "monitor-state")
-        if not isinstance(saved, list) or not isinstance(snapshot, dict):
-            return [], "", "일일 검색 자료 형식 확인 필요"
-        from rise_leaders import leader_snapshot_ready
-        if not leader_snapshot_ready(snapshot):
-            return [], "", "확정 일봉 검증 대기"
-        return early_candidates(snapshot, saved), snapshot["asof"], ""
+        token = str(st.secrets.get('GITHUB_PAT', '')).strip()
     except Exception:
-        return [], "", "일일 검색 자료 연결 실패 · 재시도 대기"
+        token = ''
+    return load_early_watch(token)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _early_watch_snapshot():
+    # Cache successful inputs for five minutes; failed requests retry in 30 seconds.
+    # Exceptions are caught outside the long-lived cache so outages cannot stick.
+    from early_watch_data import DataFormatError, RetrievalError
+    try:
+        return _early_watch_data()
+    except DataFormatError:
+        return [], '', '일일 검색 자료 형식 확인 필요 · 30초 후 재시도'
+    except RetrievalError:
+        return [], '', '일일 검색 자료 연결 실패 · 30초 후 재시도'
+
+
+@st.fragment(run_every=30)
+def _render_early_watch():
+    early, early_asof, early_error = _early_watch_snapshot()
+    if early_error:
+        st.warning(early_error)
+        return
+    st.caption(f'{early_asof} 확정 일봉 · A그룹 {len(early)}종목 / 최대 20 · 5분마다 일일 자료 확인')
+    st.caption('20일선 상승·거래량 1.5배·시장 대비 강도 개선 기반. 외국인·기관 수급은 미확인, 실시간 매수 신호가 아닙니다.')
+    if early:
+        st.dataframe(pd.DataFrame([{'종목': r.get('name', r['ticker']),
+            '코드': r['ticker'], '초기 점수': r['early_score'],
+            '거래량 배수': round(r['volume_ratio'], 2),
+            '시장 초과 20일(%)': round(r['excess20_pct'], 2)} for r in early]),
+            hide_index=True, use_container_width=True)
+    else:
+        st.info('현재 확인된 상승 초기 후보가 없습니다. 기준 미충족 종목은 채우지 않습니다.')
 
 
 DISPLAY_LIMIT = 20
@@ -462,20 +479,7 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
             st.caption('현재 저장된 주도주 관찰목록입니다. 기존 10초 현재가 평가와 알림은 유지됩니다.')
             _render_live_watchlist(watchlist)
         with tab_early:
-            early, early_asof, early_error = _early_watch_snapshot()
-            if early_error:
-                st.warning(early_error)
-            else:
-                st.caption(f'{early_asof} 확정 일봉 · A그룹 {len(early)}종목 / 최대 20 · 5분마다 일일 자료 확인')
-                st.caption('20일선 상승·거래량 1.5배·시장 대비 강도 개선 기반. 외국인·기관 수급은 미확인, 실시간 매수 신호가 아닙니다.')
-                if early:
-                    st.dataframe(pd.DataFrame([{'종목': r.get('name', r['ticker']),
-                        '코드': r['ticker'], '초기 점수': r['early_score'],
-                        '거래량 배수': round(r['volume_ratio'], 2),
-                        '시장 초과 20일(%)': round(r['excess20_pct'], 2)} for r in early]),
-                        hide_index=True, use_container_width=True)
-                else:
-                    st.info('현재 확인된 상승 초기 후보가 없습니다. 기준 미충족 종목은 채우지 않습니다.')
+            _render_early_watch()
         with tab_trend:
             st.caption(f'B그룹 기존 주도주 {len(watchlist)}개 · 확정 일봉 선정, 현재가 감시는 통합 탭에서 유지')
             if watchlist:
