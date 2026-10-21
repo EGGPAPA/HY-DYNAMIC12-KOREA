@@ -1848,5 +1848,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-20"
+  },
+  {
+    "ticker": "099440",
+    "name": "스맥",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "241690",
+    "name": "유니테크노",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "460860",
+    "name": "동국제강",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "024740",
+    "name": "한일단조",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "002700",
+    "name": "신일전자",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "069080",
+    "name": "웹젠",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "005300",
+    "name": "롯데칠성",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "280360",
+    "name": "롯데웰푸드",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "225190",
+    "name": "LK삼양",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
+  },
+  {
+    "ticker": "383220",
+    "name": "F&F",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-21"
   }
 ]
