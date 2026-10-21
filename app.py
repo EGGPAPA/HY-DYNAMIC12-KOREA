@@ -20,6 +20,7 @@ from wealth_jump_ui import get_market_cap_data, get_flow_data, clear_wealth_data
 from pension_manager_ui import _load_pension, _auto_price
 from naver_fallback_html import get_full_universe_html, get_flow_map_html
 from krx_kis_pipeline import collect_krx_ohlcv, build_first_pass_screen
+from market_update_data import bounded_call, fetch_market_universe, require_full_universe
 from korea_holdings_ui import get_kis_price, kis_ready
 from rise_timing_watchlist_ui import render_rise_timing_watchlist
 
@@ -229,15 +230,20 @@ def load_csv_universe():
 def get_full_universe():
     rows = []
     date = latest_business_day()
+    try:
+        rows = fetch_market_universe()
+        return pd.DataFrame(rows), f'NAVER 전체 종목목록 · {date}'
+    except Exception:
+        rows = []
     if PYKRX_OK:
         try:
-            for market in ["KOSPI", "KOSDAQ"]:
-                for code in stock.get_market_ticker_list(date, market=market):
-                    try:
-                        name = stock.get_market_ticker_name(code)
-                    except Exception:
-                        name = code
-                    rows.append((str(code).zfill(6), name, market))
+            def krx_universe():
+                result = []
+                for market in ['KOSPI', 'KOSDAQ']:
+                    for code in stock.get_market_ticker_list(date, market=market):
+                        result.append((str(code).zfill(6), stock.get_market_ticker_name(code), market))
+                return result
+            rows = bounded_call(('universe', date), krx_universe)
             if len(rows) >= 100:
                 return pd.DataFrame(rows, columns=["종목코드", "종목명", "시장"]), f"KRX 전체 종목목록 · {date}"
         except Exception:
@@ -245,7 +251,7 @@ def get_full_universe():
 
     # Streamlit Cloud에서 KRX가 막힐 때 네이버 금융 HTML의 KOSPI/KOSDAQ 전체 목록 사용
     try:
-        nv, nv_date = get_full_universe_html()
+        nv, nv_date = bounded_call(('html-universe', date), get_full_universe_html, seconds=20)
         if nv is not None and not nv.empty and len(nv) >= 500:
             return nv[["종목코드", "종목명", "시장"]].copy(), f"NAVER 전체 종목목록(대체) · {nv_date}"
     except Exception:
@@ -290,7 +296,9 @@ def get_auto_flow():
             for investor, key in [("외국인", "외국인순매수"), ("기관합계", "기관순매수")]:
                 total = {}
                 for market in ["KOSPI", "KOSDAQ"]:
-                    df = stock.get_market_net_purchases_of_equities_by_ticker(date, date, market, investor)
+                    df = bounded_call(('flow', date, market, investor),
+                        lambda market=market, investor=investor:
+                            stock.get_market_net_purchases_of_equities_by_ticker(date, date, market, investor), seconds=5)
                     if df is not None and not df.empty and "순매수거래대금" in df.columns:
                         for code, val in pd.to_numeric(df["순매수거래대금"], errors="coerce").fillna(0).items():
                             total[str(code).zfill(6)] = float(val)
@@ -321,7 +329,7 @@ def yf_symbol(code, market):
 @st.cache_data(ttl=900)
 def yf_history(ticker, period="1y"):
     try:
-        return yf.Ticker(ticker).history(period=period, interval="1d", auto_adjust=True).dropna()
+        return yf.Ticker(ticker).history(period=period, interval="1d", auto_adjust=True, timeout=8).dropna()
     except Exception:
         return pd.DataFrame()
 
@@ -329,7 +337,7 @@ def yf_history(ticker, period="1y"):
 @st.cache_data(ttl=1200)
 def get_single_history(symbol, period="6mo"):
     try:
-        return yf.Ticker(symbol).history(period=period, interval="1d", auto_adjust=True).dropna()
+        return yf.Ticker(symbol).history(period=period, interval="1d", auto_adjust=True, timeout=8).dropna()
     except Exception:
         return pd.DataFrame()
 
@@ -339,7 +347,7 @@ def download_chunk(symbols, period="3mo"):
     if not symbols:
         return pd.DataFrame()
     try:
-        return yf.download(tickers=list(symbols), period=period, interval="1d", auto_adjust=True, group_by="ticker", threads=False, progress=False)
+        return yf.download(tickers=list(symbols), period=period, interval="1d", auto_adjust=True, group_by="ticker", threads=False, progress=False, timeout=8)
     except Exception:
         return pd.DataFrame()
 
@@ -349,7 +357,8 @@ def get_krx_batch_history():
     if not PYKRX_OK:
         return pd.DataFrame(), None
     try:
-        return collect_krx_ohlcv(stock, latest_business_day(), sessions=22)
+        return collect_krx_ohlcv(stock, latest_business_day(), sessions=22,
+                                 max_seconds=30, max_empty_weekdays=3)
     except Exception:
         return pd.DataFrame(), None
 
@@ -465,7 +474,8 @@ def enrich_screen_with_fallback_flow(screen):
 def fundamental_score(code, market):
     score = 50.
     try:
-        info = yf.Ticker(yf_symbol(code, market)).info or {}
+        info = bounded_call(('fundamental', code, market),
+                            lambda: yf.Ticker(yf_symbol(code, market)).info, seconds=8) or {}
         pe, pbr, roe, growth = info.get("trailingPE"), info.get("priceToBook"), info.get("returnOnEquity"), info.get("earningsGrowth")
         if isinstance(pe, (int, float)) and pe > 0:
             score += 12 if pe <= 15 else (6 if pe <= 25 else (-8 if pe >= 50 else 0))
@@ -532,12 +542,16 @@ def get_candidate_fundamentals(candidates):
     return scores
 
 
-def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT):
+def deep_analyze(screen, candidate_count=DEEP_CANDIDATE_COUNT, report=None):
+    report = report or (lambda message: None)
     candidates = screen.head(max(int(candidate_count), FINAL_TOP_N * 4)).copy()
     candidate_codes = tuple(candidates["종목코드"].astype(str).str.zfill(6))
+    report(f'②-4a 후보 {len(candidate_codes)}개 KIS 시세 확인 중')
     kis_prices = get_candidate_kis_prices(candidate_codes)
+    report('②-4b 후보 재무자료 확인 중 · 미수신 항목은 기존 중립 평가 유지')
     fundamental_scores = get_candidate_fundamentals(candidates)
     symbols = [yf_symbol(r["종목코드"], r["시장"]) for _, r in candidates.iterrows()]
+    report('②-4c 후보 6개월 일봉·기술지표 확인 중')
     batch = download_chunk(tuple(symbols), "6mo")
     rows = []
     flow_present = (screen["외국인순매수"].abs().sum() + screen["기관순매수"].abs().sum()) > 0
@@ -656,9 +670,12 @@ def apply_relative(rows, regime):
     return rows, floor, active_pct
 
 
-def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEEP_CANDIDATE_COUNT):
+def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEEP_CANDIDATE_COUNT, report=None, persist=True):
     """Shared market/TOP12 analysis used by both update buttons."""
+    report = report or (lambda message: None)
+    report('②-1 투자자 수급 조회 중 · 응답 지연 시 대체 자료로 전환')
     flow_map, flow_auto_ok, flow_msg = get_auto_flow()
+    report('②-2 KRX 일봉 확인 중 · 자료 미수신 시 Yahoo 조회로 전환')
     krx_history, krx_date = get_krx_batch_history()
     screen = build_first_pass_screen(
         krx_history, universe, flow_map, MIN_PRICE, MIN_AVG_VALUE
@@ -668,18 +685,22 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
         if progress is not None:
             progress.progress(1.0)
     else:
+        report(f'②-2 Yahoo 가격·거래량 조회 중 · {len(universe):,}개')
         screen = build_market_screen(universe, flow_map, progress)
         screen_source = "Yahoo 일괄수집 fallback"
     if screen.empty:
         raise RuntimeError("가격/유동성 조건을 통과한 종목이 없습니다.")
     if not flow_auto_ok:
+        report('②-3 상위 후보 투자자동향 보완 중')
         screen, fallback_ok, fallback_msg = enrich_screen_with_fallback_flow(screen)
         if fallback_ok:
             flow_auto_ok = True
             flow_msg = fallback_msg
         else:
             flow_msg = f"{flow_msg} · {fallback_msg}"
-    rows = deep_analyze(screen, candidate_count)
+    report(f'②-4 상위 후보 정밀분석 중 · 최대 {candidate_count}개')
+    rows = deep_analyze(screen, candidate_count, report=report)
+    report('②-5 시장상태 평가·분석 결과 저장 중')
     regime = kospi_regime()
     rows, floor, active_pct = apply_relative(rows, regime)
     if not rows:
@@ -699,7 +720,8 @@ def run_market_analysis(universe, uni_source, progress=None, candidate_count=DEE
     active_watch = [{"ticker": r["_종목코드"], "name": r["종목명"], "market": r["_시장"], "score": r["종합점수"], "relative_rank": r["상대순위"], "opinion": r["수급·질적 종합의견"]} for r in rows[:FINAL_TOP_N] if r["판정"].startswith("🟢 적극매수")]
     save_json(WATCHLIST_FILE, active_watch)
     save_json(ANALYSIS_FILE, rows)
-    remember_daily_analysis()
+    if persist:
+        remember_daily_analysis()
     return rows, regime, floor, active_pct
 
 
@@ -728,6 +750,10 @@ def run_full_update(status):
     """Refresh once, then reuse cached/common data through every dependent step."""
     status.write("⏳ ① 시장데이터 갱신 중...")
     get_auto_flow.clear()
+    get_full_universe.clear()
+    get_krx_batch_history.clear()
+    get_candidate_kis_prices.clear()
+    fundamental_score.clear()
     download_chunk.clear()
     get_single_history.clear()
     yf_history.clear()
@@ -736,11 +762,15 @@ def run_full_update(status):
     universe, uni_source = get_full_universe()
     if universe.empty:
         raise RuntimeError("KOSPI/KOSDAQ 종목목록을 가져오지 못했습니다.")
-    get_auto_flow()
+    require_full_universe(universe)
     status.write(f"✅ ① 시장데이터 갱신 완료 · {len(universe):,}개")
 
     status.write("⏳ ② 전체시장 분석 중...")
-    rows, regime, _, _ = run_market_analysis(universe, uni_source)
+    detail = status.empty()
+    bar = status.progress(0)
+    rows, regime, _, _ = run_market_analysis(universe, uni_source, progress=bar, report=detail.write, persist=False)
+    bar.empty()
+    detail.empty()
     status.write(
         f"✅ ② 전체시장 분석 완료 · {st.session_state['screen_source']} → "
         f"후보 {st.session_state['candidate_count']:,}개 → "
@@ -766,6 +796,8 @@ def run_full_update(status):
     st.session_state["pension_prices"] = pension_prices
     completed_at = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
     st.session_state["full_update_at"] = completed_at
+    st.session_state["full_update_mode"] = '정밀 전체 업데이트'
+    remember_daily_analysis()
     status.write("✅ ⑥ 연금저축 현재가 갱신 완료")
     return completed_at, regime
 
@@ -793,7 +825,7 @@ def run_fast_update(status):
     status.write(f"✅ ① 최신 가격데이터 갱신 준비 · {len(universe):,}개")
 
     status.write("⏳ ② 전체시장 후보 갱신 중...")
-    rows, regime, _, _ = run_market_analysis(universe, source, candidate_count=60)
+    rows, regime, _, _ = run_market_analysis(universe, source, candidate_count=60, persist=False)
     status.write(
         f"✅ ② 후보 분석 완료 · {st.session_state['screen_source']} → "
         f"KIS 정밀시세 {st.session_state['kis_candidate_count']:,}개"
@@ -818,6 +850,7 @@ def run_fast_update(status):
     completed_at = datetime.now(SEOUL).strftime("%Y-%m-%d %H:%M:%S KST")
     st.session_state["full_update_at"] = completed_at
     st.session_state["full_update_mode"] = "빠른 업데이트"
+    remember_daily_analysis()
     status.write("✅ ⑥ 연금저축 현재가 갱신 완료")
     return completed_at, regime
 
@@ -831,28 +864,14 @@ st.caption("개별주식 후보를 찾는 화면입니다. ETF 매수·보유·�
 st.info("① 시장 데이터 확인 → ② 전체시장 자동분석 → ③ TOP12 검토 → ④ 부의 점프 검토 → ⑤ 매수 후 보유종목 기록")
 
 quick_col, full_col = st.columns([2, 1])
-if quick_col.button("⚡ 빠른 업데이트", type="primary", use_container_width=True, key="hy_fast_update"):
-    status = st.status("HY 빠른 업데이트 실행 중", expanded=True)
-    try:
-        completed_at, regime = run_fast_update(status)
-        show_update_result(status, "⚡ 빠른 업데이트", completed_at, regime)
-    except Exception as e:
-        status.update(label="빠른 업데이트 중 오류가 발생했습니다.", state="error", expanded=True)
-        st.error(str(e))
-
-if full_col.button("🚀 정밀 전체 업데이트", use_container_width=True, key="hy_full_update"):
-    status = st.status("HY 정밀 전체 업데이트 실행 중", expanded=True)
-    try:
-        completed_at, regime = run_full_update(status)
-        st.session_state["full_update_mode"] = "정밀 전체 업데이트"
-        show_update_result(status, "🚀 정밀 전체 업데이트", completed_at, regime)
-    except Exception as e:
-        status.update(label="전체 업데이트 중 오류가 발생했습니다.", state="error", expanded=True)
-        st.error(str(e))
+quick_requested = quick_col.button("⚡ 빠른 업데이트", type="primary", use_container_width=True, key="hy_fast_update")
+full_requested = full_col.button("🚀 정밀 전체 업데이트", use_container_width=True, key="hy_full_update")
+update_requested = quick_requested or full_requested
+status_slot = st.empty()
 
 if st.session_state.get("full_update_at"):
     st.caption(f"마지막 업데이트: **{st.session_state['full_update_at']}** · {st.session_state.get('full_update_mode', '전체 업데이트')}")
-if st.session_state.pop("daily_analysis_restored",False):
+if st.session_state.pop("daily_analysis_restored", False):
     st.success("오늘 저장된 분석 결과를 자동으로 불러왔습니다. 다시 분석하지 않아도 각 탭에서 바로 확인할 수 있습니다.")
 st.caption("같은 날에는 저장 결과를 자동 재사용합니다. 가격만 갱신하려면 빠른 업데이트, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 사용하세요.")
 
@@ -863,7 +882,31 @@ selected_view = st.radio(
     horizontal=True,
     key="hy_selected_view",
     label_visibility="collapsed",
+    disabled=update_requested,
 )
+
+if update_requested:
+    label = "⚡ 빠른 업데이트" if quick_requested else "🚀 정밀 전체 업데이트"
+    with status_slot.container():
+        st.info("업데이트가 끝나면 각 분석 화면을 선택할 수 있습니다. 완료 전에는 화면 이동을 잠시 제한합니다.")
+        status = st.status(f"{label} 실행 중", expanded=True)
+        try:
+            completed_at, regime = (run_fast_update if quick_requested else run_full_update)(status)
+            st.session_state["hy_update_outcome"] = {
+                "label": label, "completed_at": completed_at, "regime": regime}
+        except Exception as exc:
+            st.session_state["hy_update_outcome"] = {"error": str(exc)}
+    # Render enabled navigation and the saved outcome after all stages settle.
+    st.rerun()
+
+outcome = st.session_state.get("hy_update_outcome")
+if outcome:
+    with status_slot.container():
+        if "error" in outcome:
+            st.error("업데이트를 완료하지 못했습니다. " + outcome["error"])
+        else:
+            status = st.status(outcome["label"], expanded=False)
+            show_update_result(status, outcome["label"], outcome["completed_at"], outcome["regime"])
 
 if selected_view == "🏠 시작":
     st.info("확인할 화면을 선택하세요. 선택한 화면 하나만 불러오므로 접속할 때 전체 분석이 자동 실행되지 않습니다.")
