@@ -152,7 +152,7 @@ class DiscoveryScreenTests(unittest.TestCase):
         self.assertFalse(self.st.frames)
         self.assertTrue(any('없다는 뜻은 아닙니다' in message for message in self.st.messages))
 
-    def test_entry_has_panel_even_if_cohort_load_fails_and_no_write_callbacks(self):
+    def test_retained_discovery_renderer_has_no_write_callbacks(self):
         source = Path(self.ui.__file__).read_text(encoding='utf-8')
         tree = ast.parse(source)
         node = next(x for x in tree.body if isinstance(x, ast.FunctionDef) and x.name == 'render_new_discoveries')
@@ -161,7 +161,8 @@ class DiscoveryScreenTests(unittest.TestCase):
             self.assertNotIn(forbidden, code)
         self.assertIn('run_every=WATCHLIST_REFRESH_SECONDS', code)
         entry = Path(self.ui.__file__).with_name('rise_timing_watchlist_ui.py').read_text(encoding='utf-8')
-        self.assertIn('render_new_discoveries(_recent_discoveries)', entry)
+        self.assertNotIn('render_new_discoveries(_recent_discoveries)', entry)
+        self.assertNotIn('render_leader_comparison(', entry)
 
 
 if __name__ == '__main__':
