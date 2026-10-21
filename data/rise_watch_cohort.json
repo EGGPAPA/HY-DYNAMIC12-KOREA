@@ -2,22 +2,6 @@
   "version": 1,
   "active": [
     {
-      "ticker": "009830",
-      "name": "한화솔루션",
-      "market": "KOSPI",
-      "entry_asof": "2026-10-08",
-      "entry_policy": "leader_v1",
-      "entry_span_pct": 15.10586077164137,
-      "entry_reason": "보통주 · 상승 추세 · 20·60거래일 시장지수 초과 상승 · 20일 평균 거래대금 약 20억원 이상 · 수렴은 참고",
-      "entry_leader_score": 94.9497,
-      "entry_ret20_pct": 20.404721753794263,
-      "entry_ret60_pct": 15.909090909090917,
-      "entry_excess20_pct": 25.686199984457602,
-      "entry_excess60_pct": 25.042226123321477,
-      "entry_mean_value20": 104204554215,
-      "entry_overheated": true
-    },
-    {
       "ticker": "098460",
       "name": "고영",
       "market": "KOSDAQ",
@@ -322,7 +306,26 @@
       "entry_overheated": false
     }
   ],
-  "archived": {},
+  "archived": {
+    "009830": {
+      "ticker": "009830",
+      "name": "한화솔루션",
+      "market": "KOSPI",
+      "entry_asof": "2026-10-08",
+      "entry_policy": "leader_v1",
+      "entry_span_pct": 15.10586077164137,
+      "entry_reason": "보통주 · 상승 추세 · 20·60거래일 시장지수 초과 상승 · 20일 평균 거래대금 약 20억원 이상 · 수렴은 참고",
+      "entry_leader_score": 94.9497,
+      "entry_ret20_pct": 20.404721753794263,
+      "entry_ret60_pct": 15.909090909090917,
+      "entry_excess20_pct": 25.686199984457602,
+      "entry_excess60_pct": 25.042226123321477,
+      "entry_mean_value20": 104204554215,
+      "entry_overheated": true,
+      "archived_asof": "2026-10-21T20:35:16.571640+09:00",
+      "archive_reason": "사용자가 관찰 종료 · 원본 기록 보존"
+    }
+  },
   "last_review_asof": "2026-10-20",
   "selection_history": [
     {
