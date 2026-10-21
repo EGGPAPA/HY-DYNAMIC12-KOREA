@@ -1,4 +1,6 @@
 from datetime import datetime, timedelta
+from time import monotonic
+from market_update_data import bounded_call
 
 import pandas as pd
 
@@ -22,17 +24,34 @@ def _normalize_daily(frame, market, date_text):
     return work[REQUIRED_COLUMNS]
 
 
-def collect_krx_ohlcv(stock_module, end_date=None, sessions=22, max_calendar_days=50):
+def collect_krx_ohlcv(stock_module, end_date=None, sessions=22, max_calendar_days=50,
+                      max_seconds=None, max_empty_weekdays=None):
     """Collect a small number of market-wide KRX snapshots instead of ticker-by-ticker history."""
     day = datetime.strptime(end_date, "%Y%m%d") if end_date else datetime.now()
     frames = []
     found_dates = []
+    deadline = monotonic() + max_seconds if max_seconds is not None else float('inf')
+    empty_weekdays = 0
+    def fetch(date_text, market):
+        if max_seconds is None:
+            return stock_module.get_market_ohlcv_by_ticker(date_text, market=market)
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            raise TimeoutError('KRX daily budget exhausted')
+        return bounded_call(('ohlcv', date_text, market),
+                            lambda: stock_module.get_market_ohlcv_by_ticker(date_text, market=market),
+                            seconds=min(8, remaining))
     for _ in range(max_calendar_days):
+        if monotonic() >= deadline:
+            break
+        if day.weekday() >= 5:
+            day -= timedelta(days=1)
+            continue
         date_text = day.strftime("%Y%m%d")
         daily = []
         try:
             combined = _normalize_daily(
-                stock_module.get_market_ohlcv_by_ticker(date_text, market="ALL"),
+                fetch(date_text, 'ALL'),
                 "ALL",
                 date_text,
             )
@@ -44,7 +63,7 @@ def collect_krx_ohlcv(stock_module, end_date=None, sessions=22, max_calendar_day
             for market in ("KOSPI", "KOSDAQ"):
                 try:
                     normalized = _normalize_daily(
-                        stock_module.get_market_ohlcv_by_ticker(date_text, market=market),
+                        fetch(date_text, market),
                         market,
                         date_text,
                     )
@@ -53,9 +72,14 @@ def collect_krx_ohlcv(stock_module, end_date=None, sessions=22, max_calendar_day
                 if not normalized.empty:
                     daily.append(normalized)
         if daily:
+            empty_weekdays = 0
             frames.extend(daily)
             found_dates.append(date_text)
             if len(found_dates) >= sessions:
+                break
+        else:
+            empty_weekdays += 1
+            if max_empty_weekdays is not None and empty_weekdays >= max_empty_weekdays:
                 break
         day -= timedelta(days=1)
     if len(found_dates) < sessions or not frames:

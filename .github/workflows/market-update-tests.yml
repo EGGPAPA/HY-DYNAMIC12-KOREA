@@ -1,0 +1,21 @@
+name: Manual full market update
+on:
+  push:
+    branches: [main]
+    paths: ['app.py', 'market_update_data.py', 'krx_kis_pipeline.py', 'test_market_update.py', '.github/workflows/market-update-tests.yml']
+  pull_request:
+    paths: ['app.py', 'market_update_data.py', 'krx_kis_pipeline.py', 'test_market_update.py', '.github/workflows/market-update-tests.yml']
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'pandas>=2.2,<3'
+      - run: python -m py_compile app.py market_update_data.py krx_kis_pipeline.py
+      - run: python -m unittest test_market_update tests.test_krx_kis_pipeline test_current_price_analysis test_watchlist_fast_refresh test_holiday_reference -v
