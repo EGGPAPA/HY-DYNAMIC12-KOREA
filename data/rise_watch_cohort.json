@@ -304,6 +304,22 @@
       "entry_excess60_pct": 17.15710444917189,
       "entry_mean_value20": 3421917510,
       "entry_overheated": false
+    },
+    {
+      "ticker": "011200",
+      "name": "HMM",
+      "market": "KOSPI",
+      "entry_asof": "2026-10-21",
+      "entry_policy": "leader_v1",
+      "entry_span_pct": 8.957402739999507,
+      "entry_reason": "보통주 · 상승 추세 · 20·60거래일 시장지수 초과 상승 · 20일 평균 거래대금 약 20억원 이상 · 수렴은 참고",
+      "entry_leader_score": 93.7993,
+      "entry_ret20_pct": 11.24401913875599,
+      "entry_ret60_pct": 14.532019704433496,
+      "entry_excess20_pct": 25.833597437028175,
+      "entry_excess60_pct": 30.155539424338762,
+      "entry_mean_value20": 37958552225.0,
+      "entry_overheated": false
     }
   ],
   "archived": {
@@ -326,7 +342,7 @@
       "archive_reason": "사용자가 관찰 종료 · 원본 기록 보존"
     }
   },
-  "last_review_asof": "2026-10-20",
+  "last_review_asof": "2026-10-21",
   "selection_history": [
     {
       "policy": "convergence_v1",
