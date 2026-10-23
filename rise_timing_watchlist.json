@@ -1988,5 +1988,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-22"
+  },
+  {
+    "ticker": "100250",
+    "name": "진양홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "215360",
+    "name": "우리산업",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "004700",
+    "name": "조광피혁",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "281740",
+    "name": "레이크머티리얼즈",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "001230",
+    "name": "동국홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "053450",
+    "name": "세코닉스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "099430",
+    "name": "바이오플러스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "031430",
+    "name": "신세계인터내셔날",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "003200",
+    "name": "일신방직",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "403850",
+    "name": "더핑크퐁컴퍼니",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-23"
   }
 ]
