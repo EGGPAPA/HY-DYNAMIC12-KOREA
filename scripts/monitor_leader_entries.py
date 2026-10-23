@@ -9,7 +9,7 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 import pandas as pd
-import requests
+from monitor_kakao import KakaoError, send_text
 import yfinance as yf
 
 
@@ -108,27 +108,6 @@ def save_state(state: dict) -> None:
     STATE_FILE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def access_token() -> str | None:
-    required = ["KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "KAKAO_REFRESH_TOKEN"]
-    missing = [name for name in required if not os.getenv(name)]
-    if missing:
-        raise RuntimeError("Missing GitHub Actions secrets: " + ", ".join(missing))
-    response = requests.post(
-        "https://kauth.kakao.com/oauth/token",
-        data={
-            "grant_type": "refresh_token",
-            "client_id": os.environ["KAKAO_REST_API_KEY"],
-            "client_secret": os.environ["KAKAO_CLIENT_SECRET"],
-            "refresh_token": os.environ["KAKAO_REFRESH_TOKEN"],
-        },
-        timeout=15,
-    )
-    data = response.json()
-    if not response.ok or not data.get("access_token"):
-        raise RuntimeError(f"Kakao token error: HTTP {response.status_code}")
-    return data["access_token"]
-
-
 def message(rows: list[dict], now: datetime) -> str:
     lines = ["[HY DYNAMIC12 자동감시]", "시장환경 조건 단계 상승", now.strftime("%Y-%m-%d %H:%M KST")]
     for row in rows:
@@ -146,22 +125,7 @@ def message(rows: list[dict], now: datetime) -> str:
 
 
 def send_kakao(text: str) -> None:
-    token = access_token()
-    link = os.getenv("KAKAO_REDIRECT_URI", APP_URL)
-    template = {
-        "object_type": "text", "text": text,
-        "link": {"web_url": link, "mobile_web_url": link},
-        "button_title": "주도주 확인",
-    }
-    response = requests.post(
-        "https://kapi.kakao.com/v2/api/talk/memo/default/send",
-        headers={"Authorization": f"Bearer {token}"},
-        data={"template_object": json.dumps(template, ensure_ascii=False)},
-        timeout=15,
-    )
-    data = response.json()
-    if not response.ok or data.get("result_code") != 0:
-        raise RuntimeError(f"Kakao send error: HTTP {response.status_code}")
+    send_text(text, os.getenv("KAKAO_REDIRECT_URI") or APP_URL, "주도주 확인")
 
 
 def main() -> int:

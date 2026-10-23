@@ -8,6 +8,7 @@ from zoneinfo import ZoneInfo
 
 import pandas as pd
 import requests
+from monitor_kakao import send_text
 import yfinance as yf
 
 SEOUL = ZoneInfo("Asia/Seoul")
@@ -116,21 +117,10 @@ def save_state(state, sha):
 
 
 def send_kakao(items):
-    required = ["KAKAO_REST_API_KEY", "KAKAO_CLIENT_SECRET", "KAKAO_REFRESH_TOKEN"]
-    if any(not os.getenv(key) for key in required): return
-    token_response = requests.post("https://kauth.kakao.com/oauth/token", data={
-        "grant_type": "refresh_token", "client_id": os.environ["KAKAO_REST_API_KEY"],
-        "client_secret": os.environ["KAKAO_CLIENT_SECRET"], "refresh_token": os.environ["KAKAO_REFRESH_TOKEN"],
-    }, timeout=15)
-    token = token_response.json().get("access_token")
-    if not token: return
     lines = ["[HY DYNAMIC12 상승시점 알림]", "필수조건을 통과한 신규 매수검토 종목"]
     for x in items:
         lines.append(f"{x['name']}({x['ticker']}) 현재 {x['price']:,}원 / 1차 {x['buy1']:,}원 / {x['score']:.0f}점")
-    text = "\n".join(lines)
-    template = {"object_type": "text", "text": text, "link": {"web_url": APP_URL, "mobile_web_url": APP_URL}, "button_title": "상승시점 확인"}
-    requests.post("https://kapi.kakao.com/v2/api/talk/memo/default/send",
-                  headers={"Authorization": f"Bearer {token}"}, data={"template_object": json.dumps(template, ensure_ascii=False)}, timeout=15)
+    send_text("\n".join(lines), APP_URL, "상승시점 확인")
 
 
 def main():

@@ -44,6 +44,26 @@ jobs:
       - name: Install monitor dependencies
         run: pip install "pandas>=2.0" "yfinance>=0.2.40" "requests>=2.31"
 
+      - name: Load Kakao refresh token
+        shell: bash
+        env:
+          KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
+          FALLBACK_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -f .kakao_refresh_token.enc ]; then
+            TOKEN=$(openssl enc -d -aes-256-cbc -pbkdf2 \
+              -in .kakao_refresh_token.enc \
+              -pass env:KAKAO_CLIENT_SECRET)
+            echo "::add-mask::$TOKEN"
+            echo "KAKAO_REFRESH_TOKEN=$TOKEN" >> "$GITHUB_ENV"
+            echo 'Loaded encrypted Kakao refresh token.'
+          else
+            echo "::add-mask::$FALLBACK_REFRESH_TOKEN"
+            echo "KAKAO_REFRESH_TOKEN=$FALLBACK_REFRESH_TOKEN" >> "$GITHUB_ENV"
+            echo 'Encrypted token not found; using repository secret.'
+          fi
+
       - name: Scan leaders and send new alerts
         run: python scripts/monitor_leader_entries.py
 
