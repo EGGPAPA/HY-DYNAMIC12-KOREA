@@ -1,8 +1,10 @@
-name: Rise timing 15-minute monitor
+name: Rise timing KIS A+B monitor
 
 on:
   schedule:
-    - cron: "*/15 0-6 * * 1-5"
+    # Off the busiest minute marks. Scheduled Actions can still be delayed.
+    - cron: "7,22,37,52 0-5 * * 1-5"
+    - cron: "7,22 6 * * 1-5"
   workflow_dispatch:
     inputs:
       force_run:
@@ -10,13 +12,18 @@ on:
         required: false
         default: false
         type: boolean
+      dry_run:
+        description: "Read and evaluate only; no messages or remote state writes"
+        required: false
+        default: true
+        type: boolean
 
 permissions:
   contents: write
 
 concurrency:
   group: rise-timing-monitor
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   monitor:
@@ -28,6 +35,8 @@ jobs:
       KAKAO_CLIENT_SECRET: ${{ secrets.KAKAO_CLIENT_SECRET }}
       KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
       FORCE_RUN: ${{ inputs.force_run || 'false' }}
+      KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+      KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -35,6 +44,14 @@ jobs:
           python-version: "3.12"
           cache: pip
       - name: Install monitor dependencies
-        run: pip install "pandas>=2.0" "yfinance>=0.2.40" "requests>=2.31"
+        run: pip install "pandas>=2.2,<3" "streamlit==1.50.0" "yfinance>=0.2.40" "requests>=2.31"
       - name: Monitor personal rise-timing watchlist
-        run: python scripts/monitor_rise_watchlist.py
+        env:
+          DRY_RUN: ${{ inputs.dry_run || 'false' }}
+        run: |
+          if [ "$DRY_RUN" = "true" ]; then
+            python scripts/monitor_rise_watchlist.py --dry-run
+          else
+            python scripts/monitor_rise_watchlist.py
+          fi
+

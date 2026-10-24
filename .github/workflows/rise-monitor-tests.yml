@@ -1,0 +1,48 @@
+name: Rise watch UI and monitor consistency
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'rise_*.py'
+      - 'early_watch_data.py'
+      - 'scripts/monitor_rise_watchlist.py'
+      - 'test_rise_monitor_consistency.py'
+      - 'test_rise_watch_ui.py'
+      - '.github/workflows/rise*.yml'
+  pull_request:
+    paths:
+      - 'rise_*.py'
+      - 'early_watch_data.py'
+      - 'scripts/monitor_rise_watchlist.py'
+      - 'test_*watch*.py'
+      - 'test_rise_monitor_consistency.py'
+      - '.github/workflows/rise*.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  consistency:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install 'pandas>=2.2,<3' 'streamlit==1.50.0' requests yfinance
+      - run: python -m unittest test_rise_monitor_consistency test_current_price_analysis test_holiday_reference test_watchlist_fast_refresh test_early_watch_data test_dual_leader_watch tests.test_rise_leaders tests.test_rise_watch_cohort -v
+      - run: python -m unittest test_rise_watch_ui -v
+      - run: python -m py_compile scripts/monitor_rise_watchlist.py rise_watch_policy.py rise_current_price_ui.py rise_live_analysis.py
+      - name: Check monitor credential availability without exposing values
+        env:
+          KIS_APP_KEY: ${{ secrets.KIS_APP_KEY }}
+          KIS_APP_SECRET: ${{ secrets.KIS_APP_SECRET }}
+          KAKAO_REST_API_KEY: ${{ secrets.KAKAO_REST_API_KEY }}
+          KAKAO_REFRESH_TOKEN: ${{ secrets.KAKAO_REFRESH_TOKEN }}
+        run: |
+          python - <<'PY'
+          import os
+          names = ('KIS_APP_KEY', 'KIS_APP_SECRET', 'KAKAO_REST_API_KEY', 'KAKAO_REFRESH_TOKEN')
+          for name in names:
+              print(name + ': ' + ('configured' if os.getenv(name) else 'missing'))
+          PY

@@ -1,6 +1,7 @@
 import base64
 import ast
 from copy import deepcopy
+from datetime import datetime
 import json
 import unittest
 from pathlib import Path
@@ -10,6 +11,7 @@ from urllib.error import HTTPError, URLError
 
 from early_watch_data import DataFormatError, RetrievalError, load_json, load_early_watch
 from test_dual_leader_watch import sample
+from rise_live_analysis import KST
 
 
 def response(value, envelope=False):
@@ -89,7 +91,7 @@ class EarlyWatchDataTests(unittest.TestCase):
         saved = [{'ticker': '000001'}]
         before = deepcopy((saved, daily))
         load.side_effect = [saved, daily]
-        rows, day, error = load_early_watch('token')
+        rows, day, error = load_early_watch('token', now=datetime(2026, 10, 21, 11, tzinfo=KST))
         self.assertEqual(([r['ticker'] for r in rows], day, error), (['000001'], '2026-10-20', ''))
         self.assertEqual((saved, daily), before)
         self.assertEqual(load.call_args_list[1].args[1], 'monitor-state')
@@ -100,7 +102,7 @@ class EarlyWatchDataTests(unittest.TestCase):
             daily = snapshot()
             daily['pending'] = pending
             load.side_effect = [[], daily]
-            rows, day, error = load_early_watch()
+            rows, day, error = load_early_watch(now=datetime(2026, 10, 21, 11, tzinfo=KST))
             self.assertEqual(rows, [])
             self.assertEqual(error, '확정 일봉 검증 대기' if pending else '')
 
@@ -146,3 +148,4 @@ class EarlyWatchDataTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
