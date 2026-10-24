@@ -207,6 +207,7 @@ class MonitorRunTests(unittest.TestCase):
             get_current_quotes=lambda codes, **kw: {c: dict(quote(), received_at=current[0].isoformat()) for c in codes})
         old = {'history': {'000002': {'consecutive': 0, 'dates': ['2026-09-01', '2026-09-02']}}}
         with patch.dict('sys.modules', {'rise_live_data': feeds}), \
+             patch.dict(monitor.os.environ, {'KIS_APP_KEY': 'fake', 'KIS_APP_SECRET': 'fake'}), \
              patch.object(monitor, 'datetime', Clock), \
              patch.object(monitor, 'sleep', side_effect=lambda seconds: current.__setitem__(0, current[0] + timedelta(seconds=seconds))), \
              patch.object(monitor, 'load_state', return_value=(old, 'sha')), \
@@ -225,10 +226,33 @@ class MonitorRunTests(unittest.TestCase):
         self.assertNotIn('dates', state['history']['000002'])
         self.assertTrue(all('chart' not in x for x in state['items']))
 
+    def test_missing_kis_configuration_is_visible_and_never_fetches_or_notifies(self):
+        feeds = SimpleNamespace(get_current_quotes=Mock(), get_histories=Mock(),
+                                get_market_context=Mock())
+        old = {'sent': ['2026-10-06:000001'], 'last_success_at': NOW.isoformat()}
+        with patch.dict('sys.modules', {'rise_live_data': feeds}), \
+             patch.dict(monitor.os.environ, {}, clear=True), \
+             patch.object(monitor, 'load_state', return_value=(old, 'sha')), \
+             patch.object(monitor, 'save_state') as save, \
+             patch.object(monitor, 'send_kakao') as send:
+            with self.assertRaises(RuntimeError):
+                monitor.run(force=True)
+        state = save.call_args.args[0]
+        self.assertEqual(state['status'], 'error')
+        self.assertIn('KIS_APP_KEY', state['error'])
+        self.assertIn('KIS_APP_SECRET', state['error'])
+        self.assertEqual(state['sent'], old['sent'])
+        self.assertEqual(state['last_success_at'], old['last_success_at'])
+        self.assertEqual(monitor_health(state, NOW, CONTEXT)[0], 'warning')
+        feeds.get_market_context.assert_not_called()
+        feeds.get_current_quotes.assert_not_called()
+        send.assert_not_called()
+
     def test_dry_run_has_no_messages_or_remote_writes_even_on_failure(self):
         feeds = SimpleNamespace(get_current_quotes=Mock(), get_histories=Mock(),
                                 get_market_context=lambda: {'error': 'auth failure'})
         with patch.dict('sys.modules', {'rise_live_data': feeds}), \
+             patch.dict(monitor.os.environ, {'KIS_APP_KEY': 'fake', 'KIS_APP_SECRET': 'fake'}), \
              patch.object(monitor, 'load_state') as load, \
              patch.object(monitor, 'save_state') as save, \
              patch.object(monitor, 'send_kakao') as send:

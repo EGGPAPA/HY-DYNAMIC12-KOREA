@@ -129,6 +129,9 @@ def run(dry_run=False, force=False):
     state = {**previous, 'version': POLICY_VERSION, 'last_attempt_at': now.isoformat(),
              'interval_minutes': 15, 'notification_error': '', 'error': ''}
     try:
+        missing = [key for key in ('KIS_APP_KEY', 'KIS_APP_SECRET') if not os.getenv(key)]
+        if missing:
+            raise RuntimeError('자동알림 설정 대기 · GitHub Actions 비밀값 등록 필요: ' + ', '.join(missing))
         if not market_open(now) and not force:
             state.update(status='outside_session', history={})
         else:

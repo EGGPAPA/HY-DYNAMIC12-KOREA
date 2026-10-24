@@ -44,6 +44,9 @@ GitHub Actions는 한국 정규장 중 15분 간격으로 예약하지만 실행
 `KAKAO_REST_API_KEY`, `KAKAO_REFRESH_TOKEN` 설정이 필요하다.
 `KAKAO_CLIENT_SECRET`은 사용 계정에 설정된 경우 제공한다. 값은 코드나
 상태 파일에 기록하지 않는다. KIS 인증 실패는 Yahoo로 대체하지 않고 보류한다.
+KIS 비밀값이 누락되면 외부 시세 조회와 알림 전송을 시작하지 않고, 설정이
+필요한 키 이름만 운영상태에 기록한다. Streamlit 앱의 Secrets와 GitHub
+Actions의 저장소 Secrets는 별도이므로 양쪽에 같은 KIS 설정이 필요하다.
 
 카카오 HTTP 응답과 `result_code == 0`을 모두 확인한 뒤 거래일·종목별
 전송 완료를 기록한다. 실패 건은 다음 실행에서 현재 조건을 다시 확인한
