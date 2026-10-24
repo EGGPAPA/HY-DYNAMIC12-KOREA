@@ -53,6 +53,38 @@ class FastRefreshTests(unittest.TestCase):
         state['future'] = future
         return self.ui._watch_state(rows)
 
+    def test_full_market_scan_wait_does_not_block_saved_watch_or_send(self):
+        rows, snapshot = self.snapshot(25)
+        state = {'snapshot': None, 'error': ''}
+        send, promote = Mock(), Mock()
+        with patch.object(self.ui, '_watch_state', return_value=state), \
+             patch.object(self.ui, '_schedule_watch_selection') as schedule, \
+             patch.object(self.ui, '_evaluate') as blocking:
+            self.ui._render_live_scan(rows, send, promote)
+        blocking.assert_not_called()
+        schedule.assert_called_once()
+        send.assert_not_called()
+        promote.assert_not_called()
+        self.assertFalse(self.st.frames)
+
+    def test_large_scan_requotes_finalists_and_never_alerts_old_snapshot(self):
+        import types
+        rows, snapshot = self.snapshot(25)
+        for item in snapshot['results']:
+            item['average_value'] = 1_000_000_000
+            item['checks']['persistence'] = True
+        self.st.columns = lambda n: [types.SimpleNamespace(metric=lambda *args: None) for _ in range(n)]
+        send, promote = Mock(), Mock()
+        self.st.session_state['rise_current_notify_once'] = True
+        with patch.object(self.ui, '_watch_state', return_value={'snapshot': snapshot}), \
+             patch.object(self.ui, '_evaluate_visible', return_value=([], CONTEXT)) as current, \
+             patch.object(self.ui, '_status'):
+            self.ui._render_live_scan(rows, send, promote)
+        self.assertEqual(len(current.call_args.args[0]), 20)
+        send.assert_not_called()
+        promote.assert_not_called()
+        self.assertFalse(self.st.frames)
+
     def test_initial_selection_is_async_and_does_not_show_unverified_prices(self):
         rows, snapshot = self.snapshot()
         future = Future()
@@ -263,3 +295,4 @@ class FastRefreshTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+

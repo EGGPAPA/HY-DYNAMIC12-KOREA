@@ -431,6 +431,10 @@ class DataAndScreenTests(unittest.TestCase):
     def test_upper_scan_recalculates_and_timer_does_not_repeat_alerts(self):
         from unittest.mock import Mock
         good = evaluate_current(ROW, bars(), quote(), CONTEXT, NOW)
+        observations = {}
+        observe_persistence([good], observations)
+        good = evaluate_current(ROW, bars(), quote(seconds=11), CONTEXT, NOW + timedelta(seconds=11))
+        observe_persistence([good], observations)
         good['average_value'] = 1_000_000_000
         self.st.columns = lambda n: [types.SimpleNamespace(metric=lambda *args: None) for _ in range(n)]
         send, promote = Mock(return_value=None), Mock(return_value=None)
@@ -479,8 +483,8 @@ class DataAndScreenTests(unittest.TestCase):
             frame = self.ui._group_frame([on_hold(ROW, 'KIS 현재가 수신 실패')], [source], group)
             row = frame.iloc[0]
             self.assertEqual(row['현재가(KIS)'], '—')
-            self.assertEqual(row['전일 대비(%)'], '미확인')
-            self.assertEqual(row['20일 평균 거래대금(억원)'], '미확인')
+            self.assertTrue(pd.isna(row['전일 대비(%)']))
+            self.assertTrue(pd.isna(row['20일 평균 거래대금(억원)']))
             self.assertEqual(row['가격 자료 상태'], 'KIS 현재가 수신 실패')
             self.assertEqual(row['7조건 확인'], '평가 보류')
 
@@ -503,6 +507,7 @@ class DataAndScreenTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
 
 
 

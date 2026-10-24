@@ -64,11 +64,7 @@ def load_json(path, branch, expected_type, token=''):
     raise RetrievalError('Daily input unavailable')
 
 
-def load_early_watch(token=''):
-    from dual_leader_watch import early_candidates
-    from rise_leaders import leader_snapshot_ready
-    saved = load_json('rise_timing_watchlist.json', 'main', list, token)
-    snapshot = load_json('data/ma_convergence_daily.json', 'monitor-state', dict, token)
+def _validate_inputs(saved, snapshot):
     # Reject malformed records explicitly; never mislabel them as a network error.
     if (any(not isinstance(row, dict) for row in saved)
             or not isinstance(snapshot.get('items', {}), dict)
@@ -76,6 +72,26 @@ def load_early_watch(token=''):
             or not isinstance(snapshot.get('benchmarks', {}), dict)
             or any(not isinstance(row, dict) for row in snapshot.get('benchmarks', {}).values())):
         raise DataFormatError('Invalid daily records')
-    if not leader_snapshot_ready(snapshot):
-        return [], '', '확정 일봉 검증 대기'
+
+
+def load_early_watch(token='', now=None, expected_day=None):
+    from dual_leader_watch import early_candidates
+    saved = load_json('rise_timing_watchlist.json', 'main', list, token)
+    snapshot = load_json('data/ma_convergence_daily.json', 'monitor-state', dict, token)
+    _validate_inputs(saved, snapshot)
+    from rise_watch_policy import selection_error
+    error = selection_error(snapshot, now, expected_day)
+    if error:
+        return [], snapshot.get('asof', ''), error
     return early_candidates(snapshot, saved), snapshot['asof'], ''
+
+
+def load_group_inputs(token=''):
+    """The UI and scheduled worker read the same current saved/cohort inputs."""
+    from rise_watch_cohort import active_rows, validate_cohort
+    saved = load_json('rise_timing_watchlist.json', 'main', list, token)
+    snapshot = load_json('data/ma_convergence_daily.json', 'monitor-state', dict, token)
+    _validate_inputs(saved, snapshot)
+    cohort = validate_cohort(load_json('data/rise_watch_cohort.json', 'monitor-state', dict, token))
+    return saved, active_rows(saved, cohort), snapshot
+

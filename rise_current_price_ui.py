@@ -7,9 +7,51 @@ from time import monotonic
 import pandas as pd
 import streamlit as st
 
-from rise_live_analysis import KST, evaluate_current, observe_persistence, priority_key
+from rise_live_analysis import KST, evaluate_current, observe_persistence, priority_key, evaluate_batches, entry_signal
 from rise_live_data import get_current_quotes, get_histories, get_market_context
 from watch_sector_context import business_context, sector_flow
+from rise_watch_policy import watch_groups, reference_day, monitor_health
+
+
+@st.cache_data(ttl=60, show_spinner=False)
+def _daily_group_inputs():
+    from early_watch_data import load_group_inputs
+    try:
+        token = str(st.secrets.get('GITHUB_PAT', '')).strip()
+    except Exception:
+        token = ''
+    return load_group_inputs(token)
+
+
+@st.cache_data(ttl=30, show_spinner=False)
+def _monitor_health_state():
+    from early_watch_data import load_json
+    try:
+        token = str(st.secrets.get('GITHUB_PAT', '')).strip()
+    except Exception:
+        token = ''
+    try:
+        return load_json('data/rise_timing_live.json', 'monitor-state', dict, token)
+    except Exception:
+        return {}
+
+
+@st.fragment(run_every=10)
+def _render_watch_groups(saved_rows, trend_rows, view):
+    now = datetime.now(KST)
+    context = get_market_context(st.session_state.get('rise_live_revision', 0))
+    try:
+        saved_rows, trend_rows, snapshot = _daily_group_inputs()
+    except Exception:
+        snapshot = {}
+    groups = watch_groups(saved_rows, trend_rows, snapshot, now, reference_day(context))
+    if groups['error']:
+        st.warning(groups['error'] + ' · A 선정 보류, B 관찰 대상 유지')
+    st.caption(f"A 상승 초기 {len(groups['A'])}개 · B 기존 주도주 {len(groups['B'])}개 · 통합 {len(groups['AB'])}개 · 선정자료 {groups['asof'] or '확인 없음'}")
+    st.caption('B는 최초 선정한 종목을 계속 추적합니다. 현재 분류의 상승 지속·조건 약화·평가 보류를 함께 확인하세요.')
+    level, message = monitor_health(_monitor_health_state(), now, context)
+    getattr(st, level)(message)
+    _render_group_data(groups[view], view, groups['asof'])
 
 @st.cache_data(ttl=300, show_spinner=False)
 def _early_watch_data():
@@ -93,13 +135,10 @@ def _evaluate(rows, namespace):
             saved['histories'].update(get_histories(failed, (revision, int(now.timestamp() // 60))))
         saved['retry_after'] = datetime.now(KST).timestamp() + 60
     context = get_market_context(revision)
-    quotes = _quotes_for_context(rows, context)
-    evaluated_at = datetime.now(KST)
-    results = [evaluate_current(row, saved['histories'].get(row['ticker']),
-                               quotes.get(row['ticker']), context, evaluated_at) for row in rows]
     states = st.session_state.setdefault('rise_live_observations', {})
-    observe_persistence(results, states)
-    return sorted(results, key=priority_key), context
+    results = evaluate_batches(rows, saved['histories'], context,
+        lambda batch: _quotes_for_context(batch, context), lambda: datetime.now(KST), states)
+    return results, context
 
 
 @st.cache_resource(show_spinner=False)
@@ -117,11 +156,8 @@ def _build_watch_selection(rows, revision, histories, history_hour, observations
     if missing:
         histories.update(get_histories(missing, (revision, int(now.timestamp() // 60))))
     context = get_market_context(revision)
-    quotes = _quotes_for_context(rows, context)
-    evaluated_at = datetime.now(KST)
-    results = [evaluate_current(row, histories.get(row['ticker']), quotes.get(row['ticker']),
-                               context, evaluated_at) for row in rows]
-    observe_persistence(results, observations)
+    results = evaluate_batches(rows, histories, context,
+        lambda batch: _quotes_for_context(batch, context), lambda: datetime.now(KST), observations)
     return {'results': sorted(results, key=priority_key), 'histories': histories,
             'history_hour': hour, 'context': context, 'observations': observations,
             'completed_at': datetime.now(KST).isoformat(timespec='seconds')}
@@ -241,24 +277,38 @@ def _frame(results, *, compact=False, sector_snapshot=None):
 
 def _group_frame(results, rows, group, selection_asof=''):
     """Read-only display: selection evidence stays separate from current evaluation."""
-    frame = _frame(results)
+    frame = _frame(results, compact=group == 'AB',
+                   sector_snapshot=st.session_state.get('sector_observation_last_good'))
     source = {row['ticker']: row for row in rows}
     metadata = [source[item['ticker']] for item in results]
+    frame['그룹'] = [row.get('watch_group', group) for row in metadata]
+    frame['현재 분류(확정 일봉)'] = [row.get('watch_status', '평가 보류') for row in metadata]
+    frame['알림조건(현재 평가)'] = [('평가 보류' if not item['valid'] else
+        '종가 참고 · 발송 안 함' if item.get('basis') == 'close' else
+        '충족 · 장중 잠정' if entry_signal(item) else '미충족') for item in results]
     frame['전일 대비(%)'] = [round(item['change_pct'], 2) if item.get('valid') and item.get('change_pct') is not None else '미확인' for item in results]
     frame['거래대금 근사(억원)'] = [round(item['traded_value'] / 1e8, 2) if item.get('valid') and item.get('traded_value') is not None else '미확인' for item in results]
     frame['20일 평균 거래대금(억원)'] = [round(item['average_value'] / 1e8, 2) if item.get('valid') else '미확인' for item in results]
     frame['가격 자료 상태'] = [item.get('mode', '미확인') if item['valid'] else item.get('reason', '미확인') for item in results]
-    if group == 'A':
+    if group in ('A', 'AB'):
         frame['초기 점수(선정일)'] = [row.get('early_score', '미확인') for row in metadata]
         frame['시장 초과 20일(%·선정일)'] = [round(row['excess20_pct'], 2) if row.get('excess20_pct') is not None else '미확인' for row in metadata]
         frame['선정 기준일'] = selection_asof
-    else:
+    if group in ('B', 'AB'):
         entries = [row.get('watch_entry') or {} for row in metadata]
         frame['주도력 점수(최초 선정)'] = [row.get('entry_leader_score', '미확인') for row in entries]
         frame['최초 선정일'] = [row.get('entry_asof', '미확인') for row in entries]
         frame['시장 초과 20일(%·최초 선정)'] = [round(row['entry_excess20_pct'], 2) if row.get('entry_excess20_pct') is not None else '미확인' for row in entries]
-    first = ['종목', '코드'] + [c for c in ('현재가(KIS)', '기준가(KIS 종가)') if c in frame]
-    first += ['전일 대비(%)', '필수조건', '보조조건', '단계', '시점점수', '20일선 이격']
+    numeric_columns = ['전일 대비(%)', '거래대금 근사(억원)', '20일 평균 거래대금(억원)',
+        '초기 점수(선정일)', '시장 초과 20일(%·선정일)', '주도력 점수(최초 선정)', '시장 초과 20일(%·최초 선정)']
+    for column in numeric_columns:
+        if column in frame:
+            frame[column] = pd.to_numeric(frame[column], errors='coerce')
+    first = ['그룹', '현재 분류(확정 일봉)', '종목', '코드'] + [c for c in ('현재가(KIS)', '기준가(KIS 종가)') if c in frame]
+    if group == 'AB':
+        frame['주요사업'] = [business_context(item['ticker'])['primary'] for item in results]
+        first.insert(3, '주요사업')
+    first += ['전일 대비(%)', '필수조건', '보조조건', '알림조건(현재 평가)', '단계', '시점점수', '20일선 이격']
     return frame[first + [c for c in frame if c not in first]]
 
 
@@ -266,9 +316,10 @@ def _render_group_data(rows, group, selection_asof=''):
     if not rows:
         st.info('현재 확인된 관찰 종목이 없습니다.')
         return
-    rows = rows[:DISPLAY_LIMIT]
+    rows = rows[:(DISPLAY_LIMIT * 2 if group == 'AB' else DISPLAY_LIMIT)]
     # B shares the durable cohort's cached input; A has independent observations.
-    state = _watch_state(rows, 'rise_early_fast_state' if group == 'A' else 'rise_watch_fast_state')
+    namespace = {'A': 'rise_early_fast_state', 'B': 'rise_watch_fast_state', 'AB': 'rise_all_fast_state'}[group]
+    state = _watch_state(rows, namespace)
     if state['snapshot'] is None:
         st.info(f'{group}그룹 {len(rows)}개 가격·조건 자료 준비 중 · 10초마다 확인')
         st.dataframe(pd.DataFrame([{'종목': row.get('name', row['ticker']), '코드': row['ticker'],
@@ -282,7 +333,10 @@ def _render_group_data(rows, group, selection_asof=''):
     st.dataframe(_group_frame(results, rows, group, selection_asof), key=f'rise_group_{group}',
                  hide_index=True, use_container_width=True)
     _status(results, context, WATCHLIST_REFRESH_SECONDS)
-    st.caption('거래대금은 기준가격×거래량 근사치입니다. 선정일 점수·시장 강도와 현재 가격 평가의 기준일은 별도입니다. 지속성 충족 여부는 7조건 확인 열에서 확인하세요. 외국인·기관 수급은 미확인입니다.')
+    st.caption('거래대금은 기준가격×거래량 근사치입니다. 선정일 지표와 현재 가격 평가는 기준일이 다릅니다. 알림조건 충족은 매수 확정 신호가 아닙니다. 외국인·기관 수급은 미확인입니다.')
+    if group == 'AB':
+        with st.expander('관찰종목 상세·차트'):
+            _detail(results)
     if state['error']:
         st.warning(state['error'])
     _schedule_watch_selection(state, rows)
@@ -462,7 +516,25 @@ def _scan_candidates(results):
 
 @st.fragment(run_every='30s')
 def _render_live_scan(rows, send_alerts, promote):
-    results, context = _evaluate(rows, 'rise_current_scan')
+    if len(rows) > DISPLAY_LIMIT:
+        # A cold full-market history load can take minutes. It must not block the
+        # saved A/B screen, nor expire earlier quotes while later batches load.
+        state = _watch_state(rows, 'rise_scan_fast_state')
+        if state['snapshot'] is None:
+            st.info(f'전체 {len(rows):,}개 순차 검색 중 · 최초 일봉 조회는 시간이 걸립니다. 아래 개인 관찰은 계속 갱신됩니다.')
+            if state['error']:
+                st.warning(state['error'])
+            _schedule_watch_selection(state, rows)
+            return
+        preliminary = _scan_candidates(state['snapshot']['results'])
+        selected = {x['ticker'] for x in preliminary[:DISPLAY_LIMIT]}
+        chosen = [row for row in rows if row['ticker'] in selected]
+        # All preliminary candidates were evaluated at their own receipt time.
+        # Only freshly re-quoted finalists may be displayed or sent as current.
+        results, context = _evaluate_visible(chosen, state)
+        st.caption(f"전체 순차 검색 완료 {state['snapshot']['completed_at']} · 사전 후보 {len(preliminary):,}개 중 상위 {len(chosen)}개 현재가 재확인 · 전체 재검색은 분석 버튼을 누르세요.")
+    else:
+        results, context = _evaluate(rows, 'rise_current_scan')
     candidates = _scan_candidates(results)
     a, b, c, d = st.columns(4)
     a.metric('상승초입·1차구간', sum(x['label'].startswith(('🟢', '🟣')) for x in candidates))
@@ -478,7 +550,7 @@ def _render_live_scan(rows, send_alerts, promote):
     _status(results, context, 30)
     # Keep the existing explicit-search notifications, never send from timer reruns.
     if st.session_state.pop('rise_current_notify_once', False):
-        qualified = [x for x in candidates if x['mandatory_count'] == 4 and x['intraday']]
+        qualified = [x for x in candidates if entry_signal(x)]
         payload = [{'종목': x['name'], '코드': x['ticker'], '시장': x['market'], '단계': x['label'],
                     '시점점수': x['score'], '현재가': x['price'], '1차매수': x['buy1'], '손절참고': x['stop']}
                    for x in qualified]
@@ -488,12 +560,13 @@ def _render_live_scan(rows, send_alerts, promote):
                     st.info(notice)
 
 
-def render_current_price_screen(universe, watchlist, send_alerts, promote, *, saved_count=None, cohort_asof='', cohort_policy='convergence_v1'):
+def render_current_price_screen(universe, watchlist, send_alerts, promote, *, saved_count=None, cohort_asof='', cohort_policy='convergence_v1', saved_rows=None):
     st.subheader('📍 현재가 기준 상승시점 평가')
     st.caption('장중에는 KIS 현재가·누적 거래량, 휴일·장 시작 전에는 최근 확정 일봉의 종가·하루 거래량으로 평가합니다. 과거 서버 판정을 재사용하지 않고 같은 계산식으로 다시 평가합니다.')
     st.caption('현재가 돌파는 종가 확정이 아닙니다. 거래량 배수는 당일 누적 거래량 ÷ 직전 20일 하루 평균으로, 오전에는 낮을 수 있습니다.')
     if st.button('🔄 일봉·현재가 모두 다시 조회', key='rise_current_reload'):
         st.session_state['rise_live_revision'] = st.session_state.get('rise_live_revision', 0) + 1
+        _daily_group_inputs.clear()
     if universe is None or universe.empty:
         st.warning('검색 대상 목록을 가져오지 못했습니다.')
     else:
@@ -502,6 +575,7 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
             st.warning(f'현재 확보된 검색 대상은 {count:,}개뿐입니다. KOSPI·KOSDAQ 전종목 분석이 아닙니다.')
         st.caption(f'검색 대상 {count:,}개 · 후보 선별도 최신 현재가 기준 · 1,000원 이상·직전 20일 평균 거래대금 5억원 이상')
         if st.button(f'🔎 대상 {count:,}개 현재가로 분석', type='primary', use_container_width=True):
+            st.session_state['rise_live_revision'] = st.session_state.get('rise_live_revision', 0) + 1
             st.session_state['rise_current_scan_rows'] = [
                 {'ticker': str(r['종목코드']).zfill(6), 'name': r['종목명'], 'market': r['시장']}
                 for _, r in universe.drop_duplicates('종목코드').iterrows()]
@@ -512,31 +586,26 @@ def render_current_price_screen(universe, watchlist, send_alerts, promote, *, sa
     st.divider()
     if cohort_policy == 'leader_v1':
         st.markdown('### ⭐ 개인 관찰목록 · 주도주 후보 추적')
-        st.caption('저장 종목 중 시장 대비 강한 상승 추세와 거래대금을 기준으로 최대 20개를 선정합니다. 수렴은 참고이며, 선정 후 현재가·필수·보조조건을 10초마다 조회합니다.')
-        with st.expander('주도주 선정 기준 보기', expanded=False):
-            st.caption('마감 일봉 기준: 보통주 · 1,000원 이상 · 20일 평균 거래대금 약 20억원 이상 · 현재가 > 20일선 > 60일선 · 20일선 상승 · 20·60거래일 모두 상승하고 해당 KOSPI/KOSDAQ 지수보다 강한 종목')
+        st.caption('A 상승 초기 최대 20개와 B 기존 주도주 최대 20개를 함께 관찰합니다. 수렴은 참고이며, 현재가·필수·보조조건을 10초마다 조회합니다.')
+        with st.expander('A·B 선정 기준 보기', expanded=False):
+            st.caption('A: 저장 보통주 중 1,000원 이상·20일 평균 거래대금 약 20억원 이상·20일선 위·20일선 상승·거래량 1.5배 이상·20일 시장 대비 강도 양수·20일 수익률 -5% 초과·20일선 이격 12% 이내인 초기 후보입니다. 현재 B 조건 충족 종목과 기존 B 관찰 종목은 중복 선정하지 않습니다.')
+            st.caption('B 최초 선정: 보통주 · 1,000원 이상 · 20일 평균 거래대금 약 20억원 이상 · 현재가 > 20일선 > 60일선 · 20일선 상승 · 20·60거래일 모두 상승하고 해당 KOSPI/KOSDAQ 지수보다 강한 종목')
             st.caption('주도력 순서: 저장 보통주 내 20거래일 시장 초과 수익률 백분위 45% + 60거래일 25% + 평균 거래대금 30%. 거래대금은 종가×거래량 근사치입니다. 수렴 간격은 선발·정렬 점수에 넣지 않습니다.')
             st.caption('검증된 수익 예측이나 매수 추천이 아닌 관찰용 기준입니다. 급등 종목도 포함될 수 있으며 업종별 대표성·실적·외국인 수급은 별도 검증하지 않습니다. 현재 매수 조건은 아래 필수·보조로 따로 확인하세요.')
     else:
         st.markdown('### ⭐ 개인 관찰목록 · 수렴 후보 추적')
         st.caption('수렴 후보를 선정해 계속 관찰합니다. 상승·돌파로 수렴이 풀려도 유지하고, 현재가와 필수·보조조건만 갱신합니다.')
     total = len(watchlist) if saved_count is None else saved_count
-    st.caption(f'관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 새 후보는 보관·대기 · 원본 기록 보존')
+    st.caption(f'기존 관찰 {len(watchlist)}개 / 전체 저장 {total:,}개 · 최근 일일 검토 {cohort_asof or "확인 대기"} · 원본 기록 보존')
     if cohort_policy == 'leader_v1':
-        st.caption('A 상승 초기 · B 상승 지속 · 통합 보기 (2트랙 일봉 감시)')
-        tab_all, tab_early, tab_trend = st.tabs(['통합 관찰', 'A 상승 초기', 'B 상승 지속'])
-        # Existing persisted leader cohort is B-only. Do not present unscanned
-        # early candidates as screened or silently change membership.
-        with tab_all:
-            st.caption('현재 저장된 주도주 관찰목록입니다. 기존 10초 현재가 평가와 알림은 유지됩니다.')
-            _render_live_watchlist(watchlist)
-        with tab_early:
-            _render_early_watch()
-        with tab_trend:
-            _render_trend_watch(watchlist)
-
+        view = st.radio('관찰 구분', ['통합 A+B', 'A 상승 초기', 'B 기존 주도주'],
+                        horizontal=True, key='rise_watch_group_view')
+        st.caption('알림 조건: 필수 4/4 + 보조 1개 이상 · 급등·추격주의 제외 · 장중 잠정 관찰입니다.')
+        _render_watch_groups(saved_rows if saved_rows is not None else watchlist, watchlist,
+                             {'통합 A+B': 'AB', 'A 상승 초기': 'A', 'B 기존 주도주': 'B'}[view])
     else:
         _render_live_watchlist(watchlist)
+
 
 
 

@@ -709,7 +709,7 @@ def render_rise_timing_watchlist(universe=None):
         selected_rows = active_rows(rows, cohort)
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
                                     saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''),
-                                    cohort_policy=cohort.get('policy', 'convergence_v1'))
+                                    cohort_policy=cohort.get('policy', 'convergence_v1'), saved_rows=rows)
     if cohort is not None:
         _render_cohort_archive(rows, cohort)
 
@@ -734,6 +734,7 @@ def render_rise_timing_watchlist(universe=None):
                 idx=labels.index(remove);updated=rows[:idx]+rows[idx+1:]
                 try:_save_watchlist(updated,sha);st.success("관찰목록에서 삭제했습니다.");st.rerun()
                 except Exception as exc:st.error(str(exc))
+
 
 
 

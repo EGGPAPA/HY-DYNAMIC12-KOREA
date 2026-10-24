@@ -7,6 +7,34 @@ import pandas as pd
 KST = timezone(timedelta(hours=9))
 MAX_QUOTE_AGE = 45
 MAX_REFERENCE_DAYS = 14
+MAX_PERSISTENCE_GAP = 60
+MANDATORY_KEYS = ('gap', 'volume', 'close', 'risk')
+AUXILIARY_KEYS = ('stage', 'score', 'persistence')
+
+
+def entry_signal(result):
+    """One alert gate for both screen and server: mandatory 4 + at least 1 auxiliary."""
+    checks = result.get('checks', {})
+    return bool(result.get('valid') and result.get('intraday')
+                and result.get('basis') == 'quote' and not result.get('label', '').startswith('🔴')
+                and all(checks.get(k, False) for k in MANDATORY_KEYS)
+                and any(checks.get(k, False) for k in AUXILIARY_KEYS))
+
+
+def evaluate_batches(rows, histories, context, quote_fetch, clock, observations):
+    """Evaluate each <=30-symbol receipt immediately, before fetching the next batch."""
+    results = []
+    for start in range(0, len(rows), 30):
+        batch = rows[start:start + 30]
+        quotes = {} if context.get('basis') == 'close' else quote_fetch(batch)
+        now = clock()
+        evaluated = [evaluate_current(row, histories.get(row['ticker']),
+                     quotes.get(row['ticker']), context, now) for row in batch]
+        for item in evaluated:
+            item['evaluated_at'] = now.isoformat(timespec='seconds')
+        observe_persistence(evaluated, observations)
+        results.extend(evaluated)
+    return sorted(results, key=priority_key)
 
 
 def closed_context(dates, now, mode, notice=''):
@@ -221,8 +249,8 @@ def evaluate_current(row, history, quote, context, now):
 
 def apply_labels(result):
     checks = result['checks']
-    mandatory = sum(bool(checks[k]) for k in ('gap', 'volume', 'close', 'risk'))
-    auxiliary = sum(bool(checks[k]) for k in ('stage', 'score', 'persistence'))
+    mandatory = sum(bool(checks[k]) for k in MANDATORY_KEYS)
+    auxiliary = sum(bool(checks[k]) for k in AUXILIARY_KEYS)
     result.update(mandatory_count=mandatory, auxiliary_count=auxiliary,
                   mandatory_label=f"{'🟢' if mandatory == 4 else '🟠'} 필수 {mandatory}/4",
                   auxiliary_label=f'보조 {auxiliary}/3')
@@ -233,11 +261,16 @@ def apply_labels(result):
     else:
         action = '조건 미충족 · 관찰'
     result['action'] = action
+    result['alert_eligible'] = entry_signal(result)
     return result
 
 
 def observe_persistence(results, states):
-    """Session-local, distinct receipts >=10 seconds apart. Failures break a streak."""
+    """Distinct receipts 10..60 seconds apart; all mandatory checks must persist.
+
+    No old dates or counts survive a failed check, failed feed, session change,
+    long observation gap, malformed state, or migration from the legacy monitor.
+    """
     for row in results:
         code = row['ticker']
         if not row['valid']:
@@ -249,11 +282,16 @@ def observe_persistence(results, states):
             apply_labels(row)
             continue
         current = datetime.fromisoformat(row['quote_received_at'])
-        stable = all(row['checks'][k] for k in ('gap', 'close', 'risk')) and row['intraday']
+        stable = all(row['checks'][k] for k in MANDATORY_KEYS) and row['intraday']
         state = states.get(code, {})
-        if not stable or state.get('day') != row['analysis_day']:
+        try:
+            elapsed = (current - datetime.fromisoformat(state['at'])).total_seconds()
+        except (KeyError, TypeError, ValueError):
+            elapsed = None
+        if (not stable or state.get('day') != row['analysis_day'] or 'count' not in state
+                or elapsed is None or elapsed < 0 or elapsed > MAX_PERSISTENCE_GAP):
             state = {'day': row['analysis_day'], 'count': 0, 'at': None}
-        if stable and (not state['at'] or (current - datetime.fromisoformat(state['at'])).total_seconds() >= 10):
+        if stable and (not state['at'] or elapsed >= 10):
             state.update(count=state['count'] + 1, at=row['quote_received_at'])
         row['checks']['persistence'] = bool(stable and state['count'] >= 2)
         states[code] = state
@@ -266,5 +304,6 @@ def priority_key(row):
     stage = {'🟣': 0, '🟢': 1, '🟡': 2, '🔵': 3}.get(row['label'][0], 4)
     return (0, -row['mandatory_count'], -row['auxiliary_count'], stage,
             abs(row['gap']), -row['volume_ratio'], -row['score'], row['ticker'])
+
 
 
