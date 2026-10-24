@@ -15,7 +15,7 @@
       "stop": 25850,
       "breakout": 35600,
       "gap": -24.38,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -40,7 +40,7 @@
       "stop": 103887,
       "breakout": 119400,
       "gap": -9.4,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -65,7 +65,7 @@
       "stop": 15258,
       "breakout": 18880,
       "gap": -15.84,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -90,7 +90,7 @@
       "stop": 369570,
       "breakout": 410500,
       "gap": -6.25,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -115,7 +115,7 @@
       "stop": 41516,
       "breakout": 44800,
       "gap": -3.5,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -140,7 +140,7 @@
       "stop": 3798,
       "breakout": 4665,
       "gap": -15.23,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -165,7 +165,7 @@
       "stop": 4898,
       "breakout": 6990,
       "gap": -27.02,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -190,7 +190,7 @@
       "stop": 13270,
       "breakout": 16050,
       "gap": -13.91,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -215,7 +215,7 @@
       "stop": 1969,
       "breakout": 2305,
       "gap": -11.04,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -240,7 +240,7 @@
       "stop": 95254,
       "breakout": 116500,
       "gap": -14.86,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -265,7 +265,7 @@
       "stop": 57909,
       "breakout": 85200,
       "gap": -29.22,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -290,7 +290,7 @@
       "stop": 21049,
       "breakout": 24550,
       "gap": -10.72,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -315,7 +315,7 @@
       "stop": 4321,
       "breakout": 5030,
       "gap": -10.54,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -340,7 +340,7 @@
       "stop": 3012,
       "breakout": 3920,
       "gap": -19.99,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -365,7 +365,7 @@
       "stop": 3540,
       "breakout": 3840,
       "gap": -3.99,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -390,7 +390,7 @@
       "stop": 26869,
       "breakout": 30450,
       "gap": -8.11,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -415,7 +415,7 @@
       "stop": 14453,
       "breakout": 19090,
       "gap": -21.16,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -440,7 +440,7 @@
       "stop": 9671,
       "breakout": 15040,
       "gap": -33.04,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -465,7 +465,7 @@
       "stop": 2595,
       "breakout": 3305,
       "gap": -18.24,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -490,7 +490,7 @@
       "stop": 10942,
       "breakout": 14400,
       "gap": -20.88,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -515,7 +515,7 @@
       "stop": 5951,
       "breakout": 7300,
       "gap": -15.11,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -540,7 +540,7 @@
       "stop": 6771,
       "breakout": 8220,
       "gap": -14.23,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -590,7 +590,7 @@
       "stop": 39479,
       "breakout": 46850,
       "gap": -12.25,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -615,7 +615,7 @@
       "stop": 10874,
       "breakout": 12000,
       "gap": -5.64,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -640,7 +640,7 @@
       "stop": 4409,
       "breakout": 6100,
       "gap": -24.74,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -690,7 +690,7 @@
       "stop": 14244,
       "breakout": 18515,
       "gap": -19.88,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -715,7 +715,7 @@
       "stop": 10035,
       "breakout": 12500,
       "gap": -16.4,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -740,7 +740,7 @@
       "stop": 11480,
       "breakout": 14910,
       "gap": -19.82,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -765,7 +765,7 @@
       "stop": 221160,
       "breakout": 286500,
       "gap": -19.61,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -790,7 +790,7 @@
       "stop": 972236,
       "breakout": 1002855,
       "gap": 0.09,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": true,
@@ -815,7 +815,7 @@
       "stop": 10573,
       "breakout": 14600,
       "gap": -24.59,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -840,7 +840,7 @@
       "stop": 13124,
       "breakout": 15985,
       "gap": -14.5,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -865,7 +865,7 @@
       "stop": 266022,
       "breakout": 318000,
       "gap": -12.89,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -890,7 +890,7 @@
       "stop": 385090,
       "breakout": 564000,
       "gap": -28.9,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -915,7 +915,7 @@
       "stop": 28809,
       "breakout": 36450,
       "gap": -17.7,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -940,7 +940,7 @@
       "stop": 146761,
       "breakout": 177500,
       "gap": -13.9,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -965,7 +965,7 @@
       "stop": 45930,
       "breakout": 69000,
       "gap": -30.68,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -990,7 +990,7 @@
       "stop": 110386,
       "breakout": 136000,
       "gap": -15.48,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1015,7 +1015,7 @@
       "stop": 45420,
       "breakout": 53100,
       "gap": -10.93,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1040,7 +1040,7 @@
       "stop": 19264,
       "breakout": 20600,
       "gap": -2.62,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1065,7 +1065,7 @@
       "stop": 147149,
       "breakout": 217500,
       "gap": -29.55,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1115,7 +1115,7 @@
       "stop": 236680,
       "breakout": 339500,
       "gap": -27.4,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1140,7 +1140,7 @@
       "stop": 23426,
       "breakout": 27400,
       "gap": -10.97,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1165,7 +1165,7 @@
       "stop": 13968,
       "breakout": 19250,
       "gap": -24.44,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1190,7 +1190,7 @@
       "stop": 6693,
       "breakout": 7890,
       "gap": -11.66,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1215,7 +1215,7 @@
       "stop": 5917,
       "breakout": 7950,
       "gap": -22.5,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1265,7 +1265,7 @@
       "stop": 15753,
       "breakout": 20700,
       "gap": -20.75,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1290,7 +1290,7 @@
       "stop": 18770,
       "breakout": 20900,
       "gap": -6.48,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1315,7 +1315,7 @@
       "stop": 22940,
       "breakout": 26150,
       "gap": -8.65,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1340,7 +1340,7 @@
       "stop": 17673,
       "breakout": 23500,
       "gap": -21.68,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1365,7 +1365,7 @@
       "stop": 7838,
       "breakout": 10980,
       "gap": -25.67,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1390,7 +1390,7 @@
       "stop": 11950,
       "breakout": 15170,
       "gap": -17.97,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1415,7 +1415,7 @@
       "stop": 8478,
       "breakout": 11150,
       "gap": -20.82,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1440,7 +1440,7 @@
       "stop": 8788,
       "breakout": 12880,
       "gap": -28.95,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1465,7 +1465,7 @@
       "stop": 39964,
       "breakout": 57700,
       "gap": -27.87,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1490,7 +1490,7 @@
       "stop": 8148,
       "breakout": 8820,
       "gap": -3.8,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1515,7 +1515,7 @@
       "stop": 4491,
       "breakout": 5360,
       "gap": -12.75,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1540,7 +1540,7 @@
       "stop": 37006,
       "breakout": 50400,
       "gap": -23.54,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1590,7 +1590,7 @@
       "stop": 34872,
       "breakout": 44500,
       "gap": -18.4,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1615,7 +1615,7 @@
       "stop": 2760,
       "breakout": 3255,
       "gap": -11.71,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1640,7 +1640,7 @@
       "stop": 12484,
       "breakout": 14810,
       "gap": -12.22,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1665,7 +1665,7 @@
       "stop": 79443,
       "breakout": 111700,
       "gap": -25.94,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1715,7 +1715,7 @@
       "stop": 21194,
       "breakout": 28950,
       "gap": -23.76,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1740,7 +1740,7 @@
       "stop": 65766,
       "breakout": 82900,
       "gap": -17.39,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1765,7 +1765,7 @@
       "stop": 3570,
       "breakout": 4015,
       "gap": -7.42,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1815,7 +1815,7 @@
       "stop": 17140,
       "breakout": 26100,
       "gap": -31.62,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1865,7 +1865,7 @@
       "stop": 9942,
       "breakout": 11760,
       "gap": -11.96,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1890,7 +1890,7 @@
       "stop": 4035,
       "breakout": 5000,
       "gap": -15.96,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1915,7 +1915,7 @@
       "stop": 12998,
       "breakout": 15120,
       "gap": -10.48,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1940,7 +1940,7 @@
       "stop": 1439,
       "breakout": 1696,
       "gap": -11.62,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1965,7 +1965,7 @@
       "stop": 18847,
       "breakout": 21750,
       "gap": -9.76,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -1990,7 +1990,7 @@
       "stop": 20418,
       "breakout": 31750,
       "gap": -33.03,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2015,7 +2015,7 @@
       "stop": 13696,
       "breakout": 15790,
       "gap": -9.67,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2040,7 +2040,7 @@
       "stop": 1899,
       "breakout": 2165,
       "gap": -8.65,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2065,7 +2065,7 @@
       "stop": 14114,
       "breakout": 20000,
       "gap": -26.52,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2090,7 +2090,7 @@
       "stop": 13735,
       "breakout": 14450,
       "gap": -1.08,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2115,7 +2115,7 @@
       "stop": 15520,
       "breakout": 24800,
       "gap": -34.83,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2140,7 +2140,7 @@
       "stop": 1399,
       "breakout": 1720,
       "gap": -15.32,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2165,7 +2165,7 @@
       "stop": 9700,
       "breakout": 10410,
       "gap": -2.97,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2190,7 +2190,7 @@
       "stop": 1155,
       "breakout": 1441,
       "gap": -16.51,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2215,7 +2215,7 @@
       "stop": 21970,
       "breakout": 26500,
       "gap": -13.66,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2240,7 +2240,7 @@
       "stop": 3317,
       "breakout": 3630,
       "gap": -4.83,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2265,7 +2265,7 @@
       "stop": 4753,
       "breakout": 5080,
       "gap": -2.57,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2290,7 +2290,7 @@
       "stop": 10010,
       "breakout": 13140,
       "gap": -20.67,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2340,7 +2340,7 @@
       "stop": 100589,
       "breakout": 185900,
       "gap": -43.65,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2365,7 +2365,7 @@
       "stop": 3885,
       "breakout": 4645,
       "gap": -12.91,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2390,7 +2390,7 @@
       "stop": 1222200,
       "breakout": 1868000,
       "gap": -31.87,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2415,7 +2415,7 @@
       "stop": 5238,
       "breakout": 6430,
       "gap": -15.17,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2440,7 +2440,7 @@
       "stop": 2978,
       "breakout": 3925,
       "gap": -20.99,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2465,7 +2465,7 @@
       "stop": 7100,
       "breakout": 8770,
       "gap": -15.69,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2490,7 +2490,7 @@
       "stop": 6198,
       "breakout": 8490,
       "gap": -23.97,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2515,7 +2515,7 @@
       "stop": 2163,
       "breakout": 2375,
       "gap": -5.16,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2540,7 +2540,7 @@
       "stop": 1757640,
       "breakout": 2917000,
       "gap": -37.25,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2565,7 +2565,7 @@
       "stop": 497610,
       "breakout": 570000,
       "gap": -9.09,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2590,7 +2590,7 @@
       "stop": 28276,
       "breakout": 37500,
       "gap": -21.48,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2615,7 +2615,7 @@
       "stop": 204185,
       "breakout": 326500,
       "gap": -34.88,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2640,7 +2640,7 @@
       "stop": 22407,
       "breakout": 27400,
       "gap": -14.84,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2665,7 +2665,7 @@
       "stop": 152484,
       "breakout": 232500,
       "gap": -31.7,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2690,7 +2690,7 @@
       "stop": 8303,
       "breakout": 11290,
       "gap": -23.41,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2715,7 +2715,7 @@
       "stop": 5141,
       "breakout": 6000,
       "gap": -10.77,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2740,7 +2740,7 @@
       "stop": 77697,
       "breakout": 96800,
       "gap": -16.42,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2765,7 +2765,7 @@
       "stop": 14938,
       "breakout": 19390,
       "gap": -19.78,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2790,7 +2790,7 @@
       "stop": 36812,
       "breakout": 57300,
       "gap": -33.1,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2815,7 +2815,7 @@
       "stop": 2250,
       "breakout": 3200,
       "gap": -26.77,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2840,7 +2840,7 @@
       "stop": 206852,
       "breakout": 285500,
       "gap": -24.55,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2865,7 +2865,7 @@
       "stop": 3337,
       "breakout": 4520,
       "gap": -23.13,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2890,7 +2890,7 @@
       "stop": 9409,
       "breakout": 9890,
       "gap": -0.93,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": true,
@@ -2915,7 +2915,7 @@
       "stop": 16509,
       "breakout": 17970,
       "gap": -4.33,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2940,7 +2940,7 @@
       "stop": 2638,
       "breakout": 3170,
       "gap": -13.33,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2965,7 +2965,7 @@
       "stop": 39334,
       "breakout": 50600,
       "gap": -19.05,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -2990,7 +2990,7 @@
       "stop": 8740,
       "breakout": 11280,
       "gap": -19.32,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3015,7 +3015,7 @@
       "stop": 3579,
       "breakout": 4590,
       "gap": -18.8,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3040,7 +3040,7 @@
       "stop": 228920,
       "breakout": 312000,
       "gap": -23.59,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3065,7 +3065,7 @@
       "stop": 54417,
       "breakout": 74800,
       "gap": -24.24,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3115,7 +3115,7 @@
       "stop": 51798,
       "breakout": 60400,
       "gap": -10.7,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3164,7 +3164,7 @@
       "buy1": 190200,
       "stop": 176596,
       "breakout": 194000,
-      "gap": 0.0,
+      "gap": 0,
       "risk": 7.15,
       "checks": {
         "stage": true,
@@ -3190,7 +3190,7 @@
       "stop": 37490,
       "breakout": 52300,
       "gap": -25.35,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3215,7 +3215,7 @@
       "stop": 2386,
       "breakout": 2625,
       "gap": -5.34,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3240,7 +3240,7 @@
       "stop": 437955,
       "breakout": 611000,
       "gap": -25.36,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3265,7 +3265,7 @@
       "stop": 7314,
       "breakout": 8350,
       "gap": -8.79,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3290,7 +3290,7 @@
       "stop": 4835,
       "breakout": 5490,
       "gap": -8.28,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3340,7 +3340,7 @@
       "stop": 5451,
       "breakout": 6590,
       "gap": -13.86,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3365,7 +3365,7 @@
       "stop": 17382,
       "breakout": 22850,
       "gap": -20.78,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3390,7 +3390,7 @@
       "stop": 8158,
       "breakout": 9950,
       "gap": -14.62,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3415,7 +3415,7 @@
       "stop": 11592,
       "breakout": 12670,
       "gap": -4.73,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3440,7 +3440,7 @@
       "stop": 13464,
       "breakout": 16500,
       "gap": -15.03,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3465,7 +3465,7 @@
       "stop": 9904,
       "breakout": 14550,
       "gap": -29.12,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3490,7 +3490,7 @@
       "stop": 27257,
       "breakout": 37000,
       "gap": -23.29,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3540,7 +3540,7 @@
       "stop": 95836,
       "breakout": 117600,
       "gap": -15.14,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3565,7 +3565,7 @@
       "stop": 168974,
       "breakout": 203000,
       "gap": -13.32,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3590,7 +3590,7 @@
       "stop": 1785,
       "breakout": 2140,
       "gap": -13.15,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3615,7 +3615,7 @@
       "stop": 12368,
       "breakout": 14500,
       "gap": -11.18,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3635,12 +3635,12 @@
       "daily_price": 2055,
       "label": "🔴 급등·추격금지",
       "score": 0,
-      "volume_ratio": 1.0,
+      "volume_ratio": 1,
       "buy1": 2569,
       "stop": 1993,
       "breakout": 2595,
       "gap": -20.01,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3665,7 +3665,7 @@
       "stop": 2944,
       "breakout": 3250,
       "gap": -5.67,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3690,7 +3690,7 @@
       "stop": 15404,
       "breakout": 18450,
       "gap": -13.06,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3715,7 +3715,7 @@
       "stop": 17101,
       "breakout": 19480,
       "gap": -8.58,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3740,7 +3740,7 @@
       "stop": 89919,
       "breakout": 128900,
       "gap": -27.36,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3765,7 +3765,7 @@
       "stop": 9787,
       "breakout": 13660,
       "gap": -25.39,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3790,7 +3790,7 @@
       "stop": 10912,
       "breakout": 13150,
       "gap": -13.58,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3815,7 +3815,7 @@
       "stop": 8497,
       "breakout": 10430,
       "gap": -15.16,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3840,7 +3840,7 @@
       "stop": 55581,
       "breakout": 71800,
       "gap": -19.39,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3865,7 +3865,7 @@
       "stop": 6043,
       "breakout": 7620,
       "gap": -17.42,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3890,7 +3890,7 @@
       "stop": 5025,
       "breakout": 6600,
       "gap": -20.72,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3915,7 +3915,7 @@
       "stop": 13046,
       "breakout": 16540,
       "gap": -17.86,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3940,7 +3940,7 @@
       "stop": 17538,
       "breakout": 24300,
       "gap": -24.85,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -3990,7 +3990,7 @@
       "stop": 29003,
       "breakout": 39700,
       "gap": -23.92,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4015,7 +4015,7 @@
       "stop": 3676,
       "breakout": 4270,
       "gap": -10.34,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4040,7 +4040,7 @@
       "stop": 7188,
       "breakout": 8630,
       "gap": -13.27,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4065,7 +4065,7 @@
       "stop": 29100,
       "breakout": 38600,
       "gap": -21.49,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4090,7 +4090,7 @@
       "stop": 112520,
       "breakout": 136800,
       "gap": -14.35,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4115,7 +4115,7 @@
       "stop": 33222,
       "breakout": 41300,
       "gap": -16.23,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4140,7 +4140,7 @@
       "stop": 32107,
       "breakout": 38000,
       "gap": -12.01,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4160,12 +4160,12 @@
       "daily_price": 600000,
       "label": "🔴 급등·추격금지",
       "score": 0,
-      "volume_ratio": 1.0,
+      "volume_ratio": 1,
       "buy1": 654390,
       "stop": 582000,
       "breakout": 661000,
       "gap": -8.31,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4190,7 +4190,7 @@
       "stop": 70810,
       "breakout": 95400,
       "gap": -22.71,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4215,7 +4215,7 @@
       "stop": 4583,
       "breakout": 5870,
       "gap": -18.69,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4240,7 +4240,7 @@
       "stop": 7799,
       "breakout": 9030,
       "gap": -10.06,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4265,7 +4265,7 @@
       "stop": 3322,
       "breakout": 4005,
       "gap": -13.62,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4290,7 +4290,7 @@
       "stop": 9322,
       "breakout": 12890,
       "gap": -24.69,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4315,7 +4315,7 @@
       "stop": 3589,
       "breakout": 4015,
       "gap": -6.91,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4365,7 +4365,7 @@
       "stop": 23959,
       "breakout": 26850,
       "gap": -7.08,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4390,7 +4390,7 @@
       "stop": 20322,
       "breakout": 22850,
       "gap": -7.39,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4415,7 +4415,7 @@
       "stop": 5384,
       "breakout": 6790,
       "gap": -17.44,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4440,7 +4440,7 @@
       "stop": 803160,
       "breakout": 924000,
       "gap": -9.48,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4465,7 +4465,7 @@
       "stop": 5141,
       "breakout": 5610,
       "gap": -4.57,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4490,7 +4490,7 @@
       "stop": 14589,
       "breakout": 17380,
       "gap": -12.59,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4515,7 +4515,7 @@
       "stop": 3710,
       "breakout": 5150,
       "gap": -24.98,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4565,7 +4565,7 @@
       "stop": 15956,
       "breakout": 22650,
       "gap": -26.64,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4615,7 +4615,7 @@
       "stop": 2992,
       "breakout": 3275,
       "gap": -4.85,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4640,7 +4640,7 @@
       "stop": 7469,
       "breakout": 8220,
       "gap": -5.38,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4665,7 +4665,7 @@
       "stop": 339015,
       "breakout": 466000,
       "gap": -24.24,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4690,7 +4690,7 @@
       "stop": 10816,
       "breakout": 13930,
       "gap": -19.15,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4740,7 +4740,7 @@
       "stop": 9108,
       "breakout": 9940,
       "gap": -4.58,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4765,7 +4765,7 @@
       "stop": 14162,
       "breakout": 19270,
       "gap": -23.47,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4790,7 +4790,7 @@
       "stop": 29003,
       "breakout": 33350,
       "gap": -9.44,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4840,7 +4840,7 @@
       "stop": 3225,
       "breakout": 4720,
       "gap": -28.84,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4890,7 +4890,7 @@
       "stop": 12115,
       "breakout": 13750,
       "gap": -8.25,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4940,7 +4940,7 @@
       "stop": 6809,
       "breakout": 8110,
       "gap": -12.57,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4965,7 +4965,7 @@
       "stop": 138419,
       "breakout": 166700,
       "gap": -13.53,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -4990,7 +4990,7 @@
       "stop": 3841,
       "breakout": 4460,
       "gap": -10.31,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5015,7 +5015,7 @@
       "stop": 6024,
       "breakout": 6480,
       "gap": -3.2,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5040,7 +5040,7 @@
       "stop": 4229,
       "breakout": 4610,
       "gap": -4.47,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5065,7 +5065,7 @@
       "stop": 3574,
       "breakout": 4320,
       "gap": -13.84,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5090,7 +5090,7 @@
       "stop": 3342,
       "breakout": 3720,
       "gap": -6.46,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5115,7 +5115,7 @@
       "stop": 63438,
       "breakout": 74100,
       "gap": -10.85,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5140,7 +5140,7 @@
       "stop": 5655,
       "breakout": 7220,
       "gap": -18.44,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5190,7 +5190,7 @@
       "stop": 1950,
       "breakout": 2380,
       "gap": -14.69,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5215,7 +5215,7 @@
       "stop": 20418,
       "breakout": 28250,
       "gap": -24.73,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5265,7 +5265,7 @@
       "stop": 7508,
       "breakout": 9390,
       "gap": -16.74,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5290,7 +5290,7 @@
       "stop": 2983,
       "breakout": 3905,
       "gap": -20.46,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5315,7 +5315,7 @@
       "stop": 38266,
       "breakout": 57800,
       "gap": -31.06,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5340,7 +5340,7 @@
       "stop": 50925,
       "breakout": 82600,
       "gap": -35.8,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5365,7 +5365,7 @@
       "stop": 736230,
       "breakout": 1190000,
       "gap": -35.57,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5390,7 +5390,7 @@
       "stop": 9622,
       "breakout": 10390,
       "gap": -3.56,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5415,7 +5415,7 @@
       "stop": 4802,
       "breakout": 6860,
       "gap": -27.11,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5440,7 +5440,7 @@
       "stop": 52089,
       "breakout": 61300,
       "gap": -11.51,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5465,7 +5465,7 @@
       "stop": 14676,
       "breakout": 22550,
       "gap": -32.23,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5515,7 +5515,7 @@
       "stop": 29391,
       "breakout": 38300,
       "gap": -20.09,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5540,7 +5540,7 @@
       "stop": 1403,
       "breakout": 1764,
       "gap": -17.2,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5565,7 +5565,7 @@
       "stop": 982,
       "breakout": 1225,
       "gap": -16.55,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5590,7 +5590,7 @@
       "stop": 2100,
       "breakout": 2380,
       "gap": -8.11,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5615,7 +5615,7 @@
       "stop": 8439,
       "breakout": 10380,
       "gap": -15.34,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5640,7 +5640,7 @@
       "stop": 50828,
       "breakout": 74400,
       "gap": -28.86,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5665,7 +5665,7 @@
       "stop": 13502,
       "breakout": 15850,
       "gap": -11.29,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5690,7 +5690,7 @@
       "stop": 8837,
       "breakout": 11210,
       "gap": -17.91,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5715,7 +5715,7 @@
       "stop": 6412,
       "breakout": 7280,
       "gap": -8.29,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5740,7 +5740,7 @@
       "stop": 14278,
       "breakout": 16570,
       "gap": -10.27,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5765,7 +5765,7 @@
       "stop": 12503,
       "breakout": 15790,
       "gap": -17.54,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5790,7 +5790,7 @@
       "stop": 17635,
       "breakout": 29600,
       "gap": -37.96,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5815,7 +5815,7 @@
       "stop": 9273,
       "breakout": 9990,
       "gap": -3.34,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5840,7 +5840,7 @@
       "stop": 15986,
       "breakout": 20800,
       "gap": -19.97,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5865,7 +5865,7 @@
       "stop": 2202,
       "breakout": 2880,
       "gap": -20.38,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5890,7 +5890,7 @@
       "stop": 18430,
       "breakout": 21900,
       "gap": -12.37,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5915,7 +5915,7 @@
       "stop": 4889,
       "breakout": 5750,
       "gap": -11.46,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5940,7 +5940,7 @@
       "stop": 6780,
       "breakout": 7150,
       "gap": -1.25,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5965,7 +5965,7 @@
       "stop": 4695,
       "breakout": 5260,
       "gap": -7.06,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -5990,7 +5990,7 @@
       "stop": 7168,
       "breakout": 9620,
       "gap": -22.4,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6015,7 +6015,7 @@
       "stop": 9652,
       "breakout": 16730,
       "gap": -39.93,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6040,7 +6040,7 @@
       "stop": 2027,
       "breakout": 2560,
       "gap": -17.53,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6065,7 +6065,7 @@
       "stop": 31282,
       "breakout": 39400,
       "gap": -17.32,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6090,7 +6090,7 @@
       "stop": 20612,
       "breakout": 24200,
       "gap": -11.3,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6115,7 +6115,7 @@
       "stop": 7052,
       "breakout": 10590,
       "gap": -30.66,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6140,7 +6140,7 @@
       "stop": 12106,
       "breakout": 15070,
       "gap": -16.35,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6165,7 +6165,7 @@
       "stop": 5781,
       "breakout": 7240,
       "gap": -16.85,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6190,7 +6190,7 @@
       "stop": 15908,
       "breakout": 18360,
       "gap": -9.77,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6215,7 +6215,7 @@
       "stop": 100007,
       "breakout": 151000,
       "gap": -31.03,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6240,7 +6240,7 @@
       "stop": 22601,
       "breakout": 26600,
       "gap": -11.52,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6290,7 +6290,7 @@
       "stop": 10942,
       "breakout": 13700,
       "gap": -16.83,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6315,7 +6315,7 @@
       "stop": 8167,
       "breakout": 10430,
       "gap": -18.46,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6340,7 +6340,7 @@
       "stop": 80316,
       "breakout": 94400,
       "gap": -11.4,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6365,7 +6365,7 @@
       "stop": 3725,
       "breakout": 4190,
       "gap": -7.43,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6390,7 +6390,7 @@
       "stop": 1615,
       "breakout": 2030,
       "gap": -17.15,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6415,7 +6415,7 @@
       "stop": 6693,
       "breakout": 8600,
       "gap": -18.96,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6440,7 +6440,7 @@
       "stop": 4860,
       "breakout": 7280,
       "gap": -30.49,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6465,7 +6465,7 @@
       "stop": 25414,
       "breakout": 27600,
       "gap": -4.11,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6490,7 +6490,7 @@
       "stop": 37102,
       "breakout": 41050,
       "gap": -5.88,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6515,7 +6515,7 @@
       "stop": 17615,
       "breakout": 22600,
       "gap": -18.83,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6540,7 +6540,7 @@
       "stop": 13648,
       "breakout": 15130,
       "gap": -6.07,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6565,7 +6565,7 @@
       "stop": 3880,
       "breakout": 4500,
       "gap": -10.21,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6590,7 +6590,7 @@
       "stop": 5674,
       "breakout": 8590,
       "gap": -31.21,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6615,7 +6615,7 @@
       "stop": 2333,
       "breakout": 3120,
       "gap": -22.14,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6639,7 +6639,7 @@
       "buy1": 196218,
       "stop": 177518,
       "breakout": 198200,
-      "gap": -2.0,
+      "gap": -2,
       "risk": 7.69,
       "checks": {
         "stage": false,
@@ -6665,7 +6665,7 @@
       "stop": 967,
       "breakout": 1143,
       "gap": -11.89,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6740,7 +6740,7 @@
       "stop": 39528,
       "breakout": 43700,
       "gap": -5.81,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6765,7 +6765,7 @@
       "stop": 125906,
       "breakout": 145000,
       "gap": -9.58,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6815,7 +6815,7 @@
       "stop": 1834,
       "breakout": 2150,
       "gap": -11.16,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6865,7 +6865,7 @@
       "stop": 29294,
       "breakout": 31550,
       "gap": -3.31,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6890,7 +6890,7 @@
       "stop": 86912,
       "breakout": 95400,
       "gap": -5.13,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6915,7 +6915,7 @@
       "stop": 26578,
       "breakout": 33450,
       "gap": -17.26,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6940,7 +6940,7 @@
       "stop": 5432,
       "breakout": 6190,
       "gap": -8.62,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -6965,7 +6965,7 @@
       "stop": 3574,
       "breakout": 4220,
       "gap": -11.8,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7015,7 +7015,7 @@
       "stop": 9137,
       "breakout": 10100,
       "gap": -5.79,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7065,7 +7065,7 @@
       "stop": 962,
       "breakout": 1048,
       "gap": -4.39,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7089,7 +7089,7 @@
       "buy1": 11980,
       "stop": 11343,
       "breakout": 12160,
-      "gap": 0.0,
+      "gap": 0,
       "risk": 5.31,
       "checks": {
         "stage": true,
@@ -7115,7 +7115,7 @@
       "stop": 92053,
       "breakout": 99100,
       "gap": -3.27,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7190,7 +7190,7 @@
       "stop": 60334,
       "breakout": 74100,
       "gap": -15.21,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7265,7 +7265,7 @@
       "stop": 42680,
       "breakout": 47400,
       "gap": -6.24,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7290,7 +7290,7 @@
       "stop": 28954,
       "breakout": 36950,
       "gap": -18.4,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7315,7 +7315,7 @@
       "stop": 29246,
       "breakout": 33850,
       "gap": -10.03,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7340,7 +7340,7 @@
       "stop": 49373,
       "breakout": 57800,
       "gap": -11.05,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7365,7 +7365,7 @@
       "stop": 63535,
       "breakout": 67700,
       "gap": -2.27,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7390,7 +7390,7 @@
       "stop": 169362,
       "breakout": 186300,
       "gap": -5.33,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7415,7 +7415,7 @@
       "stop": 116885,
       "breakout": 131400,
       "gap": -7.37,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7440,7 +7440,7 @@
       "stop": 10709,
       "breakout": 13210,
       "gap": -15.58,
-      "risk": 3.0,
+      "risk": 3,
       "checks": {
         "stage": false,
         "gap": false,
@@ -7454,15 +7454,528 @@
     }
   ],
   "history": {
+    "102710": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "104620": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "105560": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "105630": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "105840": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "108230": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "108320": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "108380": {
+      "consecutive": 0,
+      "dates": [
+        "2026-09-17",
+        "2026-09-18"
+      ]
+    },
+    "108670": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "108860": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "112040": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "112290": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "114190": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "114450": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "117460": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "117580": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "117700": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "117730": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "120110": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "122350": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "122870": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "123690": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "126720": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "128820": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "136480": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "136490": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "137310": {
+      "consecutive": 0,
+      "dates": [
+        "2026-10-01",
+        "2026-10-02",
+        "2026-10-05"
+      ]
+    },
+    "137400": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "138610": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "138930": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "139130": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "139220": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "139250": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "140860": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "144510": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "145720": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "158430": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "178920": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "185750": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "187790": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "189300": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "189330": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "192400": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "194370": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "195940": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "199820": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "200670": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "200710": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "205470": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "206650": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "208370": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "212560": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "214180": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "215600": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "220100": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "222080": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "225190": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "226590": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "232680": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "236200": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "240550": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "241520": {
+      "consecutive": 0,
+      "dates": [
+        "2026-10-06"
+      ]
+    },
+    "241690": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "247540": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "249420": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "253450": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "259630": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "263750": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "265520": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "272210": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "272290": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "277810": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "278280": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "280360": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "298040": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "298050": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "300080": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "302440": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "305720": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "316140": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "322000": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "322310": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "322510": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "323410": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "333430": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "336570": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "338220": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "348370": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "355150": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "365270": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "365330": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "365550": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "375500": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "382150": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "383220": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "383310": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "383800": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "388720": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "389260": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "394280": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "394800": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "402340": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "403870": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "415640": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "420570": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "445090": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "448900": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "450080": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "453340": {
+      "consecutive": 0,
+      "dates": [
+        "2026-10-16"
+      ]
+    },
+    "454910": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "460860": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "460930": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "462350": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "462870": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "465330": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "475400": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "475430": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "475580": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "475960": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "484870": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "486990": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "489790": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "499660": {
+      "consecutive": 0,
+      "dates": [
+        "2026-09-22",
+        "2026-09-23",
+        "2026-09-24",
+        "2026-09-25",
+        "2026-09-28"
+      ]
+    },
+    "900070": {
+      "consecutive": 0,
+      "dates": []
+    },
+    "950190": {
+      "consecutive": 0,
+      "dates": []
+    },
     "004020": {
       "consecutive": 0,
       "dates": []
     },
     "011780": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "139130": {
       "consecutive": 0,
       "dates": []
     },
@@ -7483,10 +7996,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "158430": {
-      "consecutive": 0,
-      "dates": []
-    },
     "035510": {
       "consecutive": 0,
       "dates": []
@@ -7496,10 +8005,6 @@
       "dates": []
     },
     "003550": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "375500": {
       "consecutive": 0,
       "dates": []
     },
@@ -7525,30 +8030,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "108380": {
-      "consecutive": 0,
-      "dates": [
-        "2026-09-17",
-        "2026-09-18"
-      ]
-    },
-    "226590": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "108230": {
-      "consecutive": 0,
-      "dates": []
-    },
     "092790": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "117700": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "139220": {
       "consecutive": 0,
       "dates": []
     },
@@ -7576,37 +8058,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "139250": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "465330": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "117460": {
-      "consecutive": 0,
-      "dates": []
-    },
     "051910": {
       "consecutive": 0,
       "dates": []
     },
-    "499660": {
-      "consecutive": 0,
-      "dates": [
-        "2026-09-22",
-        "2026-09-23",
-        "2026-09-24",
-        "2026-09-25",
-        "2026-09-28"
-      ]
-    },
     "077360": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "305720": {
       "consecutive": 0,
       "dates": []
     },
@@ -7618,27 +8074,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "316140": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "105560": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "403870": {
-      "consecutive": 0,
-      "dates": []
-    },
     "086790": {
       "consecutive": 0,
       "dates": []
     },
     "030200": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "323410": {
       "consecutive": 0,
       "dates": []
     },
@@ -7648,10 +8088,6 @@
         "2026-10-06"
       ]
     },
-    "253450": {
-      "consecutive": 0,
-      "dates": []
-    },
     "009540": {
       "consecutive": 0,
       "dates": []
@@ -7660,15 +8096,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "475400": {
-      "consecutive": 0,
-      "dates": []
-    },
     "001500": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "199820": {
       "consecutive": 0,
       "dates": []
     },
@@ -7676,47 +8104,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "178920": {
-      "consecutive": 0,
-      "dates": []
-    },
     "024110": {
       "consecutive": 0,
       "dates": []
     },
-    "200670": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "445090": {
-      "consecutive": 0,
-      "dates": []
-    },
     "046890": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "117730": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "232680": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "112290": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "120110": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "105630": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "322510": {
       "consecutive": 0,
       "dates": []
     },
@@ -7742,10 +8134,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "249420": {
-      "consecutive": 0,
-      "dates": []
-    },
     "011790": {
       "consecutive": 0,
       "dates": []
@@ -7757,10 +8145,6 @@
       ]
     },
     "089010": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "272210": {
       "consecutive": 0,
       "dates": []
     },
@@ -7786,22 +8170,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "128820": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "144510": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "365330": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "126720": {
-      "consecutive": 0,
-      "dates": []
-    },
     "001440": {
       "consecutive": 0,
       "dates": []
@@ -7822,14 +8190,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "355150": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "122350": {
-      "consecutive": 0,
-      "dates": []
-    },
     "036090": {
       "consecutive": 0,
       "dates": []
@@ -7846,18 +8206,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "460930": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "137310": {
-      "consecutive": 0,
-      "dates": [
-        "2026-10-01",
-        "2026-10-02",
-        "2026-10-05"
-      ]
-    },
     "084370": {
       "consecutive": 0,
       "dates": []
@@ -7870,29 +8218,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "240550": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "382150": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "222080": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "241520": {
-      "consecutive": 0,
-      "dates": [
-        "2026-10-06"
-      ]
-    },
     "005860": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "298040": {
       "consecutive": 0,
       "dates": []
     },
@@ -7926,10 +8252,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "212560": {
-      "consecutive": 0,
-      "dates": []
-    },
     "015750": {
       "consecutive": 0,
       "dates": []
@@ -7943,10 +8265,6 @@
       "dates": []
     },
     "089030": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "187790": {
       "consecutive": 0,
       "dates": []
     },
@@ -7966,27 +8284,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "104620": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "102710": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "189330": {
-      "consecutive": 0,
-      "dates": []
-    },
     "014940": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "140860": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "454910": {
       "consecutive": 0,
       "dates": []
     },
@@ -7996,14 +8294,6 @@
         "2026-10-05"
       ]
     },
-    "236200": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "263750": {
-      "consecutive": 0,
-      "dates": []
-    },
     "033780": {
       "consecutive": 0,
       "dates": [
@@ -8011,10 +8301,6 @@
         "2026-10-12",
         "2026-10-14"
       ]
-    },
-    "489790": {
-      "consecutive": 0,
-      "dates": []
     },
     "058860": {
       "consecutive": 0,
@@ -8039,27 +8325,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "123690": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "272290": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "420570": {
-      "consecutive": 0,
-      "dates": []
-    },
     "000440": {
       "consecutive": 0,
       "dates": []
     },
     "008060": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "105840": {
       "consecutive": 0,
       "dates": []
     },
@@ -8083,15 +8353,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "214180": {
-      "consecutive": 0,
-      "dates": []
-    },
     "012860": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "365550": {
       "consecutive": 0,
       "dates": []
     },
@@ -8105,27 +8367,7 @@
         "2026-10-06"
       ]
     },
-    "247540": {
-      "consecutive": 0,
-      "dates": []
-    },
     "006340": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "194370": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "259630": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "388720": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "475580": {
       "consecutive": 0,
       "dates": []
     },
@@ -8133,27 +8375,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "138930": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "348370": {
-      "consecutive": 0,
-      "dates": []
-    },
     "006280": {
       "consecutive": 0,
       "dates": []
     },
-    "450080": {
-      "consecutive": 0,
-      "dates": []
-    },
     "003000": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "206650": {
       "consecutive": 0,
       "dates": []
     },
@@ -8162,14 +8388,6 @@
       "dates": []
     },
     "001040": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "195940": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "302440": {
       "consecutive": 0,
       "dates": []
     },
@@ -8233,10 +8451,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "336570": {
-      "consecutive": 0,
-      "dates": []
-    },
     "036460": {
       "consecutive": 0,
       "dates": [
@@ -8255,18 +8469,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "383800": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "277810": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "389260": {
-      "consecutive": 0,
-      "dates": []
-    },
     "003850": {
       "consecutive": 0,
       "dates": []
@@ -8274,20 +8476,6 @@
     "005250": {
       "consecutive": 0,
       "dates": []
-    },
-    "484870": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "108670": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "453340": {
-      "consecutive": 0,
-      "dates": [
-        "2026-10-16"
-      ]
     },
     "007610": {
       "consecutive": 0,
@@ -8309,10 +8497,6 @@
       ]
     },
     "052020": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "298050": {
       "consecutive": 0,
       "dates": []
     },
@@ -8360,31 +8544,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "108860": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "333430": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "448900": {
-      "consecutive": 0,
-      "dates": []
-    },
     "099320": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "402340": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "136490": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "462350": {
       "consecutive": 0,
       "dates": []
     },
@@ -8392,15 +8552,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "486990": {
-      "consecutive": 0,
-      "dates": []
-    },
     "065450": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "108320": {
       "consecutive": 0,
       "dates": []
     },
@@ -8412,39 +8564,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "215600": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "365270": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "189300": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "112040": {
-      "consecutive": 0,
-      "dates": []
-    },
     "082270": {
       "consecutive": 0,
       "dates": []
     },
-    "220100": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "138610": {
-      "consecutive": 0,
-      "dates": []
-    },
     "008730": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "200710": {
       "consecutive": 0,
       "dates": []
     },
@@ -8454,14 +8578,6 @@
         "2026-10-19"
       ]
     },
-    "265520": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "208370": {
-      "consecutive": 0,
-      "dates": []
-    },
     "022100": {
       "consecutive": 0,
       "dates": []
@@ -8470,35 +8586,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "117580": {
-      "consecutive": 0,
-      "dates": []
-    },
     "001340": {
       "consecutive": 0,
       "dates": []
     },
-    "114190": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "322310": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "114450": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "278280": {
-      "consecutive": 0,
-      "dates": []
-    },
     "093050": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "394280": {
       "consecutive": 0,
       "dates": []
     },
@@ -8511,18 +8603,6 @@
       "dates": []
     },
     "001680": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "322000": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "383310": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "145720": {
       "consecutive": 0,
       "dates": []
     },
@@ -8550,14 +8630,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "394800": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "192400": {
-      "consecutive": 0,
-      "dates": []
-    },
     "009240": {
       "consecutive": 0,
       "dates": []
@@ -8570,35 +8642,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "475430": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "338220": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "205470": {
-      "consecutive": 0,
-      "dates": []
-    },
     "068270": {
       "consecutive": 0,
       "dates": []
     },
-    "900070": {
-      "consecutive": 0,
-      "dates": []
-    },
     "007310": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "300080": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "122870": {
       "consecutive": 0,
       "dates": []
     },
@@ -8614,19 +8662,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "950190": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "462870": {
-      "consecutive": 0,
-      "dates": []
-    },
     "000640": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "137400": {
       "consecutive": 0,
       "dates": []
     },
@@ -8634,19 +8670,7 @@
       "consecutive": 0,
       "dates": []
     },
-    "415640": {
-      "consecutive": 0,
-      "dates": []
-    },
     "099440": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "241690": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "460860": {
       "consecutive": 0,
       "dates": []
     },
@@ -8666,22 +8690,6 @@
       "consecutive": 0,
       "dates": []
     },
-    "280360": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "225190": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "383220": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "136480": {
-      "consecutive": 0,
-      "dates": []
-    },
     "028050": {
       "consecutive": 0,
       "dates": []
@@ -8690,19 +8698,11 @@
       "consecutive": 0,
       "dates": []
     },
-    "475960": {
-      "consecutive": 0,
-      "dates": []
-    },
     "065350": {
       "consecutive": 0,
       "dates": []
     },
     "047050": {
-      "consecutive": 0,
-      "dates": []
-    },
-    "185750": {
       "consecutive": 0,
       "dates": []
     },
@@ -8718,5 +8718,9 @@
       "consecutive": 0,
       "dates": []
     }
-  }
+  },
+  "status": "error",
+  "error": "자동알림 설정 대기 · GitHub Actions 비밀값 등록 필요: KIS_APP_KEY, KIS_APP_SECRET",
+  "configuration_checked_at": "2026-10-24T03:06:02.891Z",
+  "configuration_check_source": "GitHub Actions credential presence check, PR #120"
 }
