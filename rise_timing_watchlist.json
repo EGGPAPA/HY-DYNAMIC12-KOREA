@@ -2058,5 +2058,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-23"
+  },
+  {
+    "ticker": "001530",
+    "name": "DI동일",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "092730",
+    "name": "네오팜",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "079900",
+    "name": "전진건설로봇",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "395400",
+    "name": "SK리츠",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "372320",
+    "name": "큐로셀",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "451760",
+    "name": "컨텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "004490",
+    "name": "세방전지",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "138040",
+    "name": "메리츠금융지주",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "005830",
+    "name": "DB손해보험",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "001260",
+    "name": "남광토건",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-26"
   }
 ]
