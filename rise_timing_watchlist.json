@@ -2128,5 +2128,47 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-26"
+  },
+  {
+    "ticker": "368600",
+    "name": "아이씨에이치",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-27"
+  },
+  {
+    "ticker": "294870",
+    "name": "IPARK현대산업개발",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-27"
+  },
+  {
+    "ticker": "211270",
+    "name": "AP위성",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-27"
+  },
+  {
+    "ticker": "030000",
+    "name": "제일기획",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-27"
+  },
+  {
+    "ticker": "039200",
+    "name": "오스코텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-27"
+  },
+  {
+    "ticker": "003380",
+    "name": "하림지주",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-27"
   }
 ]
