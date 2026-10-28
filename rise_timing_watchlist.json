@@ -2170,5 +2170,12 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-27"
+  },
+  {
+    "ticker": "011370",
+    "name": "서한",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-28"
   }
 ]
