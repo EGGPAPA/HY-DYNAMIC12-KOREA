@@ -2177,5 +2177,68 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-28"
+  },
+  {
+    "ticker": "451800",
+    "name": "한화리츠",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "000100",
+    "name": "유한양행",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "352820",
+    "name": "하이브",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "016610",
+    "name": "DB증권",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "317240",
+    "name": "TS트릴리온",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "473980",
+    "name": "노머스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "036530",
+    "name": "SNT홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "041510",
+    "name": "에스엠",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "003220",
+    "name": "대원제약",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-29"
   }
 ]
