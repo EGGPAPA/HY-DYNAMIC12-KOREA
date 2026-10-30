@@ -2240,5 +2240,19 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-29"
+  },
+  {
+    "ticker": "060720",
+    "name": "KH바텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-30"
+  },
+  {
+    "ticker": "204620",
+    "name": "글로벌텍스프리",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-10-30"
   }
 ]
