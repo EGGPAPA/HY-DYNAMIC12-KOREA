@@ -2254,5 +2254,75 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-10-30"
+  },
+  {
+    "ticker": "396470",
+    "name": "워트",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "017900",
+    "name": "광전자",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "458870",
+    "name": "씨어스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "081180",
+    "name": "쎄크",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "092190",
+    "name": "서울바이오시스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "024060",
+    "name": "흥구석유",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "310870",
+    "name": "디와이씨",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "180640",
+    "name": "한진칼",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "218410",
+    "name": "RFHIC",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "300720",
+    "name": "한일시멘트",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-02"
   }
 ]
