@@ -2324,5 +2324,75 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-02"
+  },
+  {
+    "ticker": "267850",
+    "name": "아시아나IDT",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "009970",
+    "name": "영원무역홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "317850",
+    "name": "대모",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "048530",
+    "name": "인트론바이오",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "284740",
+    "name": "쿠쿠홈시스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "458350",
+    "name": "에스팀",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "010170",
+    "name": "대한광통신",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "006400",
+    "name": "삼성SDI",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "216080",
+    "name": "제테마",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "029460",
+    "name": "케이씨",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-03"
   }
 ]
