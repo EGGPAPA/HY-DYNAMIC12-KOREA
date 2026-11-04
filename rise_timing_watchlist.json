@@ -2394,5 +2394,33 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-03"
+  },
+  {
+    "ticker": "020560",
+    "name": "아시아나항공",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-04"
+  },
+  {
+    "ticker": "003490",
+    "name": "대한항공",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-04"
+  },
+  {
+    "ticker": "053300",
+    "name": "한국정보인증",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-04"
+  },
+  {
+    "ticker": "330590",
+    "name": "롯데리츠",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-04"
   }
 ]
