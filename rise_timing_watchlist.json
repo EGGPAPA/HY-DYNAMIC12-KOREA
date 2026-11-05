@@ -2422,5 +2422,33 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-04"
+  },
+  {
+    "ticker": "272450",
+    "name": "진에어",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-05"
+  },
+  {
+    "ticker": "187660",
+    "name": "페니트리움바이오",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-05"
+  },
+  {
+    "ticker": "035900",
+    "name": "JYP Ent.",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-05"
+  },
+  {
+    "ticker": "293940",
+    "name": "신한알파리츠",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-05"
   }
 ]
