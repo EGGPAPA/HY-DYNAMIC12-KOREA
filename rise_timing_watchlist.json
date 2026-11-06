@@ -2450,5 +2450,61 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-05"
+  },
+  {
+    "ticker": "308170",
+    "name": "씨티알모빌리티",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "170920",
+    "name": "엘티씨",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "078340",
+    "name": "컴투스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "005430",
+    "name": "한국공항",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "100130",
+    "name": "동국S&C",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "052460",
+    "name": "아이크래프트",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "434480",
+    "name": "모니터랩",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "079160",
+    "name": "CJ CGV",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-06"
   }
 ]
