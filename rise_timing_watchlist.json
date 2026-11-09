@@ -2506,5 +2506,54 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-06"
+  },
+  {
+    "ticker": "122900",
+    "name": "아이마켓코리아",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-09"
+  },
+  {
+    "ticker": "098120",
+    "name": "마이크로컨텍솔",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-09"
+  },
+  {
+    "ticker": "298690",
+    "name": "에어부산",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-09"
+  },
+  {
+    "ticker": "036800",
+    "name": "나이스정보통신",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-09"
+  },
+  {
+    "ticker": "009290",
+    "name": "광동제약",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-09"
+  },
+  {
+    "ticker": "023160",
+    "name": "태광",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-09"
+  },
+  {
+    "ticker": "190510",
+    "name": "나무가",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-09"
   }
 ]
