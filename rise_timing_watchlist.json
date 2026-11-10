@@ -2555,5 +2555,54 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-09"
+  },
+  {
+    "ticker": "067160",
+    "name": "SOOP",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-10"
+  },
+  {
+    "ticker": "111770",
+    "name": "영원무역",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-10"
+  },
+  {
+    "ticker": "297090",
+    "name": "씨에스베어링",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-10"
+  },
+  {
+    "ticker": "139480",
+    "name": "이마트",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-10"
+  },
+  {
+    "ticker": "002350",
+    "name": "넥센타이어",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-10"
+  },
+  {
+    "ticker": "009450",
+    "name": "경동나비엔",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-10"
+  },
+  {
+    "ticker": "100120",
+    "name": "뷰웍스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-10"
   }
 ]
