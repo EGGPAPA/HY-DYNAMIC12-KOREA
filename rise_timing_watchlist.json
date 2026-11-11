@@ -2604,5 +2604,40 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-10"
+  },
+  {
+    "ticker": "086900",
+    "name": "메디톡스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-11"
+  },
+  {
+    "ticker": "338840",
+    "name": "와이바이오로직스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-11"
+  },
+  {
+    "ticker": "032500",
+    "name": "케이엠더블유",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-11"
+  },
+  {
+    "ticker": "271560",
+    "name": "오리온",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-11"
+  },
+  {
+    "ticker": "037710",
+    "name": "광주신세계",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-11"
   }
 ]
