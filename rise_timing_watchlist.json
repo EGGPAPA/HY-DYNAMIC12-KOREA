@@ -2639,5 +2639,61 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-11"
+  },
+  {
+    "ticker": "480370",
+    "name": "씨케이솔루션",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "014950",
+    "name": "삼익제약",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "071280",
+    "name": "로체시스템즈",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "100590",
+    "name": "머큐리",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "003610",
+    "name": "방림",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "260970",
+    "name": "에스앤디",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "043370",
+    "name": "피에이치에이",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "094360",
+    "name": "칩스앤미디어",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-12"
   }
 ]
