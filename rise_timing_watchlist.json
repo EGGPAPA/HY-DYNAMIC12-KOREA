@@ -2695,5 +2695,54 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-12"
+  },
+  {
+    "ticker": "036540",
+    "name": "SFA반도체",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-13"
+  },
+  {
+    "ticker": "042500",
+    "name": "링네트",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-13"
+  },
+  {
+    "ticker": "173130",
+    "name": "오파스넷",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-13"
+  },
+  {
+    "ticker": "282330",
+    "name": "BGF리테일",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-13"
+  },
+  {
+    "ticker": "207940",
+    "name": "삼성바이오로직스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-13"
+  },
+  {
+    "ticker": "161390",
+    "name": "한국타이어앤테크놀로지",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-13"
+  },
+  {
+    "ticker": "021240",
+    "name": "코웨이",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-13"
   }
 ]
