@@ -2744,5 +2744,47 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-13"
+  },
+  {
+    "ticker": "104830",
+    "name": "원익머트리얼즈",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-16"
+  },
+  {
+    "ticker": "457190",
+    "name": "이수스페셜티케미컬",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-16"
+  },
+  {
+    "ticker": "083500",
+    "name": "에프엔에스테크",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-16"
+  },
+  {
+    "ticker": "192250",
+    "name": "케이사인",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-16"
+  },
+  {
+    "ticker": "225530",
+    "name": "HC보광산업",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-16"
+  },
+  {
+    "ticker": "220260",
+    "name": "켐트로스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-16"
   }
 ]
