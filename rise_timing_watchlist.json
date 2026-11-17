@@ -2786,5 +2786,47 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-16"
+  },
+  {
+    "ticker": "010470",
+    "name": "오리콤",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-17"
+  },
+  {
+    "ticker": "248170",
+    "name": "샘표식품",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-17"
+  },
+  {
+    "ticker": "017890",
+    "name": "한국알콜",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-17"
+  },
+  {
+    "ticker": "005500",
+    "name": "삼진제약",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-17"
+  },
+  {
+    "ticker": "101330",
+    "name": "모베이스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-17"
+  },
+  {
+    "ticker": "140430",
+    "name": "카티스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-17"
   }
 ]
