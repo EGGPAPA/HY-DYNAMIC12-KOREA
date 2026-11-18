@@ -216,7 +216,7 @@ def main():
     jump_audit={}
     for code,df in hist.items():
         change=df.close.pct_change().dropna()
-        extreme=change[change.abs()>0.35]
+        extreme=change[(change.abs()>0.35) & (change.index>=pd.Timestamp(START)) & (change.index<=pd.Timestamp(END))]
         if not extreme.empty:
             jump_audit[code]=[{"day":str(d.date()),"return_pct":round(float(v)*100,2)} for d,v in extreme.items()]
     clean={c:df for c,df in hist.items() if c not in jump_audit}
