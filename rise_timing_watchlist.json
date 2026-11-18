@@ -2828,5 +2828,33 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-17"
+  },
+  {
+    "ticker": "026890",
+    "name": "스틱인베스트먼트",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-18"
+  },
+  {
+    "ticker": "171090",
+    "name": "선익시스템",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-18"
+  },
+  {
+    "ticker": "001800",
+    "name": "오리온홀딩스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-18"
+  },
+  {
+    "ticker": "049430",
+    "name": "코메론",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-18"
   }
 ]
