@@ -14,7 +14,7 @@ import pandas as pd
 import numpy as np
 import hy_full_market_b as base
 
-ETF={"KOSPI":"069500","KOSDAQ":"229200"}  # KODEX200 / KODEX KOSDAQ150 (index proxies only)
+ETF={"KOSPI":"survivor median KOSPI","KOSDAQ":"survivor median KOSDAQ"}  # labels only, no ETF data
 INITIAL=10_000_000.
 FEE=.0015
 STOP=.06
@@ -41,19 +41,31 @@ def market_map_from_quotes():
 def one_ticker(item):
     return base.download_history(item)
 
-def get_etfs():
+def get_market_proxies(hist,code_to_market):
+    """Equal-median of daily STOCK returns (not actual KOSPI/KOSDAQ indices).
+    Built only from downloaded currently surviving listed stocks.
+    Avoids external index availability, but inherits survivorship bias.
+    """
     out={}
-    for market,ticker in ETF.items():
-        code,frame,error=base.download_history(ticker)
-        if error or frame is None:raise RuntimeError(f"No market-proxy ETF {market}: {error}")
-        if frame.index.min()>TEST_START-pd.Timedelta(days=370):
-            raise RuntimeError(f"ETF history insufficient {market}")
-        closes=frame["close"].astype(float)
-        ma200=closes.rolling(200,min_periods=200).mean()
-        regime=(closes>ma200)&(ma200>ma200.shift(20))
-        out[market]={"close":closes,"regime":regime.fillna(False)}
-    print("market_proxies", {k:{"ticker":ETF[k],"rows":len(v["close"]),
-        "start":str(v["close"].index.min().date()),"end":str(v["close"].index.max().date()),
+    for market in ("KOSPI","KOSDAQ"):
+        series=[]
+        for code,f in hist.items():
+            if code_to_market.get(code)!=market:continue
+            ret=f.close.pct_change(fill_method=None)
+            ret=ret.where(ret.abs()<=.35)  # remove obvious unadjusted splits from market proxy
+            series.append(ret.rename(code))
+        if len(series)<100:raise RuntimeError("too few stocks for market proxy")
+        frame=pd.concat(series,axis=1,sort=True).sort_index()
+        counts=frame.count(axis=1)
+        med=frame.median(axis=1,skipna=True)
+        med=med.loc[counts>=30].dropna()
+        index=(1+med).cumprod()*100
+        ma200=index.rolling(200,min_periods=200).mean()
+        regime=(index>ma200)&(ma200>ma200.shift(20))
+        out[market]={"close":index,"regime":regime.fillna(False)}
+    print("market_proxies", {k:{"method":"survivor median daily stock return",
+        "rows":len(v["close"]),"start":str(v["close"].index.min().date()),
+        "end":str(v["close"].index.max().date()),
         "risk_on_fraction":round(float(v["regime"].loc[TEST_START:TEST_END].mean()),3)}
         for k,v in out.items()},flush=True)
     return out
@@ -246,7 +258,6 @@ def main():
     t=time.monotonic()
     code_map=market_map_from_quotes()
     tickers=sorted(code_map)
-    proxies=get_etfs()
     fetched={};fault=Counter();jumped={}
     with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         jobs={pool.submit(one_ticker,c):c for c in tickers}
@@ -262,6 +273,7 @@ def main():
                       "missing",sum(fault.values()),"time_s",round(time.monotonic()-t),flush=True)
     print("all_codes",len(tickers),"usable",len(fetched),"jumped",len(jumped),flush=True)
     if len(fetched)<.85*len(tickers):raise RuntimeError("Market universe download incomplete")
+    proxies=get_market_proxies(fetched,code_map)
     results={}
     for universe_name, hist in (("all_current_raw",fetched),
                                 ("no_gt35pct_raw", {k:v for k,v in fetched.items() if k not in jumped})):
@@ -280,11 +292,11 @@ def main():
       "downloaded":len(fetched),"failed":dict(fault),
       "discontinuous_gt35pct_tickers":len(jumped),
       "study_dates":[str(TEST_START.date()),str(TEST_END.date())],
-      "market_proxies":ETF,
+      "market_proxies":{"KOSPI":"equal-median daily return proxy from current survivors","KOSDAQ":"equal-median daily return proxy from current survivors"},
       "variants":{
         "B0":"B signal; B-only ret20/ret60/RSI ranking; -6% fixed stop; 10/15/20% take profit",
-        "B1":"B0 + market ETF close > 200d MA and 200d MA rising vs 20 sessions ago",
-        "B2":"B0 + change rank to risk-adjusted 126d and 252d ETF-excess momentum",
+        "B1":"B0 + stock-median market proxy > 200d MA and 200d MA rising vs 20 sessions ago",
+        "B2":"B0 + change rank to risk-adjusted 126d and 252d market-proxy-excess momentum",
         "B3":"B0 + 2xATR14 initial/trailing stop, 2.5-12% clamp, position size risks <=0.5% of NAV at stop"},
       "fixed_conditions":{
         "liquidity":"20d avg traded value >=2bn KRW",
@@ -295,7 +307,7 @@ def main():
       "risks":[
         "historical delisted stocks missing (survivorship bias)",
         "unadjusted corporate action price series",
-        "KODEX200 and KODEX KOSDAQ150 proxies are not exact KOSPI/KOSDAQ indices",
+        "Market medians of surviving stocks are NOT actual KOSPI/KOSDAQ indices and are biased",
         "preferred shares, SPACs and foreign listings not separately excluded",
         "same daily OHLC can touch stop and take-profit; stop prioritized",
         "daily OHLC not executable limit order data",
