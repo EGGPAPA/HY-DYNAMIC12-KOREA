@@ -1,0 +1,29 @@
+name: HY B1 B2 B3 comparative research
+on:
+  push:
+    branches: [test/b123-comparison-20261119]
+    paths:
+      - 'experiments/hy_b123_test.py'
+      - '.github/workflows/hy-b123-tests.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install 'pandas>=2.2,<3' 'numpy>=2.0,<3' 'requests>=2.31'
+      - name: B0 B1 B2 B3 same-universe comparison
+        run: python -u experiments/hy_b123_test.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hy-b123-comparison
+          path: experiments/hy_b123_results.json
+          if-no-files-found: ignore
