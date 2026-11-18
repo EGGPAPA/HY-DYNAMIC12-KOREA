@@ -105,7 +105,7 @@ def build_signals(code,frame):
         # EOD 프록시: 장중 10~60초 지속성 검증 불가. stage/score만 보조 신호로 인정.
         A=mand and (stage or score>=85) and not late
         rsi=float(r.rsi) if pd.notna(r.rsi) else -1
-        B=price>float(r.ma200) and m20>m60 and 50<=rsi<=70 and rsi>float(old.rsi) and float(r.macd)>float(r.macd_signal) and float(r.hist)>float(old.hist)
+        B=price>float(r.ma200) and m20>m60 and 50<=rsi<=70 and rsi>float(old.rsi) and float(r.macd)>float(r.macd_signal) and float(r["hist"])>float(old["hist"])
         out[day]={"A":bool(A),"B":bool(B),"both":bool(A and B),
                   "rank":float(score)+(volratio*2 if volratio<5 else 10)}
     return out
