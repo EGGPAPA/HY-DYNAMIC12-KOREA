@@ -1,0 +1,28 @@
+name: HY Dennis vs Fujimoto technical-proxy 5y test
+on:
+  push:
+    branches: [test/dennis-fujimoto-20261119]
+    paths:
+      - 'experiments/hy_dennis_fujimoto.py'
+      - '.github/workflows/hy-dennis-fujimoto.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  compare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install 'pandas>=2.2,<3' 'numpy>=2,<3' 'requests>=2.31'
+      - name: Compare technical proxies of Dennis and Fujimoto
+        run: python -u experiments/hy_dennis_fujimoto.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: hy-dennis-fujimoto-results
+          path: experiments/hy_dennis_fujimoto_results.json
+          if-no-files-found: ignore
