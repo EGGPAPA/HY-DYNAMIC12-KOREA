@@ -42,30 +42,36 @@ def one_ticker(item):
     return base.download_history(item)
 
 def get_market_proxies(hist,code_to_market):
-    """Equal-median of daily STOCK returns (not actual KOSPI/KOSDAQ indices).
-    Built only from downloaded currently surviving listed stocks.
-    Avoids external index availability, but inherits survivorship bias.
+    """Cross-sectional market proxies, with current-stock survivorship caveat:
+    B1 risk-on: >50% of stocks above their SMA200 and breadth improving over 20 sessions.
+    B2 benchmark: equal-weight mean daily return, winsorized +/-10% per stock.
+    None of these are official KOSPI/KOSDAQ index histories.
     """
     out={}
     for market in ("KOSPI","KOSDAQ"):
-        series=[]
+        returns=[]
+        breadth_items=[]
         for code,f in hist.items():
             if code_to_market.get(code)!=market:continue
-            ret=f.close.pct_change(fill_method=None)
-            ret=ret.where(ret.abs()<=.35)  # remove obvious unadjusted splits from market proxy
-            series.append(ret.rename(code))
-        if len(series)<100:raise RuntimeError("too few stocks for market proxy")
-        frame=pd.concat(series,axis=1,sort=True).sort_index()
-        counts=frame.count(axis=1)
-        med=frame.median(axis=1,skipna=True)
-        med=med.loc[counts>=30].dropna()
-        index=(1+med).cumprod()*100
-        ma200=index.rolling(200,min_periods=200).mean()
-        regime=(index>ma200)&(ma200>ma200.shift(20))
-        out[market]={"close":index,"regime":regime.fillna(False)}
-    print("market_proxies", {k:{"method":"survivor median daily stock return",
+            daily=f.close.pct_change(fill_method=None)
+            daily=daily.where(daily.abs()<=.35).clip(-.10,.10)
+            returns.append(daily.rename(code))
+            sma200=f.close.rolling(200,min_periods=200).mean()
+            breadth_items.append((f.close>sma200).where(sma200.notna()).rename(code))
+        if len(returns)<100:raise RuntimeError("too few stocks for market proxy")
+        frame=pd.concat(returns,axis=1,sort=True).sort_index()
+        enough=frame.count(axis=1)>=30
+        meanret=frame.mean(axis=1,skipna=True).where(enough).dropna()
+        index=(1+meanret).cumprod()*100
+        breadth_mat=pd.concat(breadth_items,axis=1,sort=True).sort_index()
+        breadth=breadth_mat.mean(axis=1,skipna=True).reindex(index.index)
+        regime=(breadth>.50)&(breadth>breadth.shift(20))
+        out[market]={"close":index,"regime":regime.fillna(False),"breadth":breadth}
+    print("market_proxies", {k:{"method":"equal-weight clipped index and 200d breadth",
         "rows":len(v["close"]),"start":str(v["close"].index.min().date()),
         "end":str(v["close"].index.max().date()),
+        "breadth_mean":round(float(v["breadth"].loc[TEST_START:TEST_END].mean()),3),
+        "breadth_max":round(float(v["breadth"].loc[TEST_START:TEST_END].max()),3),
         "risk_on_fraction":round(float(v["regime"].loc[TEST_START:TEST_END].mean()),3)}
         for k,v in out.items()},flush=True)
     return out
@@ -292,11 +298,11 @@ def main():
       "downloaded":len(fetched),"failed":dict(fault),
       "discontinuous_gt35pct_tickers":len(jumped),
       "study_dates":[str(TEST_START.date()),str(TEST_END.date())],
-      "market_proxies":{"KOSPI":"equal-median daily return proxy from current survivors","KOSDAQ":"equal-median daily return proxy from current survivors"},
+      "market_proxies":{"B1":"breadth fraction above SMA200 for survivors; risk-on >50% and improving 20 days","B2":"daily equal-weight clipped return proxy for each market; not official indices"},
       "variants":{
         "B0":"B signal; B-only ret20/ret60/RSI ranking; -6% fixed stop; 10/15/20% take profit",
-        "B1":"B0 + stock-median market proxy > 200d MA and 200d MA rising vs 20 sessions ago",
-        "B2":"B0 + change rank to risk-adjusted 126d and 252d market-proxy-excess momentum",
+        "B1":"B0 + market breadth >50% above individual SMA200 and breadth rising over 20 sessions",
+        "B2":"B0 + change rank to volatility-adjusted 126d and 252d excess vs same-market equal-weight return benchmark",
         "B3":"B0 + 2xATR14 initial/trailing stop, 2.5-12% clamp, position size risks <=0.5% of NAV at stop"},
       "fixed_conditions":{
         "liquidity":"20d avg traded value >=2bn KRW",
@@ -307,7 +313,7 @@ def main():
       "risks":[
         "historical delisted stocks missing (survivorship bias)",
         "unadjusted corporate action price series",
-        "Market medians of surviving stocks are NOT actual KOSPI/KOSDAQ indices and are biased",
+        "Market breadth and equal-weight indexes of surviving stocks are NOT official KOSPI/KOSDAQ and are biased",
         "preferred shares, SPACs and foreign listings not separately excluded",
         "same daily OHLC can touch stop and take-profit; stop prioritized",
         "daily OHLC not executable limit order data",
