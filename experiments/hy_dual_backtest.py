@@ -213,10 +213,21 @@ def main():
     results={}
     for period,lo,hi in (("full",START,END),("out_of_sample","2025-07-01",END)):
         results[period]={key:simulate(hist,signals,key,lo,hi) for key in ("A","B","both")}
+    jump_audit={}
+    for code,df in hist.items():
+        change=df.close.pct_change().dropna()
+        extreme=change[change.abs()>0.35]
+        if not extreme.empty:
+            jump_audit[code]=[{"day":str(d.date()),"return_pct":round(float(v)*100,2)} for d,v in extreme.items()]
+    clean={c:df for c,df in hist.items() if c not in jump_audit}
+    clean_signals={c:signals[c] for c in clean}
+    clean_comparison={key:simulate(clean,clean_signals,key,START,END) for key in ("A","B","both")}
     output={"method":"EOD proxy, not exact intraday HY; original A mandatory 4 + stage/score, no 10-60s persistence",
        "data_source":DATA_SOURCE,"dates":[START,END],
        "biases":["32 currently listed names only: survivorship bias","raw unadjusted OHLCV","no intraday persistence","fill assumptions","fees 0.15 percent each way"],
        "historical_series_count":len(hist),"failed_series":errors,"signal_invariant_rows":tested,
+       "extreme_daily_jumps_over_35pct":jump_audit,"no_extreme_jumps_universe_count":len(clean),
+       "no_extreme_jumps_results_full":clean_comparison,
        "signal_counts":count,"results":results}
     p=Path("experiments/hy_dual_backtest_result.json");p.parent.mkdir(parents=True,exist_ok=True)
     p.write_text(json.dumps(output,ensure_ascii=False,indent=2),encoding="utf-8")
