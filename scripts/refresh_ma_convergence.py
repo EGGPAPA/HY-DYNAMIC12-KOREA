@@ -18,6 +18,7 @@ from ma_convergence import (KST, DAILY_ADD_LIMIT, THRESHOLD_PCT, MIN_DAILY_VALUE
     closed_date_limit, ordinary_stock, actively_trading, analyze_bars,
     candidate_sort_key, merge_candidates)
 from rise_watch_cohort import COHORT_PATH, reconcile_cohort
+from early_market_detector import VERSION as EARLY_VERSION, analyze_early, rank_early
 
 REPO = os.environ.get("GITHUB_REPOSITORY", "EGGPAPA/HY-DYNAMIC12-KOREA")
 WATCH_PATH = "rise_timing_watchlist.json"
@@ -133,11 +134,15 @@ def fetch_benchmarks(asof):
     return result
 
 
-def scan_one(row, asof):
+def scan_one(row, asof, early_references=None):
     if row.get("tradable") is False:
         return {**row, "eligible": False, "reason": "거래정지·거래상태 확인", "date": asof}
     time.sleep(0.3)  # At most four bounded workers; avoid aggressive full-market requests.
-    return {**row, **analyze_bars(fetch_bars(row["ticker"]), asof)}
+    bars = fetch_bars(row["ticker"])
+    result = {**row, **analyze_bars(bars, asof)}
+    if early_references and row.get("market") in early_references and result.get("eligible"):
+        result["early_signal"] = analyze_early(bars, early_references[row["market"]], asof)
+    return result
 
 
 def publish(snapshot, previous):
@@ -229,9 +234,19 @@ def main():
         code = str(row.get("ticker", "")).zfill(6)
         if code not in jobs:
             jobs[code] = {**row, "ticker": code}
+    # Reuse every stock's daily bars; only two extra benchmark requests are needed.
+    # Failure must not affect the existing convergence scan or saved watchlist.
+    early_references, early_error = {}, ""
+    try:
+        early_references = {market: fetch_bars(market) for market in ("KOSPI", "KOSDAQ")}
+        if any(not bars or bars[-1]["date"] != asof for bars in early_references.values()):
+            raise ValueError("지수 확정 일봉 기준일 불일치")
+    except (ValueError, KeyError, TypeError, urllib.error.URLError, TimeoutError):
+        early_references, early_error = {}, "지수 자료 조회 실패 또는 확정 거래일 불일치"
     items, errors = {}, []
     with ThreadPoolExecutor(max_workers=4) as pool:
-        tasks = {pool.submit(scan_one, row, asof): code for code, row in jobs.items()}
+        tasks = {pool.submit(scan_one, row, asof, early_references): code
+                 for code, row in jobs.items()}
         for n, task in enumerate(as_completed(tasks), 1):
             code = tasks[task]
             try:
@@ -245,6 +260,21 @@ def main():
     if len(errors) > len(jobs) * 0.05 or eligible < len(universe) * 0.80:
         raise RuntimeError(f"Coverage insufficient ({eligible}/{len(universe)}, errors={len(errors)}); no publish")
     candidates = sorted([x for code, x in items.items() if code in universe and x.get("candidate")], key=candidate_sort_key)
+    early_valid = sum(bool(row.get("early_signal", {}).get("valid"))
+                      for code, row in items.items() if code in universe)
+    early_ranked = rank_early([row for code, row in items.items() if code in universe])
+    early_ready = bool(early_references) and early_valid >= eligible * 0.75
+    early_report = {
+        "version": EARLY_VERSION, "ready": early_ready,
+        "reason": "" if early_ready else (early_error or "선행 지표 평가 가능 종목 부족"),
+        "evaluated_count": early_valid,
+        "candidate_count": sum(bool(row.get("early_signal", {}).get("candidate"))
+                               for code, row in items.items() if code in universe),
+        "candidates": [
+            {key: row.get(key) for key in ("ticker", "name", "market")} |
+            {"early_signal": row["early_signal"]} for row in early_ranked
+        ] if early_ready else [],
+    }
     snapshot = {"version": 1, "leader_version": 1, "benchmarks": fetch_benchmarks(asof),
                 "asof": asof, "updated_at": datetime.now(KST).isoformat(timespec="seconds"),
                 "source": "Naver daily OHLCV", "threshold_pct": THRESHOLD_PCT,
@@ -252,6 +282,7 @@ def main():
                 "min_price": 1000, "min_mean_value20": MIN_DAILY_VALUE, "daily_add_limit": DAILY_ADD_LIMIT,
                 "universe_count": len(universe), "calculated_count": eligible, "coverage": coverage,
                 "candidate_count": len(candidates), "candidates": candidates,
+                "early_detector": early_report,
                 # Persist only current watchlist + shortlisted new rows, keeping the contents API under 1 MB.
                 "items": {x["ticker"]: items[x["ticker"]] for x in watchlist if x["ticker"] in items},
                 "errors": errors, "complete": False}
