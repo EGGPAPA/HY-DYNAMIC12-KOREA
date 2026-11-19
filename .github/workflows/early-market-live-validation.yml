@@ -1,0 +1,68 @@
+name: Early RSI MACD read-only market validation
+on:
+  push:
+    branches: [test/early-detector-live-validation-20261120]
+    paths:
+      - 'scripts/smoke_early_market_detector.py'
+      - '.github/workflows/early-market-live-validation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sample-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test real Naver bars without write
+        run: python -u scripts/smoke_early_market_detector.py
+  full-market-readonly:
+    needs: sample-check
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    env:
+      GITHUB_TOKEN: ${{ github.token }}
+      PYTHONUNBUFFERED: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Test offline regression rules
+        run: python -m unittest discover -s tests -p test_early_market_detector.py -v
+      - name: Run all-stock dry scan without publish
+        run: python -u scripts/refresh_ma_convergence.py --output artifacts/early-market-dryrun.json
+      - name: Check full scan summary and print non-sensitive counts
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          report=json.loads(Path("artifacts/early-market-dryrun.json").read_text())
+          early=report["early_detector"]
+          summary={
+              "asof":report["asof"],"universe":report["universe_count"],
+              "eligible":report["calculated_count"],
+              "ready":early["ready"],"reason":early["reason"],
+              "evaluated":early["evaluated_count"],
+              "candidate_total":early["candidate_count"],
+              "top_count":len(early["candidates"]),
+              "top_symbols":[x["ticker"] for x in early["candidates"][:10]],
+              "complete":report["complete"]
+          }
+          print("EARLY_FULL_DRYRUN_SUMMARY",json.dumps(summary,ensure_ascii=False))
+          assert report["complete"] is False, "dry run must never publish"
+          assert early["candidate_count"] >= len(early["candidates"])
+          if not early["ready"]:
+              raise SystemExit("Early scanner not ready; inspect reason")
+          PY
+      - name: Save dry-run artifact (not remote watchlist)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: early-market-readonly-dryrun
+          path: artifacts/early-market-dryrun.json
+          if-no-files-found: ignore
+          retention-days: 5
