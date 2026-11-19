@@ -2856,5 +2856,26 @@
     "market": "KOSDAQ",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-18"
+  },
+  {
+    "ticker": "033250",
+    "name": "체시스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-19"
+  },
+  {
+    "ticker": "039440",
+    "name": "에스티아이",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-19"
+  },
+  {
+    "ticker": "003090",
+    "name": "대웅",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-19"
   }
 ]
