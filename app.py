@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from nav_labels import inject_sidebar_labels
+from main_navigation import NAV_GROUPS, DEFAULT_GROUP, GROUP_KEYS, selection_from_legacy, current_subview
 from theme_styles import inject_theme
 import yfinance as yf
 import requests
@@ -859,9 +860,8 @@ restore_daily_analysis()
 inject_theme()
 inject_sidebar_labels()
 
-st.title("🇰🇷 HY DYNAMIC12 · 한국주식 실전선별")
-st.caption("개별주식 후보를 찾는 화면입니다. ETF 매수·보유·매도 판단은 왼쪽 '실전운용'에서 별도로 관리합니다.")
-st.info("① 시장 데이터 확인 → ② 전체시장 자동분석 → ③ TOP12 검토 → ④ 부의 점프 검토 → ⑤ 매수 후 보유종목 기록")
+st.title("🇰🇷 HY DYNAMIC12")
+st.caption("한국주식 · 시장 분석 / 상승 후보 / 매수 시점 / 성과 검증")
 
 quick_col, full_col = st.columns([2, 1])
 quick_requested = quick_col.button("⚡ 빠른 업데이트", type="primary", use_container_width=True, key="hy_fast_update")
@@ -872,18 +872,40 @@ status_slot = st.empty()
 if st.session_state.get("full_update_at"):
     st.caption(f"마지막 업데이트: **{st.session_state['full_update_at']}** · {st.session_state.get('full_update_mode', '전체 업데이트')}")
 if st.session_state.pop("daily_analysis_restored", False):
-    st.success("오늘 저장된 분석 결과를 자동으로 불러왔습니다. 다시 분석하지 않아도 각 탭에서 바로 확인할 수 있습니다.")
-st.caption("같은 날에는 저장 결과를 자동 재사용합니다. 가격만 갱신하려면 빠른 업데이트, 신규 후보까지 다시 찾으려면 장 마감 후 정밀 전체 업데이트를 사용하세요.")
+    st.caption("오늘 저장된 분석 결과를 불러왔습니다.")
 
-view_options = ["🏠 시작", "🌐 시장환경", "🔎 전체시장 분석", "🏆 TOP12", "🚀 부의 점프", "🔥 현재 5개월선 돌파", "📍 상승시점 관찰", "📈 과거 성과 검증"]
-selected_view = st.radio(
-    "화면 선택",
-    view_options,
+# Preserve the user's previous 8-item selection across this UI-only upgrade.
+legacy_view = st.session_state.pop("hy_selected_view", None)
+if "hy_main_group" not in st.session_state:
+    initial_group, initial_subview = selection_from_legacy(legacy_view)
+    st.session_state["hy_main_group"] = initial_group
+    if initial_group in GROUP_KEYS:
+        st.session_state[GROUP_KEYS[initial_group]] = initial_subview
+elif st.session_state["hy_main_group"] not in NAV_GROUPS:
+    st.session_state["hy_main_group"] = DEFAULT_GROUP
+
+selected_group = st.radio(
+    "분석 메뉴",
+    list(NAV_GROUPS),
     horizontal=True,
-    key="hy_selected_view",
+    key="hy_main_group",
     label_visibility="collapsed",
     disabled=update_requested,
 )
+details = NAV_GROUPS[selected_group]
+if len(details) > 1:
+    detail_key = GROUP_KEYS[selected_group]
+    if st.session_state.get(detail_key) not in details:
+        st.session_state[detail_key] = details[0]
+    selected_view = st.radio(
+        "세부 화면",
+        details,
+        horizontal=True,
+        key=detail_key,
+        disabled=update_requested,
+    )
+else:
+    selected_view = current_subview(selected_group)
 
 if update_requested:
     label = "⚡ 빠른 업데이트" if quick_requested else "🚀 정밀 전체 업데이트"
@@ -908,9 +930,7 @@ if outcome:
             status = st.status(outcome["label"], expanded=False)
             show_update_result(status, outcome["label"], outcome["completed_at"], outcome["regime"])
 
-if selected_view == "🏠 시작":
-    st.info("확인할 화면을 선택하세요. 선택한 화면 하나만 불러오므로 접속할 때 전체 분석이 자동 실행되지 않습니다.")
-elif selected_view == "🌐 시장환경":
+if selected_view == "🌐 시장환경":
     render_market_environment(market_is_open=market_open())
 
 elif selected_view == "🔎 전체시장 분석":
@@ -1005,6 +1025,4 @@ elif selected_view == "📈 과거 성과 검증":
     universe, _ = get_full_universe()
     render_individual_stock_ma5_backtest(universe)
 
-
-st.caption("역할 분리: TOP12=개별주식 선별 · 부의 점프=집중 연구 후보 · 전략검증=백테스트/OOS · 실제 체결/평균단가/수익률은 사이드바의 보유종목 관리에서 확인")
 
