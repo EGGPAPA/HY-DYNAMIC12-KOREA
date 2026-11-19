@@ -902,6 +902,7 @@ if len(details) > 1:
         details,
         horizontal=True,
         key=detail_key,
+        label_visibility="collapsed",
         disabled=update_requested,
     )
 else:
