@@ -13552,5 +13552,635 @@
     "499660",
     "900070",
     "950190"
-  ]
+  ],
+  "early_detector": {
+    "version": "early_market_v1",
+    "ready": true,
+    "reason": "",
+    "evaluated_count": 2430,
+    "candidate_count": 23,
+    "candidates": [
+      {
+        "ticker": "090430",
+        "name": "아모레퍼시픽",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 141000.0,
+          "rsi14": 63.32,
+          "macd_hist": 1353.4325,
+          "volume_ratio": 3.136,
+          "excess5_pct": 15.83,
+          "gap20_pct": 9.08,
+          "mean_value20": 22233171680
+        }
+      },
+      {
+        "ticker": "051900",
+        "name": "LG생활건강",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 253500.0,
+          "rsi14": 52.59,
+          "macd_hist": 2612.5433,
+          "volume_ratio": 1.571,
+          "excess5_pct": 15.02,
+          "gap20_pct": 3.48,
+          "mean_value20": 13443514025
+        }
+      },
+      {
+        "ticker": "010170",
+        "name": "대한광통신",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 14450.0,
+          "rsi14": 55.28,
+          "macd_hist": 232.5463,
+          "volume_ratio": 1.74,
+          "excess5_pct": 13.18,
+          "gap20_pct": 9.82,
+          "mean_value20": 74515010679
+        }
+      },
+      {
+        "ticker": "008770",
+        "name": "호텔신라",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 38450.0,
+          "rsi14": 60.35,
+          "macd_hist": 395.1883,
+          "volume_ratio": 4.867,
+          "excess5_pct": 12.91,
+          "gap20_pct": 7.6,
+          "mean_value20": 6472341518
+        }
+      },
+      {
+        "ticker": "032350",
+        "name": "롯데관광개발",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 10890.0,
+          "rsi14": 53.71,
+          "macd_hist": 94.7992,
+          "volume_ratio": 5.456,
+          "excess5_pct": 12.08,
+          "gap20_pct": 4.73,
+          "mean_value20": 4220910660
+        }
+      },
+      {
+        "ticker": "166090",
+        "name": "하나머티리얼즈",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 47500.0,
+          "rsi14": 50.2,
+          "macd_hist": 478.3377,
+          "volume_ratio": 2.071,
+          "excess5_pct": 11.51,
+          "gap20_pct": 3.98,
+          "mean_value20": 5893117675
+        }
+      },
+      {
+        "ticker": "086450",
+        "name": "동국제약",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 26600.0,
+          "rsi14": 62.89,
+          "macd_hist": 60.6761,
+          "volume_ratio": 1.847,
+          "excess5_pct": 9.16,
+          "gap20_pct": 9.83,
+          "mean_value20": 11974753618
+        }
+      },
+      {
+        "ticker": "112040",
+        "name": "위메이드",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 5,
+          "close": 14880.0,
+          "rsi14": 58.42,
+          "macd_hist": 136.5957,
+          "volume_ratio": 6.822,
+          "excess5_pct": 7.67,
+          "gap20_pct": 7.36,
+          "mean_value20": 2084718761
+        }
+      },
+      {
+        "ticker": "053450",
+        "name": "세코닉스",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": false,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 3150.0,
+          "rsi14": 52.64,
+          "macd_hist": 69.0967,
+          "volume_ratio": 6.264,
+          "excess5_pct": 18.35,
+          "gap20_pct": 7.28,
+          "mean_value20": 3216522729
+        }
+      },
+      {
+        "ticker": "281820",
+        "name": "케이씨텍",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 86000.0,
+          "rsi14": 53.62,
+          "macd_hist": 1361.6799,
+          "volume_ratio": 1.473,
+          "excess5_pct": 17.44,
+          "gap20_pct": 9.68,
+          "mean_value20": 20518123330
+        }
+      },
+      {
+        "ticker": "347700",
+        "name": "스피어",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 17900.0,
+          "rsi14": 49.87,
+          "macd_hist": 184.5626,
+          "volume_ratio": 1.903,
+          "excess5_pct": 13.7,
+          "gap20_pct": 3.61,
+          "mean_value20": 12581021269
+        }
+      },
+      {
+        "ticker": "074600",
+        "name": "원익QnC",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 27000.0,
+          "rsi14": 52.46,
+          "macd_hist": 381.7577,
+          "volume_ratio": 1.324,
+          "excess5_pct": 11.66,
+          "gap20_pct": 7.37,
+          "mean_value20": 7016991885
+        }
+      },
+      {
+        "ticker": "003350",
+        "name": "한국화장품제조",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 12550.0,
+          "rsi14": 48.78,
+          "macd_hist": 23.9186,
+          "volume_ratio": 8.606,
+          "excess5_pct": 9.12,
+          "gap20_pct": 0.67,
+          "mean_value20": 9111694092
+        }
+      },
+      {
+        "ticker": "403870",
+        "name": "HPSP",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 42400.0,
+          "rsi14": 48.81,
+          "macd_hist": 575.123,
+          "volume_ratio": 1.722,
+          "excess5_pct": 8.89,
+          "gap20_pct": 4.14,
+          "mean_value20": 58127033532
+        }
+      },
+      {
+        "ticker": "001040",
+        "name": "CJ",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 114600.0,
+          "rsi14": 47.15,
+          "macd_hist": 645.7316,
+          "volume_ratio": 2.394,
+          "excess5_pct": 6.52,
+          "gap20_pct": 1.15,
+          "mean_value20": 11161505365
+        }
+      },
+      {
+        "ticker": "035250",
+        "name": "강원랜드",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 14310.0,
+          "rsi14": 56.34,
+          "macd_hist": 33.8673,
+          "volume_ratio": 1.288,
+          "excess5_pct": 6.34,
+          "gap20_pct": 1.89,
+          "mean_value20": 4567218818
+        }
+      },
+      {
+        "ticker": "027360",
+        "name": "아주IB투자",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 2550.0,
+          "rsi14": 45.68,
+          "macd_hist": 40.3812,
+          "volume_ratio": 1.626,
+          "excess5_pct": 5.55,
+          "gap20_pct": 0.83,
+          "mean_value20": 3494194068
+        }
+      },
+      {
+        "ticker": "476830",
+        "name": "알지노믹스",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": true,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 21250.0,
+          "rsi14": 48.82,
+          "macd_hist": 165.831,
+          "volume_ratio": 1.662,
+          "excess5_pct": 4.59,
+          "gap20_pct": 1.97,
+          "mean_value20": 4832380570
+        }
+      },
+      {
+        "ticker": "031330",
+        "name": "에스에이엠티",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 4,
+          "close": 7510.0,
+          "rsi14": 50.95,
+          "macd_hist": 51.3602,
+          "volume_ratio": 1.285,
+          "excess5_pct": 0.37,
+          "gap20_pct": 3.74,
+          "mean_value20": 4334028236
+        }
+      },
+      {
+        "ticker": "190510",
+        "name": "나무가",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": true,
+            "macd_hist_rising": false,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 3,
+          "close": 16270.0,
+          "rsi14": 51.98,
+          "macd_hist": 125.0712,
+          "volume_ratio": 1.368,
+          "excess5_pct": 16.83,
+          "gap20_pct": 1.04,
+          "mean_value20": 13611796652
+        }
+      },
+      {
+        "ticker": "000120",
+        "name": "CJ대한통운",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": false,
+            "rsi50_cross": true,
+            "macd_hist_rising": true,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 3,
+          "close": 71000.0,
+          "rsi14": 62.73,
+          "macd_hist": 511.1465,
+          "volume_ratio": 1.299,
+          "excess5_pct": 8.86,
+          "gap20_pct": 5.52,
+          "mean_value20": 2977215760
+        }
+      },
+      {
+        "ticker": "103590",
+        "name": "일진전기",
+        "market": "KOSPI",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 3,
+          "close": 57100.0,
+          "rsi14": 49.05,
+          "macd_hist": 1412.7243,
+          "volume_ratio": 1.337,
+          "excess5_pct": 8.6,
+          "gap20_pct": 6.12,
+          "mean_value20": 17192435938
+        }
+      },
+      {
+        "ticker": "122640",
+        "name": "예스티",
+        "market": "KOSDAQ",
+        "early_signal": {
+          "valid": true,
+          "candidate": true,
+          "reason": "",
+          "version": "early_market_v1",
+          "asof": "2026-11-19",
+          "signals": {
+            "ma20_recovery": true,
+            "rsi50_cross": false,
+            "macd_hist_rising": true,
+            "volume_1_5x": false,
+            "index_outperformance_5d": true
+          },
+          "signal_count": 3,
+          "close": 24500.0,
+          "rsi14": 48.47,
+          "macd_hist": 379.161,
+          "volume_ratio": 1.269,
+          "excess5_pct": 2.51,
+          "gap20_pct": 1.99,
+          "mean_value20": 8445433826
+        }
+      }
+    ]
+  }
 }
