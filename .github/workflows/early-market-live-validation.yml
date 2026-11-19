@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: '3.12'
       - name: Test real Naver bars without write
-        run: python -u scripts/smoke_early_market_detector.py
+        run: python -u -m scripts.smoke_early_market_detector
   full-market-readonly:
     needs: sample-check
     runs-on: ubuntu-latest
