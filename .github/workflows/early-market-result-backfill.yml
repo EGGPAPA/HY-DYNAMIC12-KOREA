@@ -1,0 +1,24 @@
+name: One-time RSI MACD verified result backfill
+on:
+  push:
+    branches: [fix/early-market-display-backfill-20261120]
+    paths:
+      - 'scripts/backfill_early_from_artifact.py'
+      - '.github/workflows/early-market-result-backfill.yml'
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Apply verified display-only result to monitor-state
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python -u scripts/backfill_early_from_artifact.py
