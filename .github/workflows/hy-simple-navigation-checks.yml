@@ -1,0 +1,34 @@
+name: HY four-group homepage navigation checks
+
+on:
+  push:
+    branches: [feature/simplify-main-view-four-groups-20261120]
+    paths:
+      - 'app.py'
+      - 'main_navigation.py'
+      - 'tests/test_main_navigation.py'
+      - '.github/workflows/hy-simple-navigation-checks.yml'
+  pull_request:
+    paths:
+      - 'app.py'
+      - 'main_navigation.py'
+      - 'tests/test_main_navigation.py'
+      - '.github/workflows/hy-simple-navigation-checks.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  navigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Python syntax verification
+        run: python -m py_compile app.py main_navigation.py
+      - name: Navigation mapping and retained modules
+        run: python -m unittest discover -s tests -p test_main_navigation.py -v
