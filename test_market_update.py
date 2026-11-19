@@ -161,7 +161,7 @@ class UpdateFlowTests(unittest.TestCase):
 
     def test_navigation_is_rendered_disabled_before_update_then_reenabled(self):
         source = Path('app.py').read_text(encoding='utf-8')
-        block = source[source.index('quick_col, full_col = st.columns'):source.index('if selected_view == "🏠 시작":')]
+        block = source[source.index('quick_col, full_col = st.columns'):source.index('if selected_view == "🌐 시장환경":')]
         class Rerun(BaseException):
             pass
         for pressed in (True, False):
@@ -173,12 +173,19 @@ class UpdateFlowTests(unittest.TestCase):
                 quick.button.return_value = False
                 full.button.return_value = pressed
                 st.columns.return_value = (quick, full)
+                st.radio.side_effect = ("🌐 시장 분석", "🔎 전체시장 분석")
                 st.rerun.side_effect = Rerun()
                 def run(status):
                     self.assertTrue(st.radio.call_args.kwargs['disabled'])
                     return 'completed', '중립장'
+                from main_navigation import (
+                    NAV_GROUPS, DEFAULT_GROUP, GROUP_KEYS,
+                    selection_from_legacy, current_subview)
                 ns = dict(st=st, run_full_update=MagicMock(side_effect=run),
-                          run_fast_update=MagicMock(), show_update_result=MagicMock())
+                          run_fast_update=MagicMock(), show_update_result=MagicMock(),
+                          NAV_GROUPS=NAV_GROUPS, DEFAULT_GROUP=DEFAULT_GROUP,
+                          GROUP_KEYS=GROUP_KEYS, selection_from_legacy=selection_from_legacy,
+                          current_subview=current_subview)
                 if pressed:
                     with self.assertRaises(Rerun):
                         exec(block, ns)
