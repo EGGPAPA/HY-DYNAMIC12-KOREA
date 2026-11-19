@@ -1,0 +1,29 @@
+name: KIS context diagnostics safety tests
+
+on:
+  pull_request:
+    paths:
+      - "rise_live_data.py"
+      - "scripts/monitor_rise_watchlist.py"
+      - "tests/test_kis_context_diagnostics.py"
+      - ".github/workflows/kis-context-diagnostics-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install lightweight test dependencies
+        run: pip install "pandas>=2.2,<3" "streamlit==1.50.0" "requests>=2.31" "yfinance>=0.2.40"
+      - name: Syntax and market-context failure diagnostics
+        run: |
+          python -m py_compile rise_live_data.py scripts/monitor_rise_watchlist.py
+          python -m unittest discover -s tests -p test_kis_context_diagnostics.py -v
