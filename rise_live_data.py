@@ -76,7 +76,14 @@ def get_market_context(retry_revision=0):
         fallback = index_market_context(dates, now)
         if not fallback.get('error'):
             return fallback
-    return {'error': context['error'] + ' · 시장 일봉에서도 평가 기준 거래일을 확인하지 못했습니다'}
+        index_reason = fallback.get('error', '시장지수 일봉 기준일 확인 실패')
+    else:
+        index_reason = index_error
+    # Both providers' errors are sanitized locally (_kis_get prints only HTTP and
+    # msg_cd), never raw responses, access tokens, headers, or credential values.
+    # Differentiate authentication from a restricted holiday API or missing bars.
+    return {'error': ('거래일 달력: ' + str(context['error'])[:140]
+                      + ' · 시장지수 일봉: ' + str(index_reason)[:140])}
 
 
 @st.cache_data(ttl=60, max_entries=16, show_spinner=False)
