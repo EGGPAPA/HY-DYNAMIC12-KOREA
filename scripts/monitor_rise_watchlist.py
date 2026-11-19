@@ -137,7 +137,9 @@ def run(dry_run=False, force=False):
         else:
             context = get_market_context()
             if context.get('error'):
-                raise RuntimeError('KIS 거래일·인증정보 확인 필요')
+                # get_market_context already removes token, header and response
+                # contents. Include only its bounded, sanitized failure summary.
+                raise RuntimeError('KIS 거래일·인증정보 확인 필요 · ' + str(context['error'])[:310])
             token = os.getenv('GITHUB_TOKEN', '')
             saved, trend, snapshot = load_group_inputs(token)
             groups = watch_groups(saved, trend, snapshot, now, reference_day(context))
