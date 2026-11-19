@@ -1,0 +1,29 @@
+name: Early market detector offline checks
+
+on:
+  pull_request:
+    paths:
+      - "early_market_detector.py"
+      - "early_market_ui.py"
+      - "scripts/refresh_ma_convergence.py"
+      - "rise_timing_watchlist_ui.py"
+      - "tests/test_early_market_detector.py"
+      - ".github/workflows/early-market-detector-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  offline-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Syntax check
+        run: python -m py_compile early_market_detector.py early_market_ui.py scripts/refresh_ma_convergence.py rise_timing_watchlist_ui.py
+      - name: Indicator and future-leakage tests
+        run: python -m unittest discover -s tests -p test_early_market_detector.py -v
