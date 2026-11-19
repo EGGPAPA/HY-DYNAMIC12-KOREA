@@ -7,7 +7,6 @@ def inject_sidebar_labels():
         """
         <style>
         a[data-testid="stSidebarNavLink"][href$="/"] p,
-        a[data-testid="stSidebarNavLink"][href$="/ETF_전략검증"] p,
         a[data-testid="stSidebarNavLink"][href$="/전시장_선행탐지"] p,
         a[data-testid="stSidebarNavLink"][href$="/보유종목"] p,
         a[data-testid="stSidebarNavLink"][href$="/연금저축"] p,
@@ -16,9 +15,6 @@ def inject_sidebar_labels():
         }
         a[data-testid="stSidebarNavLink"][href$="/"] p::after {
             content: "🇰🇷 KR 실전선별";
-        }
-        a[data-testid="stSidebarNavLink"][href$="/ETF_전략검증"] p::after {
-            content: "🧪 ETF 검증";
         }
         a[data-testid="stSidebarNavLink"][href$="/전시장_선행탐지"] p::after {
             content: "🔎 전 시장 선행 탐지";
