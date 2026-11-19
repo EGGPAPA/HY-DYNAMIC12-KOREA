@@ -51,6 +51,22 @@ class EarlyDetectorTests(unittest.TestCase):
         split[-1]["close"] *= 2
         self.assertFalse(analyze_early(split, bars, day)["valid"])
 
+    def test_full_market_scanner_reuses_one_stock_fetch(self):
+        from unittest.mock import patch
+        from scripts import refresh_ma_convergence as scan
+        bars = sample(start=5000)
+        benchmark = sample(start=10000)
+        asof = bars[-1]["date"]
+        row = {"ticker": "000001", "name": "시험용", "market": "KOSPI",
+               "tradable": True, "ordinary": True}
+        with patch.object(scan, "fetch_bars", return_value=bars) as fetch:
+            with patch.object(scan.time, "sleep"):
+                result = scan.scan_one(row, asof, {"KOSPI": benchmark})
+        self.assertEqual(fetch.call_count, 1)
+        self.assertTrue(result["eligible"])
+        self.assertIn("early_signal", result)
+        self.assertEqual(result["early_signal"]["asof"], asof)
+
     def test_rank_only_verified_candidates(self):
         def item(code, score, excess):
             return {"ticker": code, "early_signal": {
