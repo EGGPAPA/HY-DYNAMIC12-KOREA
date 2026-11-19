@@ -694,6 +694,9 @@ def _render_watchlist_detail(results):
 def render_rise_timing_watchlist(universe=None):
     # Lazy import keeps other application views independent of this screen.
     from rise_current_price_ui import render_current_price_screen
+    from early_market_ui import render_early_market_panel
+    with st.expander("🔎 전 시장 선행 탐지 · 시험", expanded=False):
+        render_early_market_panel(_load_convergence_state())
     rows, sha = _load_watchlist()
     project = st.radio('투자 프로젝트 선택',
         ['① 단기 · 며칠~몇 주', '② 중기 · 1~3개월', '기존 개인관찰·전종목 검색'],
