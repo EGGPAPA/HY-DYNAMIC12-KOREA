@@ -241,7 +241,8 @@ def main():
         early_references = {market: fetch_bars(market) for market in ("KOSPI", "KOSDAQ")}
         if any(not bars or bars[-1]["date"] != asof for bars in early_references.values()):
             raise ValueError("지수 확정 일봉 기준일 불일치")
-    except (ValueError, KeyError, TypeError, urllib.error.URLError, TimeoutError):
+    except Exception:
+        # A secondary research indicator must never stop the existing daily scan.
         early_references, early_error = {}, "지수 자료 조회 실패 또는 확정 거래일 불일치"
     items, errors = {}, []
     with ThreadPoolExecutor(max_workers=4) as pool:
