@@ -275,10 +275,40 @@ def _frame(results, *, compact=False, sector_snapshot=None):
 
 
 
+def _five_of_seven_summary(item):
+    """Read-only 5-of-7 display from the *same* evaluated seven KIS checks.
+
+    Four mandatory conditions plus >=1 auxiliary; do not mislabel five arbitrary
+    checks as eligible. A completed prior close is never a live buy alert.
+    """
+    if not item.get('valid'):
+        return '평가 보류', '평가 보류'
+    checks = item.get('checks', {})
+    mandatory = ('gap', 'volume', 'close', 'risk')
+    auxiliary = ('stage', 'score', 'persistence')
+    if not isinstance(checks, dict) or any(key not in checks for key in mandatory + auxiliary):
+        return '평가 보류', '평가 보류'
+    m = sum(bool(checks[key]) for key in mandatory)
+    a = sum(bool(checks[key]) for key in auxiliary)
+    score = f'{m + a}/7 (필수 {m}/4 · 보조 {a}/3)'
+    if m == 4 and a >= 1:
+        if item.get('basis') == 'close':
+            return score, '🟡 종가 참고 · 매수 알림 아님'
+        if entry_signal(item):
+            return score, '🟢 조건 충족 · 장중 잠정'
+        return score, '🟠 추격주의/시간 확인'
+    return score, '⚪ 조건 미충족'
+
+
 def _group_frame(results, rows, group, selection_asof=''):
     """Read-only display: selection evidence stays separate from current evaluation."""
     frame = _frame(results, compact=group == 'AB',
                    sector_snapshot=st.session_state.get('sector_observation_last_good'))
+    # Always expose the underlying 7 checks on the selected individual names.
+    # Display-only: do not alter the underlying signal or notification gate.
+    labels = [_five_of_seven_summary(item) for item in results]
+    frame['7조건 충족'] = [label for label, verdict in labels]
+    frame['5-of-7 판정'] = [verdict for label, verdict in labels]
     source = {row['ticker']: row for row in rows}
     metadata = [source[item['ticker']] for item in results]
     frame['그룹'] = [row.get('watch_group', group) for row in metadata]
@@ -308,7 +338,8 @@ def _group_frame(results, rows, group, selection_asof=''):
     if group == 'AB':
         frame['주요사업'] = [business_context(item['ticker'])['primary'] for item in results]
         first.insert(3, '주요사업')
-    first += ['전일 대비(%)', '필수조건', '보조조건', '알림조건(현재 평가)', '단계', '시점점수', '20일선 이격']
+    first += ['전일 대비(%)', '7조건 충족', '5-of-7 판정', '필수조건', '보조조건',
+              '알림조건(현재 평가)', '단계', '시점점수', '20일선 이격']
     return frame[first + [c for c in frame if c not in first]]
 
 
