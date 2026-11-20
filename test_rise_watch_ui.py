@@ -15,6 +15,9 @@ class WatchScreenTests(unittest.TestCase):
         app = self.app()
         self.assertEqual(len(app.dataframe), 1)
         frame = app.dataframe[0].value
+        self.assertIn('7조건 충족', frame.columns)
+        self.assertIn('5-of-7 판정', frame.columns)
+        self.assertTrue(frame['7조건 충족'].str.contains('/7').all())
         self.assertEqual(set(frame['그룹']), {'A', 'B'})
         self.assertEqual(set(frame['코드']), {'000001', '000002'})
         self.assertIn('조건 약화', set(frame['현재 분류(확정 일봉)']))
@@ -35,6 +38,41 @@ class WatchScreenTests(unittest.TestCase):
         self.assertEqual(len(frame), 40)
         self.assertEqual(frame['코드'].nunique(), 40)
         self.assertEqual(frame['그룹'].value_counts().to_dict(), {'A': 20, 'B': 20})
+
+
+    def test_seven_condition_gate_and_reference_are_not_confused(self):
+        from rise_current_price_ui import _five_of_seven_summary
+        mandatory = {'gap': True, 'volume': True, 'close': True, 'risk': True}
+        aux = {'stage': True, 'score': False, 'persistence': False}
+        intraday = {'valid': True, 'basis': 'quote', 'intraday': True,
+                    'label': '🟢 상승초입', 'checks': {**mandatory, **aux}}
+        count, verdict = _five_of_seven_summary(intraday)
+        self.assertIn('5/7', count)
+        self.assertIn('필수 4/4', count)
+        self.assertIn('장중 잠정', verdict)
+        reference = dict(intraday, basis='close', intraday=False)
+        count, verdict = _five_of_seven_summary(reference)
+        self.assertIn('5/7', count)
+        self.assertIn('종가 참고', verdict)
+        self.assertNotIn('장중 잠정', verdict)
+        not_mandatory = dict(intraday, checks={
+            'gap': False, 'volume': True, 'close': True, 'risk': True,
+            'stage': True, 'score': True, 'persistence': True})
+        count, verdict = _five_of_seven_summary(not_mandatory)
+        self.assertIn('6/7', count)
+        self.assertIn('조건 미충족', verdict)
+        self.assertEqual(_five_of_seven_summary({'valid': False}), ('평가 보류', '평가 보류'))
+        self.assertEqual(_five_of_seven_summary({'valid': True, 'checks': {}}),
+                         ('평가 보류', '평가 보류'))
+
+    def test_existing_watchlist_is_default_in_current_page(self):
+        from pathlib import Path
+        source = (Path(__file__).parent / 'rise_timing_watchlist_ui.py').read_text()
+        before = source.index("['📊 기존 5-of-7 · 개별종목'")
+        after = source.index("'① 단기 · 며칠~몇 주'", before)
+        self.assertLess(before, after)
+        self.assertIn("key='rise_investment_project_v2'", source)
+        self.assertIn("key='rise_5of7_saved_stocks'", source)
 
 
 if __name__ == '__main__':

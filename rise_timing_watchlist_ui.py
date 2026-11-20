@@ -696,10 +696,13 @@ def render_rise_timing_watchlist(universe=None):
     from rise_current_price_ui import render_current_price_screen
     st.page_link("pages/5_전시장_선행탐지.py", label="🔎 전 시장 선행 탐지 · RSI/MACD 상세 차트 보기")
     rows, sha = _load_watchlist()
+    # Prior UI silently defaulted to the short project and returned before the
+    # existing 5-of-7 individual-stock table could render. Prefer it explicitly.
+    # A new key discards the old invisible default once, not any saved stock data.
     project = st.radio('투자 프로젝트 선택',
-        ['① 단기 · 며칠~몇 주', '② 중기 · 1~3개월', '기존 개인관찰·전종목 검색'],
-        horizontal=True, key='rise_investment_project')
-    if project != '기존 개인관찰·전종목 검색':
+        ['📊 기존 5-of-7 · 개별종목', '① 단기 · 며칠~몇 주', '② 중기 · 1~3개월'],
+        horizontal=True, key='rise_investment_project_v2')
+    if project != '📊 기존 5-of-7 · 개별종목':
         from strategy_projects_ui import render_strategy_project
         render_strategy_project('short' if project.startswith('①') else 'medium', rows, _load_convergence_state())
         return
@@ -708,6 +711,17 @@ def render_rise_timing_watchlist(universe=None):
         st.warning('저장된 관찰 대상을 불러오지 못했습니다. 임의로 다른 종목을 대신 선정하지 않습니다. 잠시 후 새로고침해 주세요.')
     else:
         selected_rows = active_rows(rows, cohort)
+        st.markdown('#### 📋 기존 5-of-7 개별 관찰종목')
+        st.caption(f'기존 관찰 대상 {len(selected_rows)}개 · 저장 목록 {len(rows)}개 · 종목은 보존되어 있습니다. 아래 실시간 7조건 평가는 KIS 데이터가 확인된 뒤 표시됩니다.')
+        if selected_rows:
+            st.dataframe(pd.DataFrame([
+                {'종목': row.get('name', row['ticker']), '코드': row['ticker'],
+                 '시장': row.get('market', '확인 중')}
+                for row in selected_rows
+            ]), hide_index=True, use_container_width=True,
+                key='rise_5of7_saved_stocks')
+        else:
+            st.info('현재 유지 중인 개별 관찰종목은 없습니다. 보관 종목과 최근 선정자료를 확인하세요.')
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
                                     saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''),
                                     cohort_policy=cohort.get('policy', 'convergence_v1'), saved_rows=rows)
