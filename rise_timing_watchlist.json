@@ -2877,5 +2877,26 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-19"
+  },
+  {
+    "ticker": "008830",
+    "name": "대동기어",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-20"
+  },
+  {
+    "ticker": "192080",
+    "name": "더블유게임즈",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-20"
+  },
+  {
+    "ticker": "259960",
+    "name": "크래프톤",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-20"
   }
 ]
