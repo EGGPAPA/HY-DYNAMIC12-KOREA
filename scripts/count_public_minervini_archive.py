@@ -34,6 +34,7 @@ def get(url):
 def main():
     p=argparse.ArgumentParser()
     p.add_argument("--year",type=int,default=2026)
+    p.add_argument("--since",default=None,help="inclusive date for a rolling period")
     p.add_argument("--through",default="2026-11-20")
     p.add_argument("--output",default="minervini_public_archive_counts.json")
     a=p.parse_args()
@@ -42,8 +43,9 @@ def main():
     docs_tree=get(BASE+"/git/trees/"+docs)["tree"]
     posts=next(x["sha"] for x in docs_tree if x["path"]=="_posts")
     tree=get(BASE+"/git/trees/"+posts)["tree"]
+    start=a.since or f"{a.year}-01-01"
     refs=[x for x in tree if re.fullmatch(r"\d{4}-\d{2}-\d{2}-krx-trend-template\.markdown",x["path"])
-          and x["path"][:4]==str(a.year) and x["path"][:10]<=a.through]
+          and start <= x["path"][:10] <= a.through]
     refs.sort(key=lambda x:x["path"])
 
     def read_one(entry):
@@ -76,6 +78,7 @@ def main():
         monthly[d[:7]].append(count)
     out={
         "source":"dalinaum/rs public daily KRX trend-template posts",
+        "archive_since":start,
         "archive_through":a.through,
         "year":a.year,
         "post_count":len(refs),
