@@ -32,6 +32,17 @@ STOP_RATE=.07
 TARGETS=(.10,.15,.20)
 
 
+def archive_price_matches(published_close, observed_close, tolerance=0.03):
+    """Refuse a signal if later vendor adjustments changed its historical price scale."""
+    from math import isfinite
+    try:
+        a,b=float(published_close),float(observed_close)
+    except (TypeError,ValueError):
+        return False
+    return bool(isfinite(a) and isfinite(b) and a>0 and b>0
+                and abs(b/a-1)<=tolerance)
+
+
 def get_json(url):
     import os
     headers={"Accept":"application/vnd.github+json",
@@ -190,7 +201,7 @@ def run(start,end,workers=6,limit=None):
             observed_close=float(bars[index]["close"])
             # Check retrospective price adjustments against the archived contemporaneous quote.
             # Splits/rights can make a present-day historical series incomparable to an old signal.
-            if not archived_close or abs(observed_close/archived_close-1)>0.03:
+            if not archive_price_matches(archived_close,observed_close):
                 price_mismatch_days+=1
                 price_mismatch_examples.setdefault(code,{"date":date,"published":archived_close,
                                                         "later_history":observed_close})
