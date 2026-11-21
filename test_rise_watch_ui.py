@@ -72,7 +72,28 @@ class WatchScreenTests(unittest.TestCase):
         after = source.index("'① 단기 · 며칠~몇 주'", before)
         self.assertLess(before, after)
         self.assertIn("key='rise_investment_project_v2'", source)
-        self.assertIn("key='rise_5of7_saved_stocks'", source)
+        self.assertIn("render_current_price_screen(universe, selected_rows", source)
+        live_source = (Path(__file__).parent / 'rise_current_price_ui.py').read_text()
+        self.assertIn("key='rise_saved_members_immediate'", live_source)
+        self.assertLess(live_source.index('roster = saved_member_frame(watchlist)'),
+                        live_source.index('if universe is None or universe.empty:'))
+
+
+    def test_saved_individual_roster_is_available_without_kis(self):
+        from rise_current_price_ui import saved_member_frame
+        rows = [
+            {'ticker':f'{i:06d}','name':f'종목{i}','market':'KOSPI' if i%2 else 'KOSDAQ',
+             'watch_entry':{'entry_asof':'2026-10-08'}}
+            for i in range(1,21)
+        ]
+        frame = saved_member_frame(rows)
+        self.assertEqual(len(frame),20)
+        self.assertEqual(frame.iloc[0]['종목명'],'종목1')
+        self.assertEqual(frame.iloc[-1]['종목코드'],'000020')
+        self.assertTrue((frame['최초 선정일']=='2026-10-08').all())
+        self.assertNotIn('현재가',frame.columns)
+        self.assertNotIn('5-of-7 판정',frame.columns)
+        self.assertEqual(len(saved_member_frame(rows+[rows[0]])),20)
 
 
 if __name__ == '__main__':
