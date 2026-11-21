@@ -81,7 +81,7 @@ def run():
                     f"Provider's later historical bars changed previous result: {t['pnl_pct']}, expected {prior_pnl}")
             verified.append({
                 "ticker":code,"name":name,"signal_date":asof,
-                "pnl_pct":t["pnl_pct"],**v,
+                "pnl_pct":t["pnl_pct"],"max_adverse_pct":t["max_adverse_pct"],**v,
             })
         except Exception as exc:
             excluded.append({"ticker":code,"name":name,"reason":str(exc)[:200]})
