@@ -25,7 +25,7 @@ from early_market_charts import get_naver_chart_rows
 from rise_live_analysis import evaluate_current, MANDATORY_KEYS, KST
 
 API="https://api.github.com/repos/dalinaum/rs"
-ROW=re.compile(r"^\|\[([0-9]{6})\]\([^)]*\)\|", re.M)
+ROW=re.compile(r"^\|\[([0-9]{6})\]\([^)]*\)\|([^|]*)\|([0-9,]+)\|", re.M)
 FEE_SIDE=.0015
 HOLD_SESSIONS=20
 STOP_RATE=.07
@@ -61,7 +61,8 @@ def archived_rosters(start,end):
     def read_post(entry):
         blob=get_json(API+"/git/blobs/"+entry["sha"])
         markdown=base64.b64decode(blob["content"]).decode("utf-8")
-        codes=sorted(set(ROW.findall(markdown)))
+        found=ROW.findall(markdown)
+        codes={code:float(price.replace(",","")) for code,_,price in found}
         if not codes:raise RuntimeError("Empty archive post "+entry["path"])
         return entry["path"][:10],codes
     rosters={}
@@ -173,6 +174,8 @@ def run(start,end,workers=6,limit=None):
     first_a={}
     first_b={}
     count_total=0
+    price_mismatch_days=0
+    price_mismatch_examples={}
     evaluated=0
     hy_pass_days=0
     skipped_incomplete=0
@@ -183,6 +186,15 @@ def run(start,end,workers=6,limit=None):
             bars=histories[code]
             if not any(r["date"]==date for r in bars):continue
             index=next(i for i,r in enumerate(bars) if r["date"]==date)
+            archived_close=float(ticker_list[code])
+            observed_close=float(bars[index]["close"])
+            # Check retrospective price adjustments against the archived contemporaneous quote.
+            # Splits/rights can make a present-day historical series incomparable to an old signal.
+            if not archived_close or abs(observed_close/archived_close-1)>0.03:
+                price_mismatch_days+=1
+                price_mismatch_examples.setdefault(code,{"date":date,"published":archived_close,
+                                                        "later_history":observed_close})
+                continue
             # no entry if 20-day fair-horizon future is unavailable
             if index+HOLD_SESSIONS>=len(bars):
                 skipped_incomplete+=1
@@ -210,6 +222,9 @@ def run(start,end,workers=6,limit=None):
         "archive_posts":len(posts),"archive_distinct_tickers":len({c for lst in posts.values() for c in lst}),
         "tickers_requested":len(tickers),"histories_fetched":len(histories),
         "history_error_count":len(errors),"errors_sample":dict(list(errors.items())[:15]),
+        "price_mismatch_stock_days":price_mismatch_days,
+        "price_mismatch_tickers":len(price_mismatch_examples),
+        "price_mismatch_examples":dict(list(price_mismatch_examples.items())[:12]),
         "observed_qualifier_stock_days":count_total,
         "history_valid_hy_evaluations":evaluated,
         "hy_proxy_passing_stock_days":hy_pass_days,
