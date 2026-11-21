@@ -74,7 +74,7 @@ class StandaloneHYTests(unittest.TestCase):
         row={"ticker":"000001","name":"Test","market":"KOSPI"}
         a,ta=evaluate_stock(row,rows,rows[80]["date"],rows[100]["date"])
         changed=[dict(x) for x in rows]
-        changed[-5]["close"]*=1.05
+        changed[-5]["close"]*=1.50
         b,tb=evaluate_stock(row,changed,rows[80]["date"],rows[100]["date"])
         self.assertEqual(a["raw_signal_counts"],b["raw_signal_counts"])
 
