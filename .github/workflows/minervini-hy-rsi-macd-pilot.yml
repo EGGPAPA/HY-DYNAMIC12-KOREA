@@ -6,6 +6,8 @@ on:
       - experiment/minervini-hy-rsi-macd-pilot
     paths:
       - .github/workflows/minervini-hy-rsi-macd-pilot.yml
+      - scripts/compare_minervini_hy_rsi_macd.py
+      - tests/test_minervini_hy_rsi_macd.py
   workflow_dispatch:
 
 permissions:
