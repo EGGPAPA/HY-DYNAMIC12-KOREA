@@ -1,0 +1,36 @@
+name: Minervini independent trial scan
+
+on:
+  push:
+    branches:
+      - feature/minervini-independent-trend-screen
+    paths:
+      - .github/workflows/minervini-trial-scan.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  trial:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal packages
+        run: python -m pip install requests streamlit pandas
+      - name: Run isolated unit tests (no live HY)
+        run: python -m unittest discover -s tests -p 'test_minervini_trend.py' -v
+      - name: Scan KOSPI and KOSDAQ for confirmed 2026-11-20 close
+        run: python scripts/scan_minervini.py --asof 2026-11-20 --workers 3 --output minervini_market_scan.json
+      - name: Upload independent scan snapshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: minervini-2026-11-20
+          path: minervini_market_scan.json
+          if-no-files-found: ignore
+          retention-days: 7
