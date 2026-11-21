@@ -10,6 +10,12 @@ from __future__ import annotations
 import argparse
 import json
 import math
+from pathlib import Path
+import sys
+
+ROOT=Path(__file__).resolve().parent.parent
+if str(ROOT) not in sys.path:
+    sys.path.insert(0,str(ROOT))
 
 from early_market_charts import get_naver_chart_rows
 from early_market_detector import _rsi, _ema
