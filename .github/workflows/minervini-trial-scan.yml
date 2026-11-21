@@ -24,6 +24,7 @@ jobs:
         run: python -m pip install requests streamlit pandas
       - name: Run isolated unit tests (no live HY)
         run: python -m unittest discover -s tests -p 'test_minervini_trend.py' -v
+      # Validate the exact HY mandatory-4-plus-1 rule with mocked results.
       - name: Test isolated two-stage intersection without live quotes
         run: python -m unittest discover -s tests -p 'test_minervini_hy_overlap.py' -v
       - name: Scan KOSPI and KOSDAQ for confirmed 2026-11-20 close
