@@ -1,0 +1,108 @@
+"""Optional read-only Minervini panel; never changes legacy HY buy/alert logic."""
+import base64
+import json
+
+import pandas as pd
+import requests
+import streamlit as st
+
+from early_market_charts import get_naver_chart_rows
+from minervini_trend import CHECK_LABELS, evaluate_trend
+
+STATE_URL = ("https://api.github.com/repos/EGGPAPA/HY-DYNAMIC12-KOREA/"
+             "contents/data/minervini_market_scan.json")
+
+
+@st.cache_data(ttl=120, show_spinner=False)
+def load_market_scan():
+    try:
+        token = str(st.secrets.get("GITHUB_PAT", "")).strip()
+    except Exception:
+        token = ""
+    headers = {"Accept": "application/vnd.github+json", "Cache-Control": "no-cache"}
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
+    try:
+        response = requests.get(STATE_URL, headers=headers,
+                                params={"ref": "monitor-state"}, timeout=10)
+        response.raise_for_status()
+        return json.loads(base64.b64decode(response.json()["content"]).decode())
+    except (requests.RequestException, ValueError, KeyError):
+        return None
+
+
+@st.cache_data(ttl=1200, show_spinner=False)
+def load_history(ticker, asof):
+    return get_naver_chart_rows(str(ticker), asof, count=350)
+
+
+def render_minervini_panel(rows, *, asof, key):
+    """Render optional selected-ticker evaluation for unchanged watchlist members."""
+    with st.expander("📐 미너비니 8조건 평가 · 기존 5-of-7과 별도"):
+        st.caption("확정 종가 기준 · 기존 매수판정·관찰 순위·카카오 알림에 반영하지 않음")
+        if not asof:
+            st.info("확정 종가 기준일을 확인할 수 없어 평가를 보류합니다.")
+            return
+        unique = {}
+        for row in rows or []:
+            code = str(row.get("ticker", ""))
+            if len(code) == 6 and code.isdigit():
+                unique.setdefault(code, row)
+        if not unique:
+            st.info("검증할 종목이 없습니다.")
+            return
+        options = {f"{v.get('name', k)} ({k})": k for k, v in unique.items()}
+        selected = st.selectbox("미너비니 평가 종목", list(options), key=key+"_ticker")
+        ticker = options[selected]
+        if st.button("선택 종목 8조건 계산", key=key+"_run"):
+            st.session_state[key+"_requested"] = (ticker, asof)
+        if st.session_state.get(key+"_requested") != (ticker, asof):
+            st.caption("버튼을 누르면 해당 종목의 52주 일봉을 조회하고 상세 조건을 계산합니다.")
+            return
+        scan = load_market_scan()
+        rank = None
+        if (isinstance(scan, dict) and scan.get("complete") is True
+                and scan.get("asof") == asof and scan.get("rs_ready") is True):
+            entry = (scan.get("items") or {}).get(ticker, {})
+            if entry.get("asof") == asof:
+                rank = entry.get("rs_percentile")
+        try:
+            with st.spinner("확정 일봉과 미너비니 조건을 확인하는 중..."):
+                bars = load_history(ticker, asof)
+            report = evaluate_trend(bars, asof=asof, rs_percentile=rank)
+        except Exception as exc:
+            st.warning(f"해당 종목의 과거 일봉을 확보하지 못해 평가 보류: {exc}")
+            return
+        left, right, third = st.columns(3)
+        left.metric("충족", f"{report['passed']}/8")
+        right.metric("미충족", report["failed"])
+        third.metric("보류", report["pending"])
+        if report["all_pass"]:
+            st.success("미너비니 8조건 모두 충족 · 매수 신호는 아닙니다.")
+        elif not report["valid"]:
+            st.warning("데이터 검증 보류: " + report["reason"])
+        elif report["pending"]:
+            st.info("시장 전체 RS 순위가 없어 8번 조건은 평가 보류입니다. 8/8로 표시하지 않습니다.")
+        else:
+            st.caption("일부 추세 조건 미충족 · 기존 HY 관찰목록과 매수 판단은 유지됩니다.")
+        table = [{"조건": f"{idx}. {name}",
+                  "판정": ("✅ 통과" if report["checks"][ident] is True else
+                           "❌ 미통과" if report["checks"][ident] is False else "➖ 자료 보류")}
+                 for idx,(ident,name) in enumerate(CHECK_LABELS,1)]
+        st.dataframe(pd.DataFrame(table), hide_index=True, use_container_width=True)
+        if not report["valid"]:
+            return
+        m=report["metrics"]
+        st.caption(f"{asof} 확정 종가 {m['close']:,.0f}원 · "
+                   f"50일 {m['ma50']:,.0f}원 / 150일 {m['ma150']:,.0f}원 / "
+                   f"200일 {m['ma200']:,.0f}원 · "
+                   f"52주 저가대비 {m['low52_gap_pct']:+.1f}% / "
+                   f"고가대비 {m['high52_gap_pct']:+.1f}%")
+        if rank is not None:
+            st.caption(f"HY 전체시장 RS 백분위 {rank:.1f} (공식 IBD RS Rating과 다름)")
+        frame = pd.DataFrame(bars).set_index("date")
+        frame.index = pd.to_datetime(frame.index)
+        for n in (50, 150, 200):
+            frame[f"{n}일선"] = frame["close"].rolling(n).mean()
+        st.line_chart(frame[["close", "50일선", "150일선", "200일선"]].tail(120), height=280)
+        st.caption("Naver 원시 일봉은 기업행사·수정주가 오류 가능성이 있습니다. 매매·자동주문과 연결하지 않습니다.")
