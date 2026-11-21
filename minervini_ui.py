@@ -59,6 +59,48 @@ def render_minervini_panel(rows, *, asof, key):
         if market_rank_ready:
             st.caption(f"전체시장 8/8 통과 {scan.get('eight_of_eight_count', 0)}개"
                        f" · 비교 종목 {scan.get('eligible_count', 0)}개 · {asof} 종가")
+        if st.button("🎯 미너비니 8/8 → HY 5-of-7 최종 종목 검색",
+                     key=key+"_joint_run"):
+            from datetime import datetime
+            from time import sleep
+            from minervini_hy_overlap import minervini_roster, combined_report
+            from rise_live_analysis import KST, evaluate_batches
+            from rise_live_data import get_current_quotes, get_histories, get_market_context
+            context = get_market_context()
+            full_roster, error = minervini_roster(scan, context)
+            if error:
+                st.warning(error)
+            elif not full_roster:
+                st.info("직전 확정 종가의 미너비니 8/8 통과 종목이 없습니다.")
+            else:
+                with st.spinner(f"미너비니 8/8 {len(full_roster)}종목의 KIS 장중 신호를 확인 중..."):
+                    histories = get_histories(full_roster)
+                    observations = {}
+                    def fresh_quotes(batch):
+                        return get_current_quotes([x["ticker"] for x in batch], refresh_seconds=10)
+                    # Two distinct observations for original HY persistence checks.
+                    evaluate_batches(full_roster, histories, context, fresh_quotes,
+                                     lambda: datetime.now(KST), observations)
+                    sleep(11)
+                    context = get_market_context()
+                    latest = evaluate_batches(full_roster, histories, context, fresh_quotes,
+                                              lambda: datetime.now(KST), observations)
+                    report = combined_report(full_roster, latest, context)
+                if not report["valid"]:
+                    st.warning(report["reason"])
+                else:
+                    st.success(f"미너비니 8/8 {report['screened_count']}종목 중 "
+                               f"HY 5-of-7 최종 조건 충족 {report['qualified_count']}종목")
+                    if report["candidates"]:
+                        frame = pd.DataFrame(report["candidates"])
+                        st.dataframe(frame[["name", "ticker", "price", "checks",
+                                             "mandatory", "auxiliary", "volume_ratio"]],
+                                     hide_index=True, use_container_width=True)
+                    else:
+                        st.info("현재 기준으로 두 전략을 동시에 충족한 종목이 없습니다.")
+                    st.caption(f"판정 보류 {len(report['pending'])}개 / "
+                               f"HY 조건 미충족 {len(report['failed'])}개"
+                               " · 기존 5-of-7 매수 판단·카카오 알림·관찰 목록은 변경하지 않음")
         if st.button("현재 목록 전체 8조건 계산", key=key+"_bulk_run"):
             st.session_state[key+"_bulk_asof"] = asof
         if st.session_state.get(key+"_bulk_asof") == asof:
