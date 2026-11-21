@@ -26,7 +26,7 @@ jobs:
         run: python -m unittest discover -s tests -p 'test_minervini_hy_daily_proxy.py' -v
       - name: Historical study on dated Minervini lists, with HY close proxy
         env:
-          GITHUB_TOKEN: \${{ github.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         run: python scripts/backtest_minervini_hy_daily_proxy.py --start 2026-08-03 --end 2026-11-20 --workers 6 --output minervini_hy_daily_proxy_result.json
       - name: Upload auditable result
         if: always()
