@@ -711,17 +711,9 @@ def render_rise_timing_watchlist(universe=None):
         st.warning('저장된 관찰 대상을 불러오지 못했습니다. 임의로 다른 종목을 대신 선정하지 않습니다. 잠시 후 새로고침해 주세요.')
     else:
         selected_rows = active_rows(rows, cohort)
-        st.markdown('#### 📋 기존 5-of-7 개별 관찰종목')
-        st.caption(f'기존 관찰 대상 {len(selected_rows)}개 · 저장 목록 {len(rows)}개 · 종목은 보존되어 있습니다. 아래 실시간 7조건 평가는 KIS 데이터가 확인된 뒤 표시됩니다.')
-        if selected_rows:
-            st.dataframe(pd.DataFrame([
-                {'종목': row.get('name', row['ticker']), '코드': row['ticker'],
-                 '시장': row.get('market', '확인 중')}
-                for row in selected_rows
-            ]), hide_index=True, use_container_width=True,
-                key='rise_5of7_saved_stocks')
-        else:
-            st.info('현재 유지 중인 개별 관찰종목은 없습니다. 보관 종목과 최근 선정자료를 확인하세요.')
+        # The current-price screen now shows the persisted 20-stock roster
+        # immediately, before any KIS history loads. Avoid rendering it twice.
+        st.caption(f'저장 관찰 {len(selected_rows)}개 · 전체 보관 {len(rows)}개 · 명단은 조회 중에도 표시됩니다.')
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
                                     saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''),
                                     cohort_policy=cohort.get('policy', 'convergence_v1'), saved_rows=rows)
