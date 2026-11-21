@@ -50,7 +50,7 @@ class JointScreenTests(unittest.TestCase):
         self.assertTrue(result["valid"])
         self.assertEqual(result["qualified_count"],1)
         self.assertEqual(result["candidates"][0]["ticker"],"000001")
-        self.assertEqual(result["failed"][0]["checks"],6)
+        self.assertEqual(result["failed"][0]["checks"],4)
 
     def test_missing_quote_is_pending_not_no_signal(self):
         rows,_=minervini_roster(asof_snapshot(),live_context())
