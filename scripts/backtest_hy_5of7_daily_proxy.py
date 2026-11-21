@@ -150,7 +150,6 @@ def evaluate_stock(row,bars,start,end):
     pre=((closes>=high20)&(volumes>=1.5*vol20)&(vol20>0)&(volumes>0))
     invalid_jump=(closes.pct_change().abs()>.40).fillna(False)
     jump_recent=invalid_jump.rolling(65,min_periods=1).max()
-    jump_forward=invalid_jump.iloc[::-1].rolling(HOLD_BARS+1,min_periods=1).max().iloc[::-1]
     historical=pd.DataFrame({"Close":closes.values,"Volume":volumes.values},
                              index=pd.to_datetime([b["date"] for b in bars]))
     rsi,hist=indicators(closes.to_list())
@@ -163,7 +162,7 @@ def evaluate_stock(row,bars,start,end):
         day=bars[i]["date"]
         if day<start or day>end or not bool(pre.iloc[i]):continue
         examined+=1
-        if bool(jump_recent.iloc[i]) or bool(jump_forward.iloc[i]):
+        if bool(jump_recent.iloc[i]):
             skipped_jumps+=1
             continue
         hist_cut=historical.iloc[:i+1]
