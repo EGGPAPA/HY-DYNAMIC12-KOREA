@@ -51,6 +51,49 @@ def render_minervini_panel(rows, *, asof, key):
         if not unique:
             st.info("검증할 종목이 없습니다.")
             return
+        # The optional bulk table exposes all preserved watchlist members without
+        # editing the watchlist or the 5-of-7 ranking/alerts.
+        scan = load_market_scan()
+        market_rank_ready = (isinstance(scan, dict) and scan.get("complete") is True
+                             and scan.get("asof") == asof and scan.get("rs_ready") is True)
+        if market_rank_ready:
+            st.caption(f"전체시장 8/8 통과 {scan.get('eight_of_eight_count', 0)}개"
+                       f" · 비교 종목 {scan.get('eligible_count', 0)}개 · {asof} 종가")
+        if st.button("현재 목록 전체 8조건 계산", key=key+"_bulk_run"):
+            st.session_state[key+"_bulk_asof"] = asof
+        if st.session_state.get(key+"_bulk_asof") == asof:
+            from concurrent.futures import ThreadPoolExecutor
+
+            def evaluate_member(member):
+                ticker, item = member
+                rank = None
+                if market_rank_ready:
+                    stock_record = (scan.get("items") or {}).get(ticker, {})
+                    if stock_record.get("asof") == asof:
+                        rank = stock_record.get("rs_percentile")
+                try:
+                    history = load_history(ticker, asof)
+                    return ticker, item, evaluate_trend(history, asof=asof, rs_percentile=rank)
+                except Exception as exc:
+                    return ticker, item, {"valid": False, "passed": 0, "failed": 0,
+                                          "pending": 8, "checks": {}, "reason": str(exc)}
+
+            with st.spinner("선택 목록 전체의 확정 일봉을 조회하는 중..."):
+                with ThreadPoolExecutor(max_workers=3) as pool:
+                    outputs = list(pool.map(evaluate_member, unique.items()))
+            table_rows = []
+            for ticker, item, report in outputs:
+                status = ("✅ 8/8" if report["valid"] and report["passed"] == 8
+                          else "➖ 평가 보류" if not report["valid"]
+                          else f"{report['passed']}/8 · 보류 {report['pending']}")
+                row = {"종목": item.get("name", ticker), "코드": ticker, "결과": status}
+                for i,(identifier,_) in enumerate(CHECK_LABELS, 1):
+                    value = report["checks"].get(identifier)
+                    row[str(i)] = ("✓" if value is True else "✕" if value is False else "—")
+                table_rows.append(row)
+            st.dataframe(pd.DataFrame(table_rows), hide_index=True,
+                         use_container_width=True)
+            st.caption("각 번호는 아래 상세 평가의 8조건과 같습니다. —는 통과가 아닌 평가 보류입니다.")
         options = {f"{v.get('name', k)} ({k})": k for k, v in unique.items()}
         selected = st.selectbox("미너비니 평가 종목", list(options), key=key+"_ticker")
         ticker = options[selected]
