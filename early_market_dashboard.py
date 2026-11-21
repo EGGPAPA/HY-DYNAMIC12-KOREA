@@ -214,6 +214,9 @@ def render_early_market_dashboard():
     # Snapshot comparisons are approximate due to vendor revisions and rounding.
     st.caption(f'{chosen["name"]} · {chosen["ticker"]} · {asof}까지 확정된 일봉 · Naver 원시 OHLCV')
     show_charts(records, days)
+    # Optional completed-day trend assessment, completely separate from RSI/MACD signals.
+    from minervini_ui import render_minervini_panel
+    render_minervini_panel([chosen], asof=asof, key='minervini_early')
     with st.expander("해당 종목의 선행 신호 상세"):
         names = {"ma20_recovery":"20일선 회복", "rsi50_cross":"RSI 50 상향",
                  "macd_hist_rising":"MACD 히스토그램 상승",
