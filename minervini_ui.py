@@ -62,8 +62,6 @@ def render_minervini_panel(rows, *, asof, key):
         if st.button("현재 목록 전체 8조건 계산", key=key+"_bulk_run"):
             st.session_state[key+"_bulk_asof"] = asof
         if st.session_state.get(key+"_bulk_asof") == asof:
-            from concurrent.futures import ThreadPoolExecutor
-
             def evaluate_member(member):
                 ticker, item = member
                 rank = None
@@ -79,8 +77,8 @@ def render_minervini_panel(rows, *, asof, key):
                                           "pending": 8, "checks": {}, "reason": str(exc)}
 
             with st.spinner("선택 목록 전체의 확정 일봉을 조회하는 중..."):
-                with ThreadPoolExecutor(max_workers=3) as pool:
-                    outputs = list(pool.map(evaluate_member, unique.items()))
+                # Sequential cached reads keep Streamlit's session context intact.
+                outputs = [evaluate_member(member) for member in unique.items()]
             table_rows = []
             for ticker, item, report in outputs:
                 status = ("✅ 8/8" if report["valid"] and report["passed"] == 8
