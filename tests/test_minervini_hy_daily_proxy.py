@@ -3,7 +3,7 @@ import unittest
 from datetime import date, timedelta
 from pathlib import Path
 
-from scripts.backtest_minervini_hy_daily_proxy import simulate_trade, hy_close_proxy
+from scripts.backtest_minervini_hy_daily_proxy import simulate_trade, hy_close_proxy, archive_price_matches
 from rise_live_analysis import entry_signal
 
 
@@ -37,6 +37,12 @@ class DailyProxyTests(unittest.TestCase):
         self.assertEqual(t["fills"][0][0],"stop")
         self.assertEqual(len(t["fills"]),1)
         self.assertLess(t["pnl_pct"],-7)
+
+    def test_split_adjustment_mismatch_excludes_signal(self):
+        self.assertTrue(archive_price_matches(7240, 7240))
+        self.assertTrue(archive_price_matches(10000, 10200))
+        self.assertFalse(archive_price_matches(10880, 2178))
+        self.assertFalse(archive_price_matches(10000, 7000))
 
     def test_no_future_bar_means_no_full_horizon(self):
         bars=fixture()
