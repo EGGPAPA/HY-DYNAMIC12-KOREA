@@ -23,10 +23,16 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: python scripts/count_public_minervini_archive.py --year 2026 --through 2026-11-20 --output public_minervini_2026_ytd.json
-      - name: Upload reproducible annual count
+      - name: Count unique qualifiers over trailing 12 months
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/count_public_minervini_archive.py --since 2025-11-21 --through 2026-11-20 --output public_minervini_trailing_12m.json
+      - name: Upload reproducible annual counts
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: public-minervini-2026-ytd
-          path: public_minervini_2026_ytd.json
+          path: |
+            public_minervini_2026_ytd.json
+            public_minervini_trailing_12m.json
           if-no-files-found: ignore
