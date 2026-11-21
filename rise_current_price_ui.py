@@ -104,6 +104,32 @@ def won(value):
     return '—' if value is None else f'{value:,.0f}원'
 
 
+def saved_member_frame(rows):
+    """Immediate, read-only roster using persisted members; no KIS history required.
+
+    These are *selected observation names*, NOT verified 5-of-7 entry signals.
+    Never infer current prices or eligibility from the original selection scores.
+    """
+    data = []
+    seen = set()
+    for item in (rows or [])[:DISPLAY_LIMIT]:
+        ticker = str(item.get('ticker', '')).zfill(6)
+        if len(ticker) != 6 or not ticker.isdigit() or ticker in seen:
+            continue
+        seen.add(ticker)
+        entry = item.get('watch_entry') or {}
+        data.append({
+            '번호': len(data) + 1,
+            '종목명': str(item.get('name') or ticker),
+            '종목코드': ticker,
+            '시장': str(item.get('market') or '미확인'),
+            '최초 선정일': entry.get('entry_asof') or item.get('entry_asof') or '기록 확인 필요',
+        })
+    return pd.DataFrame(data, columns=['번호', '종목명', '종목코드', '시장', '최초 선정일'])
+
+
+
+
 def _quotes_for_context(rows, context, seconds=10):
     # Reference evaluation uses its dated daily bar, not an undated holiday quote.
     if context.get('basis') == 'close':
@@ -593,6 +619,16 @@ def _render_live_scan(rows, send_alerts, promote):
 
 def render_current_price_screen(universe, watchlist, send_alerts, promote, *, saved_count=None, cohort_asof='', cohort_policy='convergence_v1', saved_rows=None):
     st.subheader('📍 현재가 기준 상승시점 평가')
+    # Show each persisted B observation before any slower all-market, KIS, RSI
+    # or chart fetch. This stable roster stays visible even during data outages.
+    roster = saved_member_frame(watchlist)
+    st.markdown(f'### 📋 기존 5-of-7 개별 관찰종목 ({len(roster)}개)')
+    if roster.empty:
+        st.info('현재 저장된 관찰종목이 없습니다. 선정자료를 확인해 주세요.')
+    else:
+        st.dataframe(roster, hide_index=True, use_container_width=True,
+                     key='rise_saved_members_immediate')
+        st.caption('이 목록은 저장된 관찰 대상입니다. 매수 조건(필수 4/4 + 보조 1개 이상)은 아래 KIS 평가 후 별도 표시됩니다.')
     st.caption('장중에는 KIS 현재가·누적 거래량, 휴일·장 시작 전에는 최근 확정 일봉의 종가·하루 거래량으로 평가합니다. 과거 서버 판정을 재사용하지 않고 같은 계산식으로 다시 평가합니다.')
     st.caption('현재가 돌파는 종가 확정이 아닙니다. 거래량 배수는 당일 누적 거래량 ÷ 직전 20일 하루 평균으로, 오전에는 낮을 수 있습니다.')
     if st.button('🔄 일봉·현재가 모두 다시 조회', key='rise_current_reload'):
