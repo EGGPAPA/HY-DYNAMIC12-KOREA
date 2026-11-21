@@ -11,10 +11,17 @@ class WatchScreenTests(unittest.TestCase):
         self.assertEqual(len(app.exception), 0)
         return app
 
+    @staticmethod
+    def _evaluated_frame(app):
+        """There are now two independent tables: saved names and KIS evaluations."""
+        return next(item.value for item in app.dataframe
+                    if '7조건 충족' in item.value.columns)
+
     def test_one_table_union_and_group_filter_keep_a_visible(self):
         app = self.app()
-        self.assertEqual(len(app.dataframe), 1)
-        frame = app.dataframe[0].value
+        self.assertEqual(len(app.dataframe), 2)
+        self.assertIn('종목명', app.dataframe[0].value.columns)
+        frame = self._evaluated_frame(app)
         self.assertIn('7조건 충족', frame.columns)
         self.assertIn('5-of-7 판정', frame.columns)
         self.assertTrue(frame['7조건 충족'].str.contains('/7').all())
@@ -23,18 +30,17 @@ class WatchScreenTests(unittest.TestCase):
         self.assertIn('조건 약화', set(frame['현재 분류(확정 일봉)']))
         app.radio(key='rise_watch_group_view').set_value('A 상승 초기').run()
         self.assertEqual(len(app.exception), 0)
-        self.assertEqual(len(app.dataframe), 1)
-        self.assertEqual(list(app.dataframe[0].value['그룹']), ['A'])
+        self.assertEqual(list(self._evaluated_frame(app)['그룹']), ['A'])
         app.radio(key='rise_watch_group_view').set_value('B 기존 주도주').run()
-        self.assertEqual(list(app.dataframe[0].value['그룹']), ['B'])
+        self.assertEqual(list(self._evaluated_frame(app)['그룹']), ['B'])
         app.radio(key='rise_watch_group_view').set_value('통합 A+B').run()
-        self.assertEqual(len(app.dataframe[0].value), 2)
+        self.assertEqual(len(self._evaluated_frame(app)), 2)
 
     def test_combined_forty_is_not_silently_truncated_to_twenty(self):
         app = self.app()
         app.checkbox(key='forty').check().run()
         self.assertEqual(len(app.exception), 0)
-        frame = app.dataframe[0].value
+        frame = self._evaluated_frame(app)
         self.assertEqual(len(frame), 40)
         self.assertEqual(frame['코드'].nunique(), 40)
         self.assertEqual(frame['그룹'].value_counts().to_dict(), {'A': 20, 'B': 20})
@@ -72,7 +78,28 @@ class WatchScreenTests(unittest.TestCase):
         after = source.index("'① 단기 · 며칠~몇 주'", before)
         self.assertLess(before, after)
         self.assertIn("key='rise_investment_project_v2'", source)
-        self.assertIn("key='rise_5of7_saved_stocks'", source)
+        self.assertIn("render_current_price_screen(universe, selected_rows", source)
+        live_source = (Path(__file__).parent / 'rise_current_price_ui.py').read_text()
+        self.assertIn("key='rise_saved_members_immediate'", live_source)
+        self.assertLess(live_source.index('roster = saved_member_frame(watchlist)'),
+                        live_source.index('if universe is None or universe.empty:'))
+
+
+    def test_saved_individual_roster_is_available_without_kis(self):
+        from rise_current_price_ui import saved_member_frame
+        rows = [
+            {'ticker':f'{i:06d}','name':f'종목{i}','market':'KOSPI' if i%2 else 'KOSDAQ',
+             'watch_entry':{'entry_asof':'2026-10-08'}}
+            for i in range(1,21)
+        ]
+        frame = saved_member_frame(rows)
+        self.assertEqual(len(frame),20)
+        self.assertEqual(frame.iloc[0]['종목명'],'종목1')
+        self.assertEqual(frame.iloc[-1]['종목코드'],'000020')
+        self.assertTrue((frame['최초 선정일']=='2026-10-08').all())
+        self.assertNotIn('현재가',frame.columns)
+        self.assertNotIn('5-of-7 판정',frame.columns)
+        self.assertEqual(len(saved_member_frame(rows+[rows[0]])),20)
 
 
 if __name__ == '__main__':
