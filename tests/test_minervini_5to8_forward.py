@@ -58,6 +58,8 @@ class MinerviniForwardTests(unittest.TestCase):
         self.assertIn("3m",x)
         self.assertIn("6m",x)
         self.assertGreater(x["6m"]["return_pct"],x["3m"]["return_pct"])
+        self.assertGreaterEqual(x["6m"]["max_favorable_pct"]+1e-9,x["6m"]["return_pct"])
+        self.assertLessEqual(x["6m"]["max_adverse_pct"]-1e-9,x["6m"]["return_pct"])
 
     def test_monthly_anchors_use_last_day_in_each_month(self):
         b=fake_rows()
