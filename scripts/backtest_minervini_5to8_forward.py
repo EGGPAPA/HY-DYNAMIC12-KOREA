@@ -76,8 +76,8 @@ def monthly_anchors(histories):
 
 def price_history_good(bars, idx):
     """Past-only corporate action diagnostic; no forward prices in eligibility."""
-    closes=[float(x["close"]) for x in bars[max(0,idx-64):idx+1]]
-    if len(closes)<60:
+    closes=[float(x["close"]) for x in bars[max(0,idx-253):idx+1]]
+    if len(closes)<250:
         return False
     if any(not math.isfinite(x) or x<=0 for x in closes):
         return False
@@ -92,6 +92,15 @@ def outcomes(bars, idx):
     entry=float(bars[entry_idx]["open"])
     if not math.isfinite(entry) or entry<=0:return None
     out={"entry_date":bars[entry_idx]["date"],"entry_price":entry}
+    # A >40% single-session close jump violates ordinary KRX price limits:
+    # treat future corporate-action scale changes as an invalid OUTCOME,
+    # never as a reason to reassign the historic signal group.
+    span=bars[entry_idx-1:entry_idx+max(SESSIONS.values())+1]
+    scales=[float(x["close"]) for x in span]
+    if any((not math.isfinite(x) or x<=0) for x in scales):
+        return None
+    if any(abs(scales[i]/scales[i-1]-1)>.40 for i in range(1,len(scales))):
+        return None
     for name,days in SESSIONS.items():
         forward=bars[entry_idx:entry_idx+days]
         final=float(bars[entry_idx+days]["close"])
