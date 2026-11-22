@@ -102,9 +102,11 @@ def outcomes(bars, idx):
     if any(abs(scales[i]/scales[i-1]-1)>.40 for i in range(1,len(scales))):
         return None
     for name,days in SESSIONS.items():
-        forward=bars[entry_idx:entry_idx+days]
+        # Include the final close date in maximum favorable/adverse excursion.
+        # This guarantees favorable high >= the terminal closing price.
+        forward=bars[entry_idx:entry_idx+days+1]
         final=float(bars[entry_idx+days]["close"])
-        if len(forward)!=days:return None
+        if len(forward)!=days+1:return None
         highs=[float(x["high"]) for x in forward]
         lows=[float(x["low"]) for x in forward]
         if not all(math.isfinite(x) and x>0 for x in highs+lows+[final]):
