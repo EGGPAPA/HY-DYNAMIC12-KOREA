@@ -62,8 +62,9 @@ class MinerviniForwardTests(unittest.TestCase):
     def test_monthly_anchors_use_last_day_in_each_month(self):
         b=fake_rows()
         r=monthly_anchors({"000001":({"ticker":"000001"},b)})
-        # Dates outside configured signal horizon are filtered.
-        self.assertFalse(r)
+        self.assertTrue(r)
+        for month,asof in r.items():
+            self.assertEqual(asof,max(x["date"] for x in b if x["date"][:7]==month))
 
     def test_group_summary_does_not_claim_portfolio_return(self):
         rows=[{"ticker":"A","return_pct":10,"max_favorable_pct":20,
