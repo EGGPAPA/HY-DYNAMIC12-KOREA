@@ -81,6 +81,7 @@ def signal_after_month_end(raw, anchors, start=EVAL_START, signal_end=SIGNAL_END
     by_month=defaultdict(Counter)
     by_year=defaultdict(lambda:defaultdict(Counter))
     hits={}
+    cohort_events=[]
     ranking_failures=0
     evaluations=0
     hy_checked_days=0
@@ -114,6 +115,12 @@ def signal_after_month_end(raw, anchors, start=EVAL_START, signal_end=SIGNAL_END
             by_group[group]+=1
             by_month[month][group]+=1
             by_year[month[:4]][group]["classified"]+=1
+            # All month-end cohort members are included for selection research,
+            # independent of subsequent HY signals. Future outcomes measured later.
+            cohort_events.append({
+                "ticker":code,"group":group,"cohort_month":month,
+                "cohort_asof":asof
+            })
             for k in range(index+1,len(bars)-1):
                 day=bars[k]["date"]
                 if day[:7]!=next_month:break
@@ -155,7 +162,7 @@ def signal_after_month_end(raw, anchors, start=EVAL_START, signal_end=SIGNAL_END
         scorecard.append({"month":month,"accepted":True,"eligible":len(preliminary),
                           "group_counts":dict(valid_groups)})
     events=sorted(hits.values(),key=lambda x:(x["entry_date"],-x["hy_score"],-x["sample_rs"],x["ticker"]))
-    return events,{"months_scored":sum(x["accepted"] for x in scorecard),
+    return events,cohort_events,{"months_scored":sum(x["accepted"] for x in scorecard),
                    "months_unranked":ranking_failures,
                    "monthly_cohort_counts":{m:dict(c) for m,c in by_month.items()},
                    "year_group_counts":{y:{str(g):dict(v) for g,v in grp.items()} for y,grp in by_year.items()},
@@ -373,8 +380,10 @@ def run(per_market=180,workers=6):
     if len(raw)<int(len(chosen)*.70):
         raise RuntimeError("OHLCV coverage under 70%; refuse to report pilot")
     anchors=monthly_anchors(raw)
-    events,quality=signal_after_month_end(raw,anchors)
-    forward=period_summary(events,raw)
+    events,cohort_events,quality=signal_after_month_end(raw,anchors)
+    # Stage 2-3 unconditional selection-power study vs Stage 4 HY-conditional.
+    forward=period_summary(cohort_events,raw)
+    forward_after_hy=period_summary(events,raw)
     matrix=[]
     trade_examples={}
     for group in GROUPS:
@@ -405,7 +414,8 @@ def run(per_market=180,workers=6):
             "fees":"0.15% per transaction side, gap stop at worse opening price",
             "biases":"full PIT listings, delisted returns, reconciled corporate actions, actual 10-60s quotes missing"},
         "stage2_stage3":{"monthly_yearly_counts":quality,
-                         "horizon_3m_6m":forward},
+                         "horizon_3m_6m":forward,
+                         "horizon_only_after_HY_signal":forward_after_hy},
         "stage4":{"HY_proxy_events":len(events),
                   "HY_daily_prechecks":quality["hy_precheck_evaluations"],
                   "actual_live_5of7_backtest":False,
@@ -416,7 +426,8 @@ def run(per_market=180,workers=6):
     print("INTEGRATED_RESULT "+json.dumps({
        "status":output["status"],"valid_production_backtest":False,
        "coverage":output["coverage"],
-       "stage2":{"months":quality["months_scored"],"monthly_cohorts":quality["total_cohort_stock_months"]},
+       "stage2":{"months":quality["months_scored"],"monthly_cohorts":quality["total_cohort_stock_months"],
+                 "cohort_records":len(cohort_events)},
        "stage3_years":list(forward["by_year"]),
        "stage4":{"signal_events":len(events),"HY_prechecks":quality["hy_precheck_evaluations"]},
        "stage5":matrix},ensure_ascii=False))
