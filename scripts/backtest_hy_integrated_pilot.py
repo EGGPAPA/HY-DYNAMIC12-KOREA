@@ -345,11 +345,12 @@ def portfolio(events,raw,group,variant,initial=INITIAL_CASH):
     cagr=((cash/initial)**(1/years)-1)*100 if cash>0 else -100
     profit=sum(max(0,t["pnl_won"]) for t in closed)
     losses=sum(-min(0,t["pnl_won"]) for t in closed)
+    winners=sorted((x["pnl_won"] for x in closed if x["pnl_won"]>0),reverse=True)
     year_stats={}
     for year in sorted({x["date"][:4] for x in daily}):
         subset=[x for x in daily if x["date"].startswith(year)]
         if subset:
-            before=next((x["equity"] for x in daily if x["date"]<subset[0]["date"]),initial)
+            before=next((x["equity"] for x in reversed(daily) if x["date"]<subset[0]["date"]),initial)
             year_stats[year]={"return_pct":round(100*(subset[-1]["equity"]/before-1),3),
                               "trades_entered":sum(t["entry_date"].startswith(year) for t in closed)}
     report={
@@ -362,6 +363,9 @@ def portfolio(events,raw,group,variant,initial=INITIAL_CASH):
         "mean_trade_pct":round(statistics.mean(x["return_pct"] for x in closed),3) if closed else None,
         "median_trade_pct":round(statistics.median(x["return_pct"] for x in closed),3) if closed else None,
         "profit_factor":round(profit/losses,3) if losses>0 else None,
+        "best_trade_pnl_won":round(winners[0],2) if winners else None,
+        "top1_share_of_gross_winning_pnl_pct":round(100*winners[0]/profit,2) if winners and profit else None,
+        "top3_share_of_gross_winning_pnl_pct":round(100*sum(winners[:3])/profit,2) if winners and profit else None,
         "avg_invested_pct":round(100*statistics.mean((x["equity"]-x["cash"])/x["equity"] for x in daily),2) if daily else None,
         "by_year":year_stats,"order_stats":dict(stats)
     }
