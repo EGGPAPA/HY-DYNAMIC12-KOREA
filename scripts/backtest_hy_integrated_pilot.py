@@ -177,6 +177,7 @@ def period_summary(events,raw):
     from collections import defaultdict
     rows=defaultdict(list)
     annual=defaultdict(lambda:defaultdict(list))
+    monthly=defaultdict(lambda:defaultdict(list))
     for event in events:
         ticker=event["ticker"]
         bars=raw[ticker][1]
@@ -188,6 +189,7 @@ def period_summary(events,raw):
             d=outcome[h]
             rows[(event["group"],h)].append(d)
             annual[(event["cohort_month"][:4],h)][event["group"]].append(d)
+            monthly[(event["cohort_month"],h)][event["group"]].append(d)
     def aggregate(items):
         if not items:return {"events":0}
         n=len(items)
@@ -201,7 +203,9 @@ def period_summary(events,raw):
     return {"by_group":{str(g):{h:aggregate(rows[(g,h)]) for h in ("3m","6m")}
                         for g in GROUPS},
             "by_year":{f"{y}_{h}":{str(g):aggregate(v) for g,v in groups.items()}
-                       for (y,h),groups in sorted(annual.items())}}
+                       for (y,h),groups in sorted(annual.items())},
+            "by_month":{f"{m}_{h}":{str(g):aggregate(v) for g,v in groups.items()}
+                        for (m,h),groups in sorted(monthly.items())}}
 
 
 def trade_close(position, shares, price, date, reason, cash):
