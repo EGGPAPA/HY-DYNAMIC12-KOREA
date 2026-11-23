@@ -1,0 +1,38 @@
+name: HY five-stage integrated portfolio research pilot
+
+on:
+  push:
+    branches:
+      - experiment/hy-integrated-pit-risk-study
+    paths:
+      - .github/workflows/hy-integrated-pilot.yml
+      - scripts/backtest_hy_integrated_pilot.py
+      - tests/test_hy_integrated_pilot.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integrated:
+    runs-on: ubuntu-latest
+    timeout-minutes: 29
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install research environment
+        run: python -m pip install 'pandas>=2.0' 'requests>=2.31' 'streamlit>=1.35'
+      - name: Offline no-lookahead portfolio invariants
+        run: python -m unittest discover -s tests -p 'test_hy_integrated_pilot.py' -v
+      - name: Five-stage conditional pilot and cash-funded portfolio
+        run: python scripts/backtest_hy_integrated_pilot.py --per-market 180 --workers 6 --output hy_integrated_pilot_results.json
+      - name: Keep auditable research output
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hy-five-stage-portfolio-research-pilot
+          path: hy_integrated_pilot_results.json
+          if-no-files-found: ignore
+          retention-days: 21
