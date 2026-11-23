@@ -6,6 +6,8 @@ this detector with the existing 5-of-7 or KIS live-entry decisions.
 from math import isfinite
 from statistics import mean
 
+from early_entry_levels import compute_price_levels
+
 VERSION = "early_market_v1"
 MIN_BARS = 85
 MIN_VALUE20 = 2_000_000_000
@@ -107,15 +109,27 @@ def analyze_early(bars, benchmark_bars, asof):
                      and 0 <= gap20 <= 10 and ret5 <= 18
                      and volume_ratio >= 1.2 and count >= 3
                      and (rsi_cross or hist_rising))
-        return {"valid": True, "candidate": bool(candidate), "reason": "",
-                "version": VERSION, "asof": asof,
-                "signals": signals, "signal_count": count,
-                "close": round(c[-1], 2), "rsi14": round(rsi[-1], 2),
-                "macd_hist": round(hist[-1], 4),
-                "volume_ratio": round(volume_ratio, 3),
-                "excess5_pct": round(excess5, 2),
-                "gap20_pct": round(gap20, 2),
-                "mean_value20": round(mean_value20)}
+        result = {"valid": True, "candidate": bool(candidate), "reason": "",
+                  "version": VERSION, "asof": asof,
+                  "signals": signals, "signal_count": count,
+                  "close": round(c[-1], 2), "rsi14": round(rsi[-1], 2),
+                  "macd_hist": round(hist[-1], 4),
+                  "volume_ratio": round(volume_ratio, 3),
+                  "excess5_pct": round(excess5, 2),
+                  "gap20_pct": round(gap20, 2),
+                  "mean_value20": round(mean_value20)}
+        if candidate:
+            # Reuse the already-fetched 100 completed sessions. This does not
+            # request another price feed or change the original five signals.
+            # If a reference cannot be verified, leave it absent and hold.
+            try:
+                completed = sorted((row for row in bars
+                                    if str(row.get("date", "")) <= asof),
+                                   key=lambda row: row["date"])
+                result["entry_levels"] = compute_price_levels(completed, asof)
+            except (ValueError, TypeError, KeyError, OverflowError):
+                pass
+        return result
     except (ValueError, TypeError, KeyError, IndexError, ZeroDivisionError, OverflowError) as exc:
         return {**held, "reason": str(exc)[:100]}
 
