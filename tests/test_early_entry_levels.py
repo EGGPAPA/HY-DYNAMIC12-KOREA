@@ -92,7 +92,11 @@ class EntryPriceLevelTests(unittest.TestCase):
         l=compute_price_levels(rows,asof)
         signal={"close":rows[-1]["close"],"asof":asof}
         self.assertIsNotNone(checked_levels(signal,asof,l))
-        self.assertIn("HY 재확인",decision_text(signal,l))
+        # The source fixture is steep enough that the structural stop may
+        # exceed 7%, in which case withholding a buy is the correct behavior.
+        self.assertIn("손절 위험 초과",decision_text(signal,l))
+        safe={**l,"risk_at_close_pct":5.0}
+        self.assertIn("HY 재확인",decision_text(signal,safe))
         self.assertIn("보류",decision_text(signal,l,stale=True))
         bad={**l,"reference_close":rows[-1]["close"]*1.10}
         self.assertIsNone(checked_levels(signal,asof,bad))
