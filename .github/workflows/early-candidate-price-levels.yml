@@ -1,0 +1,43 @@
+name: Early candidate price reference columns
+
+on:
+  push:
+    branches:
+      - feature/early-signal-price-levels
+    paths:
+      - early_entry_levels.py
+      - early_market_detector.py
+      - early_market_dashboard.py
+      - tests/test_early_entry_levels.py
+      - .github/workflows/early-candidate-price-levels.yml
+  pull_request:
+    paths:
+      - early_entry_levels.py
+      - early_market_detector.py
+      - early_market_dashboard.py
+      - tests/test_early_entry_levels.py
+      - .github/workflows/early-candidate-price-levels.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  read-only-ui-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install screen and unit-test dependencies
+        run: python -m pip install 'pandas>=2.2,<3' 'streamlit==1.50.0' 'altair>=5,<6' 'requests>=2.31' 'numpy>=2,<3' 'yfinance>=0.2.40'
+      - name: Syntax check
+        run: python -m py_compile early_entry_levels.py early_market_detector.py early_market_dashboard.py
+      - name: Test price reference calculation and safety
+        run: python -m unittest discover -s tests -p 'test_early_entry_levels.py' -v
+      - name: Existing early detector regression tests
+        run: python -m unittest discover -s tests -p 'test_early_market_detector.py' -v
+      - name: Existing chart and sidebar regression tests
+        run: python -m unittest discover -s tests -p 'test_early_market_charts.py' -v
