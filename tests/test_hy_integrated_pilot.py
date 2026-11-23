@@ -75,6 +75,16 @@ class TestIntegratedPilot(unittest.TestCase):
         self.assertEqual(runner["completed_trades"],1)
         self.assertGreater(t2[0]["return_pct"],t1[0]["return_pct"])
 
+    def test_annual_return_compounds_to_total(self):
+        bars=fixture(450,.004)
+        ix=20
+        raw={"000001":({"ticker":"000001"},bars)}
+        report,trades,daily=portfolio([event(bars,ix)],raw,8,"runner")
+        product=1.
+        for item in report["by_year"].values():
+            product*=1+item["return_pct"]/100
+        self.assertAlmostEqual((product-1)*100,report["total_return_pct"],delta=.03)
+
     def test_wrong_group_has_no_entries(self):
         bars=fixture()
         r,trades,daily=portfolio([event(bars)],{"000001":({"ticker":"000001"},bars)},5,"fixed")
