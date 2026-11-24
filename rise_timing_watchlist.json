@@ -2933,5 +2933,33 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-23"
+  },
+  {
+    "ticker": "141000",
+    "name": "비아트론",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-24"
+  },
+  {
+    "ticker": "181710",
+    "name": "NHN",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-24"
+  },
+  {
+    "ticker": "068760",
+    "name": "셀트리온제약",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-24"
+  },
+  {
+    "ticker": "000120",
+    "name": "CJ대한통운",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-24"
   }
 ]
