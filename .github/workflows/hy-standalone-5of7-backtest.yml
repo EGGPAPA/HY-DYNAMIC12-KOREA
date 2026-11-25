@@ -1,0 +1,38 @@
+name: HY standalone 5-of-7 historical close-proxy audit
+
+on:
+  push:
+    branches:
+      - experiment/hy-5of7-standalone-4y-daily-proxy
+    paths:
+      - .github/workflows/hy-standalone-5of7-backtest.yml
+      - scripts/backtest_hy_5of7_daily_proxy.py
+      - tests/test_backtest_hy_5of7_daily_proxy.py
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  research:
+    runs-on: ubuntu-latest
+    timeout-minutes: 29
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install minimal research packages
+        run: python -m pip install 'pandas>=2.0' 'requests>=2.31'
+      - name: Offline strategy and non-lookahead checks
+        run: python -m unittest discover -s tests -p 'test_backtest_hy_5of7_daily_proxy.py' -v
+      - name: Study 2023-2026 current KOSPI and KOSDAQ sample
+        run: python scripts/backtest_hy_5of7_daily_proxy.py --start 2023-01-02 --end 2026-11-20 --per-market 250 --workers 6 --output hy_5of7_standalone_2023_2026.json
+      - name: Export auditable JSON
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hy-5of7-standalone-4y-daily-proxy
+          path: hy_5of7_standalone_2023_2026.json
+          if-no-files-found: ignore
+          retention-days: 21
