@@ -2961,5 +2961,40 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-24"
+  },
+  {
+    "ticker": "043260",
+    "name": "성호전자",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-25"
+  },
+  {
+    "ticker": "128940",
+    "name": "한미약품",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-25"
+  },
+  {
+    "ticker": "003230",
+    "name": "삼양식품",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-25"
+  },
+  {
+    "ticker": "008930",
+    "name": "한미사이언스",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-25"
+  },
+  {
+    "ticker": "004100",
+    "name": "태양금속",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-25"
   }
 ]
