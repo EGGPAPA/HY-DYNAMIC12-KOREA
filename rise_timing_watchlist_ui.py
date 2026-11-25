@@ -717,6 +717,11 @@ def render_rise_timing_watchlist(universe=None):
         render_current_price_screen(universe, selected_rows, _send_rise_scan_alerts, _promote_buy_candidates,
                                     saved_count=len(rows), cohort_asof=cohort.get('last_review_asof', ''),
                                     cohort_policy=cohort.get('policy', 'convergence_v1'), saved_rows=rows)
+        # Independent, optional long-term trend panel. No changes to the 5-of-7 gate.
+        from minervini_ui import render_minervini_panel
+        render_minervini_panel(selected_rows,
+                               asof=_load_convergence_state().get('asof', ''),
+                               key='minervini_saved')
     if cohort is not None:
         _render_cohort_archive(rows, cohort)
 
