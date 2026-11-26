@@ -2996,5 +2996,19 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-25"
+  },
+  {
+    "ticker": "119830",
+    "name": "아이텍",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-26"
+  },
+  {
+    "ticker": "037270",
+    "name": "YG PLUS",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-26"
   }
 ]
