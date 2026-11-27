@@ -3010,5 +3010,26 @@
     "market": "KOSPI",
     "source": "ma_convergence_daily",
     "added_asof": "2026-11-26"
+  },
+  {
+    "ticker": "223250",
+    "name": "드림씨아이에스",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-27"
+  },
+  {
+    "ticker": "069960",
+    "name": "현대백화점",
+    "market": "KOSPI",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-27"
+  },
+  {
+    "ticker": "027050",
+    "name": "코리아나",
+    "market": "KOSDAQ",
+    "source": "ma_convergence_daily",
+    "added_asof": "2026-11-27"
   }
 ]
